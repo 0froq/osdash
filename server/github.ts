@@ -1,3 +1,4 @@
+import { enrichIssueClassificationsForEnv, type ClaimClassifierEnv } from './claim-classifier'
 import { hideIssueForLinkedPr, includeIssueOnBoard } from '../shared/claim'
 import {
   type Activity,
@@ -21,8 +22,10 @@ type RawActor = {
 }
 
 type RawComment = {
+  id?: string
   url?: string
   createdAt?: string
+  updatedAt?: string
   body?: string
   authorAssociation?: string
   author?: RawActor | null
@@ -123,8 +126,10 @@ const QUERY = `
           author { __typename login }
           comments(last: 30) {
             nodes {
+              id
               url
               createdAt
+              updatedAt
               body
               authorAssociation
               author { __typename login }
@@ -176,8 +181,10 @@ const QUERY = `
           }
           comments(last: 30) {
             nodes {
+              id
               url
               createdAt
+              updatedAt
               body
               authorAssociation
               author { __typename login }
@@ -307,6 +314,8 @@ export function mapNode(node: RawNode): Item | null {
       url: comment.url,
       body: comment.body,
       authorAssociation: comment.authorAssociation,
+      commentId: comment.id ?? comment.url ?? comment.createdAt,
+      updatedAt: comment.updatedAt ?? comment.createdAt,
     })
   }
   for (const review of node.reviews?.nodes ?? []) {
@@ -428,6 +437,7 @@ async function graphql(
 export async function loadBoard(
   token: string,
   now: Date,
+  classifierEnv: ClaimClassifierEnv = {},
 ): Promise<{ items: BoardItem[]; truncated: boolean }> {
   const since = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   const queries = [
@@ -463,6 +473,8 @@ export async function loadBoard(
       if (!cursor) break
     }
   }
+
+  await enrichIssueClassificationsForEnv(raw, classifierEnv, now.getTime())
 
   const items = raw
     .filter(item => includeIssueOnBoard(item))

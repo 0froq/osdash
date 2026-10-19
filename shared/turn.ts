@@ -1,4 +1,5 @@
 import { claimLevel, claimWaitingSince, pendingClaimQuestion, selfClaimedStaleTone } from './claim'
+import type { CommentClassification } from './claim-types'
 import { isBot, isSelf } from './identity'
 
 export { BOT_LOGINS, isBot, isSelf, SELF } from './identity'
@@ -23,6 +24,9 @@ export type Activity = {
   reviewState?: ReviewState
   body?: string
   authorAssociation?: string
+  commentId?: string
+  updatedAt?: string
+  classification?: CommentClassification
 }
 
 export type CheckStatus =

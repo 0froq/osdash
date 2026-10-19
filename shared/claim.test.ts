@@ -81,6 +81,34 @@ it('assigned: me in assignees is the strongest claim level', () => {
   assert.equal(level, 'assigned')
 })
 
+it('low AI intent confidence never reaches confirmed even with maintainer approval', () => {
+  const level = claimLevel(
+    issue({
+      activities: [
+        comment({
+          actor: user('0froq'),
+          at: ago(2 * DAY_MS),
+          body: "I'll open a PR",
+          classification: { intent: 'claim', intentConfidence: 0.55, source: 'ai' },
+        }),
+        comment({
+          actor: user('pi0'),
+          at: ago(DAY_MS),
+          body: 'go for it',
+          authorAssociation: 'MEMBER',
+          classification: {
+            intent: 'none',
+            intentConfidence: 1,
+            maintainerOk: 0.95,
+            source: 'ai',
+          },
+        }),
+      ],
+    }),
+  )
+  assert.equal(level, 'self-claimed')
+})
+
 it('confirmed: claim comment followed by maintainer reply', () => {
   const level = claimLevel(
     issue({

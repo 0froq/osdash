@@ -1,59 +1,30 @@
 import type { Activity, Item, Tone } from './turn'
 import { isBot, isSelf } from './identity'
+import { isMaintainerAssociation } from './claim-types'
+import {
+  canConfirmClaim,
+  isAskActivity,
+  isClaimActivity,
+  isWithdrawActivity,
+  maintainerApproved,
+  threadComments,
+} from './claim-classifier'
+export { CLAIM_COMMENT_PATTERNS } from './claim-keywords'
+export { isClaimComment, isClaimQuestion, isRelinquishComment } from './claim-keywords'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export type ClaimLevel = 'assigned' | 'confirmed' | 'self-claimed'
 
-export const MAINTAINER_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR'])
-
-/** Case-insensitive English claim phrases; tolerant of I will / a fix / this one. */
-export const CLAIM_COMMENT_PATTERNS: readonly RegExp[] = [
-  /\bi['']?ll\s+open\s+(?:a\s+)?pr\b/i,
-  /\bi\s+will\s+open\s+(?:a\s+)?pr\b/i,
-  /\bi['']?ll\s+send\s+(?:a\s+)?pr\b/i,
-  /\bi\s+will\s+send\s+(?:a\s+)?pr\b/i,
-  /\bi['']?d\s+like\s+to\s+work\s+on\s+this(?:\s+one)?\b/i,
-  /\bi\s+can\s+take\s+this(?:\s+one)?\b/i,
-  /\bhappy\s+to\s+submit\s+(?:a\s+)?pr\b/i,
-  /\bi['']?m\s+working\s+on\s+(?:a\s+)?fix\b/i,
-  /\bi\s+am\s+working\s+on\s+(?:a\s+)?fix\b/i,
-]
-
-const RELINQUISH_COMMENT_PATTERNS: readonly RegExp[] = [/\bgo\s+ahead\b/i, /\bunassign\s+me\b/i]
-
-export function isClaimComment(body: string): boolean {
-  const text = body.trim()
-  if (!text) return false
-  return CLAIM_COMMENT_PATTERNS.some(pattern => pattern.test(text))
-}
-
-export function isClaimQuestion(body: string): boolean {
-  const text = body.trim()
-  if (!text.endsWith('?')) return false
-  if (isClaimComment(text)) return true
-  return /\bcan\s+i\s+take\b/i.test(text) || /\bmay\s+i\s+(?:work\s+on|take)\b/i.test(text)
-}
-
-export function isRelinquishComment(body: string): boolean {
-  const text = body.trim()
-  if (!text) return false
-  return RELINQUISH_COMMENT_PATTERNS.some(pattern => pattern.test(text))
-}
-
-export function isMaintainerAssociation(association?: string): boolean {
-  return association !== undefined && MAINTAINER_ASSOCIATIONS.has(association)
-}
+export { isMaintainerAssociation, MAINTAINER_ASSOCIATIONS } from './claim-types'
 
 function sortedComments(activities: Activity[]): Activity[] {
-  return activities
-    .filter(activity => activity.kind === 'comment')
-    .sort((first, second) => Date.parse(first.at) - Date.parse(second.at))
+  return threadComments(activities)
 }
 
 function myClaimComments(activities: Activity[]): Activity[] {
   return sortedComments(activities).filter(
-    activity => isSelf(activity.actor) && activity.body && isClaimComment(activity.body),
+    activity => isSelf(activity.actor) && activity.body && isClaimActivity(activity),
   )
 }
 
@@ -62,7 +33,7 @@ function latestClaimActivity(activities: Activity[]): Activity | undefined {
     activity =>
       isSelf(activity.actor) &&
       activity.body &&
-      (isClaimComment(activity.body) || isClaimQuestion(activity.body)),
+      (isClaimActivity(activity) || isAskActivity(activity)),
   )
   return claims.at(-1)
 }
@@ -74,7 +45,11 @@ function maintainerRepliedAfter(activities: Activity[], at: string): boolean {
       Date.parse(activity.at) > moment &&
       !isSelf(activity.actor) &&
       !isBot(activity.actor) &&
-      isMaintainerAssociation(activity.authorAssociation),
+      (maintainerApproved(activity) ||
+        (activity.classification?.maintainerOk === undefined &&
+          activity.classification?.source !== 'ai' &&
+          activity.classification?.source !== 'cache' &&
+          isMaintainerAssociation(activity.authorAssociation))),
   )
 }
 
@@ -93,7 +68,7 @@ export function isClaimInvalidated(item: Item): boolean {
   if (othersPr) return true
 
   return sortedComments(item.activities).some(
-    activity => isSelf(activity.actor) && activity.body && isRelinquishComment(activity.body),
+    activity => isSelf(activity.actor) && activity.body && isWithdrawActivity(activity),
   )
 }
 
@@ -106,12 +81,14 @@ export function claimLevel(item: Item): ClaimLevel | null {
   const questionOnly =
     claims.length === 0 &&
     sortedComments(item.activities).some(
-      activity => isSelf(activity.actor) && activity.body && isClaimQuestion(activity.body),
+      activity => isSelf(activity.actor) && activity.body && isAskActivity(activity),
     )
   if (claims.length === 0 && !questionOnly) return null
 
   for (const claim of claims) {
-    if (maintainerRepliedAfter(item.activities, claim.at)) return 'confirmed'
+    if (canConfirmClaim(claim) && maintainerRepliedAfter(item.activities, claim.at)) {
+      return 'confirmed'
+    }
   }
 
   return 'self-claimed'
@@ -122,7 +99,7 @@ export function pendingClaimQuestion(item: Item): boolean {
   if (!claimLevel(item)) return false
 
   const latest = latestClaimActivity(item.activities)
-  if (!latest?.body || !isClaimQuestion(latest.body)) return false
+  if (!latest?.body || !isAskActivity(latest)) return false
   return !maintainerRepliedAfter(item.activities, latest.at)
 }
 
