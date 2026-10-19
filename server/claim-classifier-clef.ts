@@ -1,5 +1,6 @@
 import {
   buildClassifierState,
+  estimateStateTokens,
   type ClaimClassifierContext,
   type ClaimCommentClassifier,
   mergeClassification,
@@ -52,6 +53,17 @@ function parseNoul(raw: unknown): number {
   throw new Error('Invalid clef noul response')
 }
 
+function logModelCall(
+  context: ClaimClassifierContext,
+  inputTokens: number,
+  result: { intent: string; confidence: number },
+): void {
+  const commentId = context.comment.commentId ?? 'unknown'
+  console.log(
+    `claim-classify commentId=${commentId} role=${context.role} inputTokens=${inputTokens} intent=${result.intent} confidence=${result.confidence}`,
+  )
+}
+
 function keywordFallback(context: ClaimClassifierContext): CommentClassification {
   const body = context.comment.body ?? ''
   if (context.role === 'maintainer') {
@@ -72,6 +84,7 @@ export function createClefClaimClassifier(ai: AiBinding | undefined): ClaimComme
       if (!ai || !context.comment.body) return keywordFallback(context)
 
       const state = buildClassifierState(context)
+      const inputTokens = estimateStateTokens(state)
       try {
         if (context.role === 'self') {
           const response = await ai.run(CLEF_MODEL, {
@@ -88,6 +101,10 @@ export function createClefClaimClassifier(ai: AiBinding | undefined): ClaimComme
           })
           const answers = (response as { answers?: Record<string, unknown> })?.answers
           const parsed = parseChoice(answers?.intent)
+          logModelCall(context, inputTokens, {
+            intent: parsed.intent,
+            confidence: parsed.intentConfidence,
+          })
           return mergeClassification({ ...parsed, source: 'ai' })
         }
 
@@ -104,6 +121,10 @@ export function createClefClaimClassifier(ai: AiBinding | undefined): ClaimComme
         })
         const answers = (response as { answers?: Record<string, unknown> })?.answers
         const maintainerOk = parseNoul(answers?.maintainer_ok)
+        logModelCall(context, inputTokens, {
+          intent: 'maintainer_ok',
+          confidence: maintainerOk,
+        })
         return mergeClassification({
           intent: 'none',
           intentConfidence: 1,
