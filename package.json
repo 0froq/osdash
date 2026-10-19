@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "catalog:prod",
+    "jose": "catalog:prod",
     "nuxt": "catalog:prod",
     "vue": "catalog:prod"
   },

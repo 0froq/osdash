@@ -21,6 +21,8 @@
 
 分支预览是 `pnpm preview:deploy`：先 `nuxt build`，再 `cf previews deploy`。`cloudflare.config.ts` 只做预览适配，从 `void.config.ts` 读 name、兼容日期、兼容旗标、observability、`workers_dev`、`preview_urls`。生产自定义域名只留在 Void 配置里，预览适配器不写 `routes`，避免把 `osdash.froq.me` 挂到分支预览上。
 
+`workers_dev` 是 `false`，生产不挂 `*.workers.dev`。`preview_urls` 显式保持 `true`。Cloudflare 的默认是「没写 `preview_urls` 时跟 `workers_dev` 走」；`workers_dev` 关掉后如果不写 `preview_urls: true`，预览地址会一起关掉。预览适配器原样读这两个值，所以分支预览配置里的 `workersDev` 也是 false，`previewUrls` 仍是 true。
+
 GitHub Actions 只跑 check 和 test，不发布。
 
 ### 非静态 appType，查到的做法
@@ -30,7 +32,7 @@ GitHub Actions 只跑 check 和 test，不发布。
 - [Supported App Types](https://void.cloud/guide/app-types)：`inference.appType` 可以是 `"void"`、`"framework"`、`"spa"`、`"static"`。Nuxt 属于 meta-framework，对应 `"framework"`。`"static"` 只上传静态文件，没有 Worker。
 - [Nuxt integration](https://void.cloud/integrations/frameworks/nuxt)：Nitro `preset: 'cloudflare-module'`，开发时 `nitro.cloudflare.dev.configPath` 指向 `./.void-wrangler.jsonc`。`vite` 里加 `voidPlugin()`。绑定从 `event.context.cloudflare.env` 读。
 - [Config](https://void.cloud/reference/config)：`inference.bindings.kv` 接受 `true`（默认名 `KV`）或字符串自定义名。这里写成 `'CACHE'`。`kv_namespaces` 这类带 id 的数组放在 `cloudflare` 里；id 要等 Void 第一次部署写进 `void.lock.json`。没有真实部署，所以这里不编一个 namespace id。
-- [Environment variables](https://void.cloud/guide/env-vars)：secret 在根目录 `env.ts` 用 `defineEnv` 声明。没有 `VITE_` 前缀的键是服务端值。生产用 `void secret put GITHUB_TOKEN`，不要写进 `void.config.ts` 的 `vars`。本地值放 `.env`，`.env` 不进 git，也不会被 deploy 上传。
+- [Environment variables](https://void.cloud/guide/env-vars)：secret 在根目录 `env.ts` 用 `defineEnv` 声明。没有 `VITE_` 前缀的键是服务端值。生产用 `void secret put GITHUB_TOKEN`、`void secret put ACCESS_TEAM_DOMAIN`、`void secret put ACCESS_AUD`，不要写进 `void.config.ts` 的 `vars`。本地值放 `.env`，`.env` 不进 git，也不会被 deploy 上传。
 - [cf programmatic config](https://developers.cloudflare.com/cf/projects/cloudflare-config/)：会跑代码的 Worker 需要 `entrypoint`。KV 用 `bindings.kv()`，secret 用 `bindings.secret()`，都挂在 `worker.env` 下。预览适配器因此声明了 `CACHE` 和 `GITHUB_TOKEN`，入口指向 Nitro `cloudflare-module` 的 `.output/server/index.mjs`。`assets.notFoundHandling: 'none'`、`runWorkerFirst: true`，让 server route 由 Worker 处理。
 
 本地 `nuxt build`（Nitro preset `cloudflare-module`）已经跑通，产物是 `.output/server/index.mjs`，旁边有 `.output/public`。入口文件会 import `node:*` 和 `cloudflare:workers`，所以运行时需要 `nodejs_compat`。这次构建没有写出 `.output/server/wrangler.json`：Nitro 只在 provider 被识别成 `cloudflare_workers` 时才默认打开 `deployConfig`。
@@ -58,3 +60,21 @@ Nitro 不会读 `void.config.ts` 或 `wrangler.config.ts` 来判断要不要开 
 - 平均首次回复：别人（不是 0froq、不是 bot）第一条非创建动静减去创建时间。没有回复的不进平均。
 - `?refresh=1` 跳过 KV。开发时页面带 `mock=1`，生产构建里 `import.meta.dev` 为假，样例不会打开。
 - Notion 只在 `server/notion.ts`。`createNotionSource().connected` 是 `false`，不发请求。
+
+## Cloudflare Access
+
+生产构建（`import.meta.dev === false`）里，`server/middleware/access.ts` 要求每个请求带 `Cf-Access-Jwt-Assertion`。`nuxt dev` 跳过，不校验。缺头、缺 `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD`、签名或声明校验失败，都只回 403，不把失败原因写进响应。
+
+校验用 `jose` 的 `jwtVerify`，算法只接受 `RS256`。`ACCESS_TEAM_DOMAIN` 可以是 team 名（`froq`）或团队域名（`https://froq.cloudflareaccess.com`）。JWKS 固定是 `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`，`iss` 必须是 `https://<team>.cloudflareaccess.com`，`aud` 必须等于 `ACCESS_AUD`。依据是 Cloudflare 的 [Validate JWTs](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)：Workers 示例用 `createRemoteJWKSet` 和 `jwtVerify({ issuer, audience })`。
+
+Access 应用这样配：
+
+1. Cloudflare Zero Trust → Access controls → Applications，新建 Self-hosted application，目标域名 `osdash.froq.me`。
+2. 加上允许的身份源和 policy。
+3. 在应用的 Additional settings 里复制 Application Audience (AUD) Tag，这就是 `ACCESS_AUD`。删掉重建应用之前它不变。
+4. `ACCESS_TEAM_DOMAIN` 用团队域名 `https://<team>.cloudflareaccess.com`。
+5. 用 `void secret put` 写入这两个值。预览适配器里也声明了同名 secret，分支预览若要过这层 middleware，部署环境里同样要有这两个值。
+
+预览地址另外用 Worker 设置里的 Access 开关保护，不要靠把 `osdash.froq.me` 配到预览上。文档路径（[Preview URLs](https://developers.cloudflare.com/workers/configuration/previews/)、[Cloudflare Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)，2026-10-19 读到）：Workers & Pages → 选中 `osdash` → Settings → Domains & Routes，在 Preview URLs 上点 Enable Cloudflare Access。只保护这一个 Worker 的预览时，也可以走该 Worker 的 Access 页，选 Previews only。开关打开后，Access 会挡在预览 URL 前面。这次没有登录 dashboard 点过这个开关。
+
+这层 middleware 在所有非 dev 构建里都会跑，包括分支预览。预览 Access 应用如果发了另一个 `aud`，请求仍会被 403，直到 `ACCESS_AUD` 和那张 token 的 audience 一致。预览文档还写了：打开 Access 之后，要在 Worker 里用它给出的 `aud` 和 JWKS 再验一次 token。

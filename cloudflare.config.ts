@@ -23,6 +23,8 @@ export default defineConfig({
     env: {
       CACHE: bindings.kv(),
       GITHUB_TOKEN: bindings.secret(),
+      ACCESS_TEAM_DOMAIN: bindings.secret(),
+      ACCESS_AUD: bindings.secret(),
     },
   },
 })

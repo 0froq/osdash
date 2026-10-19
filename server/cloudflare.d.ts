@@ -9,6 +9,8 @@ declare module 'h3' {
       env?: {
         CACHE?: CacheStore
         GITHUB_TOKEN?: string
+        ACCESS_TEAM_DOMAIN?: string
+        ACCESS_AUD?: string
       }
     }
   }
