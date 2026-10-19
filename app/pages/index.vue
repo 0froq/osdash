@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { formatDuration, RECENT_MS, summarize, type BoardItem, type Turn } from '#shared/turn'
+import { THEME_KEY } from '~/theme'
+
+type ThemeName = 'light' | 'dark'
 
 type BoardResponse = {
   generatedAt: string
@@ -19,6 +22,9 @@ const pending = ref(true)
 const error = ref('')
 const repo = ref('')
 const selectedId = ref('')
+const theme = ref<ThemeName>('light')
+const themeReady = ref(false)
+const themes = ['light', 'dark'] as const
 
 const repos = computed(() => [...new Set(items.value.map(item => item.repo))].sort())
 
@@ -70,6 +76,34 @@ function openSelected() {
   window.open(row.links.item, '_blank', 'noopener')
 }
 
+function setTheme(next: ThemeName): void {
+  theme.value = next
+  document.documentElement.dataset.theme = next
+  try {
+    localStorage.setItem(THEME_KEY, next)
+  } catch {
+    /* Storage may be unavailable; the current theme still applies. */
+  }
+}
+
+function onThemeKey(event: KeyboardEvent): void {
+  const step =
+    event.key === 'ArrowRight' || event.key === 'ArrowDown'
+      ? 1
+      : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+        ? -1
+        : 0
+  if (step === 0) return
+  event.preventDefault()
+  const index = Math.max(0, themes.indexOf(theme.value))
+  const next = themes[(index + step + themes.length) % themes.length]
+  if (!next) return
+  setTheme(next)
+  const group = event.currentTarget
+  if (group instanceof HTMLElement)
+    group.querySelectorAll<HTMLElement>('[role="radio"]')[themes.indexOf(next)]?.focus()
+}
+
 function onKey(event: KeyboardEvent) {
   const target = event.target
   if (target instanceof HTMLElement && target.closest('input, textarea, select')) return
@@ -107,6 +141,8 @@ async function load(refresh = false) {
 }
 
 onMounted(() => {
+  theme.value = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
+  themeReady.value = true
   window.addEventListener('keydown', onKey)
   void load(false)
 })
@@ -160,6 +196,33 @@ function replyLabel(ms: number | null): string {
         >
           {{ pending ? '刷新中' : '刷新' }}
         </button>
+        <div
+          class="theme"
+          role="radiogroup"
+          aria-label="主题"
+          @keydown="onThemeKey"
+        >
+          <button
+            type="button"
+            role="radio"
+            data-choice="light"
+            :aria-checked="themeReady ? theme === 'light' : undefined"
+            :tabindex="theme === 'dark' ? -1 : 0"
+            @click="setTheme('light')"
+          >
+            浅色
+          </button>
+          <button
+            type="button"
+            role="radio"
+            data-choice="dark"
+            :aria-checked="themeReady ? theme === 'dark' : undefined"
+            :tabindex="theme === 'light' ? -1 : 0"
+            @click="setTheme('dark')"
+          >
+            深色
+          </button>
+        </div>
       </div>
     </header>
 

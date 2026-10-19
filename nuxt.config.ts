@@ -1,11 +1,18 @@
 import { voidPlugin } from 'void'
+import { themePreferenceScript } from './app/theme'
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-19',
 
   devtools: { enabled: false },
 
-  css: ['@fontsource-variable/geist/index.css', '~/assets/css/board.css'],
+  css: [
+    '@fontsource-variable/geist/index.css',
+    '@fontsource-variable/geist-mono/index.css',
+    '@fontsource/instrument-serif/400.css',
+    '@fontsource/instrument-serif/400-italic.css',
+    '~/assets/css/board.css',
+  ],
 
   vite: {
     plugins: [voidPlugin()],
@@ -31,8 +38,14 @@ export default defineNuxtConfig({
       htmlAttrs: { lang: 'zh-CN' },
       meta: [
         { name: 'description', content: 'froQ 的开源贡献看板' },
-        { name: 'color-scheme', content: 'dark' },
+        { name: 'color-scheme', content: 'light dark' },
         { name: 'robots', content: 'noindex' },
+      ],
+      script: [
+        {
+          tagPosition: 'head',
+          innerHTML: themePreferenceScript(),
+        },
       ],
     },
   },

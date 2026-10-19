@@ -23,6 +23,8 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "catalog:prod",
+    "@fontsource-variable/geist-mono": "catalog:prod",
+    "@fontsource/instrument-serif": "catalog:prod",
     "jose": "catalog:prod",
     "nuxt": "catalog:prod",
     "vue": "catalog:prod"
