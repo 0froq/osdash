@@ -353,8 +353,11 @@ export async function loadBoard(
 ): Promise<{ items: BoardItem[]; truncated: boolean }> {
   const since = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   const queries = [
-    `author:0froq -user:0froq is:pr (is:open OR closed:>=${since})`,
-    `author:0froq -user:0froq is:issue (is:open OR closed:>=${since})`,
+    // GraphQL search ignores parenthesised OR groups and returns 0, so split them.
+    `author:0froq -user:0froq is:pr is:open`,
+    `author:0froq -user:0froq is:pr is:closed closed:>=${since}`,
+    `author:0froq -user:0froq is:issue is:open`,
+    `author:0froq -user:0froq is:issue is:closed closed:>=${since}`,
   ]
   const seen = new Set<string>()
   const items: BoardItem[] = []
