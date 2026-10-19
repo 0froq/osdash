@@ -35,9 +35,9 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'osdash',
-      htmlAttrs: { lang: 'zh-CN' },
+      htmlAttrs: { lang: 'en' },
       meta: [
-        { name: 'description', content: 'froQ 的开源贡献看板' },
+        { name: 'description', content: 'Read-only dashboard for froQ open-source contributions' },
         { name: 'color-scheme', content: 'light dark' },
         { name: 'robots', content: 'noindex' },
       ],

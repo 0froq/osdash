@@ -36,12 +36,12 @@ it('builds the team JWKS url from a slug or a team domain', () => {
   assert.equal(accessIssuer('https://froq.cloudflareaccess.com'), ISSUER)
   assert.equal(accessIssuer('https://froq.cloudflareaccess.com/'), ISSUER)
   assert.equal(accessCertsUrl(TEAM), `${ISSUER}/cdn-cgi/access/certs`)
-  assert.throws(() => accessIssuer('https://evil.example/certs'), /无效/)
+  assert.throws(() => accessIssuer('https://evil.example/certs'), /Invalid ACCESS_TEAM_DOMAIN/)
   assert.throws(
     () => accessIssuer('https://froq.cloudflareaccess.com/cdn-cgi/access/certs'),
-    /无效/,
+    /Invalid ACCESS_TEAM_DOMAIN/,
   )
-  assert.throws(() => accessIssuer('not a domain'), /无效/)
+  assert.throws(() => accessIssuer('not a domain'), /Invalid ACCESS_TEAM_DOMAIN/)
 })
 
 it('accepts a token signed for this team and audience', async () => {

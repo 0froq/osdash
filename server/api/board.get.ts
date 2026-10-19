@@ -37,7 +37,7 @@ export default defineEventHandler(async event => {
 
   const token = event.context.cloudflare?.env?.GITHUB_TOKEN || process.env.GITHUB_TOKEN
   if (!token) {
-    throw createError({ statusCode: 503, statusMessage: '缺少 GITHUB_TOKEN' })
+    throw createError({ statusCode: 503, statusMessage: 'GITHUB_TOKEN is not configured' })
   }
 
   try {
@@ -54,7 +54,7 @@ export default defineEventHandler(async event => {
     await writeCache(store, KEY, JSON.stringify(body), TTL_SECONDS, now.getTime())
     return body
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'GitHub 搜索失败'
+    const message = error instanceof Error ? error.message : 'GitHub search failed'
     throw createError({ statusCode: 502, statusMessage: message })
   }
 })

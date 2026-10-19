@@ -80,7 +80,7 @@ export type Tone = 'none' | 'yellow' | 'red'
 export type Verdict = {
   turn: Turn
   reason: string
-  labels: Array<'CI 待批'>
+  labels: Array<'CI pending approval'>
   waitingSince: string
   ageMs: number
   tone: Tone
@@ -199,15 +199,15 @@ function pushedBySelfAfter(activities: Activity[], at: string): boolean {
 function reviewReason(login: string, state: ReviewState): string {
   switch (state) {
     case 'CHANGES_REQUESTED':
-      return `${login} 要求修改`
+      return `${login} requested changes`
     case 'APPROVED':
-      return `${login} 已通过`
+      return `${login} approved`
     case 'COMMENTED':
-      return `${login} 留言`
+      return `${login} commented`
     case 'DISMISSED':
-      return `${login} 撤回了 review`
+      return `${login} dismissed review`
     case 'PENDING':
-      return `${login} 还有未提交的 review`
+      return `${login} has a pending review`
     default: {
       const exhaustive: never = state
       return exhaustive
@@ -218,15 +218,19 @@ function reviewReason(login: string, state: ReviewState): string {
 function humanReason(activity: Activity): string {
   switch (activity.kind) {
     case 'create':
-      return '刚创建，等维护者'
+      return 'Opened, waiting on maintainer'
     case 'comment':
-      return isSelf(activity.actor) ? '已回复，等维护者' : `${activity.actor.login} 留言`
+      return isSelf(activity.actor)
+        ? 'Replied, waiting on maintainer'
+        : `${activity.actor.login} commented`
     case 'review':
       return isSelf(activity.actor)
-        ? '已回复，等维护者'
+        ? 'Replied, waiting on maintainer'
         : reviewReason(activity.actor.login, activity.reviewState ?? 'COMMENTED')
     case 'push':
-      return isSelf(activity.actor) ? '已推送，等维护者' : `${activity.actor.login} 推送了提交`
+      return isSelf(activity.actor)
+        ? 'Pushed, waiting on maintainer'
+        : `${activity.actor.login} pushed commits`
     default: {
       const exhaustive: never = activity.kind
       return exhaustive
@@ -235,7 +239,7 @@ function humanReason(activity: Activity): string {
 }
 
 function failureReason(check: Check): string {
-  return /lint/i.test(check.name) ? 'CI lint 失败' : `CI ${check.name} 失败`
+  return /lint/i.test(check.name) ? 'CI lint failed' : `CI ${check.name} failed`
 }
 
 function commentUrl(activities: Activity[]): string | null {
@@ -269,7 +273,9 @@ export function judge(item: Item, nowMs: number): Verdict {
   const lastHuman = humans.at(-1) ?? activities[0]!
   const waitingSince = lastHuman.at
   const ageMs = Math.max(0, nowMs - Date.parse(waitingSince))
-  const labels: Array<'CI 待批'> = awaitingCi(item.checks) ? ['CI 待批'] : []
+  const labels: Array<'CI pending approval'> = awaitingCi(item.checks)
+    ? ['CI pending approval']
+    : []
   const links = {
     item: item.url,
     comment: commentUrl(activities),
@@ -279,7 +285,7 @@ export function judge(item: Item, nowMs: number): Verdict {
   if (item.state === 'merged' || item.state === 'closed') {
     return {
       turn: 'done',
-      reason: item.state === 'merged' ? '已合并' : '已关闭',
+      reason: item.state === 'merged' ? 'Merged' : 'Closed',
       labels,
       waitingSince,
       ageMs,
@@ -373,13 +379,13 @@ export function summarize(items: readonly BoardItem[]): BoardStats {
 }
 
 export function formatDuration(ms: number): string {
-  if (ms < 60_000) return '刚刚'
+  if (ms < 60_000) return 'just now'
   const minutes = Math.floor(ms / 60_000)
-  if (minutes < 60) return `${minutes} 分钟`
+  if (minutes < 60) return `${minutes}m`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} 小时`
+  if (hours < 24) return `${hours}h`
   const days = Math.floor(hours / 24)
   const rest = hours % 24
-  if (rest === 0) return `${days} 天`
-  return `${days} 天 ${rest} 小时`
+  if (rest === 0) return `${days}d`
+  return `${days}d ${rest}h`
 }

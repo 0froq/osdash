@@ -10,7 +10,7 @@ export function accessIssuer(teamDomain: string): string {
   try {
     url = new URL(withScheme)
   } catch {
-    throw new Error('ACCESS_TEAM_DOMAIN 无效')
+    throw new Error('Invalid ACCESS_TEAM_DOMAIN')
   }
   if (
     url.protocol !== 'https:' ||
@@ -21,15 +21,15 @@ export function accessIssuer(teamDomain: string): string {
     url.search !== '' ||
     url.hash !== ''
   ) {
-    throw new Error('ACCESS_TEAM_DOMAIN 无效')
+    throw new Error('Invalid ACCESS_TEAM_DOMAIN')
   }
   const host = url.hostname.toLowerCase()
   if (host.endsWith('.cloudflareaccess.com')) {
     const slug = host.slice(0, -'.cloudflareaccess.com'.length)
-    if (!SLUG.test(slug)) throw new Error('ACCESS_TEAM_DOMAIN 无效')
+    if (!SLUG.test(slug)) throw new Error('Invalid ACCESS_TEAM_DOMAIN')
     return `https://${slug}.cloudflareaccess.com`
   }
-  if (!SLUG.test(host)) throw new Error('ACCESS_TEAM_DOMAIN 无效')
+  if (!SLUG.test(host)) throw new Error('Invalid ACCESS_TEAM_DOMAIN')
   return `https://${host}.cloudflareaccess.com`
 }
 

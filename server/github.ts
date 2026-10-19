@@ -340,10 +340,10 @@ async function graphql(
     body: JSON.stringify({ query: QUERY, variables: { query, cursor } }),
     signal: AbortSignal.timeout(20_000),
   })
-  if (!response.ok) throw new Error(`GitHub 搜索失败：HTTP ${response.status}`)
+  if (!response.ok) throw new Error(`GitHub search failed: HTTP ${response.status}`)
   const payload = (await response.json()) as GraphPayload
   const message = payload.errors?.find(error => error.message)?.message
-  if (message) throw new Error(`GitHub 搜索失败：${message}`)
+  if (message) throw new Error(`GitHub search failed: ${message}`)
   return payload.data ?? {}
 }
 

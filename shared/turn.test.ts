@@ -58,7 +58,7 @@ function activity(overrides: Partial<Activity> & Pick<Activity, 'kind' | 'actor'
   }
 }
 
-it('0froq 最后回复了：轮到维护者', () => {
+it('when 0froq replied last, it is the maintainer turn', () => {
   const verdict = judge(
     item({
       checks: [check()],
@@ -80,12 +80,12 @@ it('0froq 最后回复了：轮到维护者', () => {
     NOW,
   )
   assert.equal(verdict.turn, 'maintainer')
-  assert.equal(verdict.reason, '已回复，等维护者')
+  assert.equal(verdict.reason, 'Replied, waiting on maintainer')
   assert.deepEqual(verdict.labels, [])
   assert.equal(verdict.tone, 'none')
 })
 
-it('只有 bot 评论，Vercel 预览失败，workflow 在等 approve：轮到维护者，并且带 CI 待批', () => {
+it('bot-only comment, Vercel preview failed, workflow awaiting approve: maintainer turn with CI pending approval', () => {
   const verdict = judge(
     item({
       activities: [
@@ -113,11 +113,11 @@ it('只有 bot 评论，Vercel 预览失败，workflow 在等 approve：轮到�
     NOW,
   )
   assert.equal(verdict.turn, 'maintainer')
-  assert.deepEqual(verdict.labels, ['CI 待批'])
+  assert.deepEqual(verdict.labels, ['CI pending approval'])
   assert.equal(verdict.links.ci, 'https://github.com/eggjs/egg/actions/runs/9')
 })
 
-it('CI 全绿、没有 review，只有创建 PR 这一条动静：轮到维护者', () => {
+it('green CI, no review, only PR creation: maintainer turn', () => {
   const verdict = judge(
     item({
       checks: [
@@ -128,7 +128,7 @@ it('CI 全绿、没有 review，只有创建 PR 这一条动静：轮到维护�
     NOW,
   )
   assert.equal(verdict.turn, 'maintainer')
-  assert.equal(verdict.reason, '刚创建，等维护者')
+  assert.equal(verdict.reason, 'Opened, waiting on maintainer')
   assert.equal(verdict.waitingSince, ago(2 * DAY_MS))
   assert.deepEqual(verdict.labels, [])
 })
@@ -152,10 +152,10 @@ it('filters the bot list, [bot] suffix, and Bot typename', () => {
     NOW,
   )
   assert.equal(verdict.turn, 'maintainer')
-  assert.equal(verdict.reason, '刚创建，等维护者')
+  assert.equal(verdict.reason, 'Opened, waiting on maintainer')
 })
 
-it('CHANGES_REQUESTED 之后 0froq 又 push 了，就不再轮到我', () => {
+it('after CHANGES_REQUESTED, a 0froq push moves it off my turn', () => {
   const requested = activity({
     kind: 'review',
     actor: user('fengmk2'),
@@ -165,7 +165,7 @@ it('CHANGES_REQUESTED 之后 0froq 又 push 了，就不再轮到我', () => {
   })
   const waiting = judge(item({ activities: [requested], checks: [check()] }), NOW)
   assert.equal(waiting.turn, 'me')
-  assert.equal(waiting.reason, 'fengmk2 要求修改')
+  assert.equal(waiting.reason, 'fengmk2 requested changes')
 
   const pushed = judge(
     item({
@@ -178,10 +178,10 @@ it('CHANGES_REQUESTED 之后 0froq 又 push 了，就不再轮到我', () => {
     NOW,
   )
   assert.equal(pushed.turn, 'maintainer')
-  assert.equal(pushed.reason, '已推送，等维护者')
+  assert.equal(pushed.reason, 'Pushed, waiting on maintainer')
 })
 
-it('真实的 lint 失败轮到我', () => {
+it('a real lint failure is my turn', () => {
   const verdict = judge(
     item({
       checks: [
@@ -200,12 +200,12 @@ it('真实的 lint 失败轮到我', () => {
     NOW,
   )
   assert.equal(verdict.turn, 'me')
-  assert.equal(verdict.reason, 'CI lint 失败')
+  assert.equal(verdict.reason, 'CI lint failed')
   assert.equal(verdict.links.ci, 'https://github.com/eggjs/egg/runs/lint')
   assert.equal(verdict.tone, 'none')
 })
 
-it('只给等维护者超过 7 天和 14 天的条目上色', () => {
+it('only colors maintainer-waiting items past 7 and 14 days', () => {
   const open = item()
   assert.equal(judge(open, Date.parse(open.createdAt) + 7 * DAY_MS).tone, 'none')
   assert.equal(judge(open, Date.parse(open.createdAt) + 7 * DAY_MS + 1).tone, 'yellow')

@@ -48,9 +48,9 @@ function column(turn: Turn): BoardItem[] {
 }
 
 const columns = computed(() => [
-  { turn: 'me' as const, title: '轮到我', rows: column('me') },
-  { turn: 'maintainer' as const, title: '等别人', rows: column('maintainer') },
-  { turn: 'done' as const, title: '最近完结', rows: column('done') },
+  { turn: 'me' as const, title: 'Your turn', rows: column('me') },
+  { turn: 'maintainer' as const, title: 'Waiting', rows: column('maintainer') },
+  { turn: 'done' as const, title: 'Recently closed', rows: column('done') },
 ])
 
 const flat = computed(() => columns.value.flatMap(entry => entry.rows))
@@ -134,7 +134,7 @@ async function load(refresh = false) {
     truncated.value = body.truncated
     mock.value = body.mock
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : '没有读到看板'
+    error.value = caught instanceof Error ? caught.message : 'Could not load board'
   } finally {
     pending.value = false
   }
@@ -152,7 +152,7 @@ onBeforeUnmount(() => {
 })
 
 function replyLabel(ms: number | null): string {
-  if (ms === null) return '还没有'
+  if (ms === null) return '—'
   return formatDuration(ms)
 }
 </script>
@@ -162,23 +162,23 @@ function replyLabel(ms: number | null): string {
     <header class="top">
       <div class="brand">
         <h1>osdash</h1>
-        <p class="quiet">0froq 的开源贡献，只读</p>
+        <p class="quiet">0froq open-source contributions, read-only</p>
       </div>
       <p class="hint">
-        j / k 移动 · o 打开
-        <template v-if="mock"> · 本地样例</template>
-        <template v-else-if="cached"> · 缓存</template>
-        <template v-if="truncated"> · 只取了前 100 条</template>
+        j / k move · o open
+        <template v-if="mock"> · local sample</template>
+        <template v-else-if="cached"> · cached</template>
+        <template v-if="truncated"> · capped at 100</template>
       </p>
       <p class="stats">
-        已合并 {{ stats.merged }} · 开着 {{ stats.open }} · 平均首次回复
+        Merged {{ stats.merged }} · Open {{ stats.open }} · avg first reply
         {{ replyLabel(stats.averageFirstReplyMs) }}
       </p>
       <div class="controls">
         <label>
-          <span class="quiet">仓库</span>
+          <span class="quiet">Repo</span>
           <select v-model="repo">
-            <option value="">全部</option>
+            <option value="">All</option>
             <option
               v-for="name in repos"
               :key="name"
@@ -194,12 +194,12 @@ function replyLabel(ms: number | null): string {
           :disabled="pending"
           @click="load(true)"
         >
-          {{ pending ? '刷新中' : '刷新' }}
+          {{ pending ? 'Refreshing…' : 'Refresh' }}
         </button>
         <div
           class="theme"
           role="radiogroup"
-          aria-label="主题"
+          aria-label="Theme"
           @keydown="onThemeKey"
         >
           <button
@@ -210,7 +210,7 @@ function replyLabel(ms: number | null): string {
             :tabindex="theme === 'dark' ? -1 : 0"
             @click="setTheme('light')"
           >
-            浅色
+            Light
           </button>
           <button
             type="button"
@@ -220,7 +220,7 @@ function replyLabel(ms: number | null): string {
             :tabindex="theme === 'light' ? -1 : 0"
             @click="setTheme('dark')"
           >
-            深色
+            Dark
           </button>
         </div>
       </div>
@@ -247,7 +247,7 @@ function replyLabel(ms: number | null): string {
           v-if="entry.rows.length === 0"
           class="empty"
         >
-          没有
+          None
         </p>
         <article
           v-for="row in entry.rows"
@@ -284,7 +284,7 @@ function replyLabel(ms: number | null): string {
               target="_blank"
               rel="noreferrer"
             >
-              打开 {{ row.kind === 'pr' ? 'PR' : 'issue' }}
+              Open {{ row.kind === 'pr' ? 'PR' : 'issue' }}
             </a>
             <a
               v-if="row.links.comment"
@@ -293,13 +293,13 @@ function replyLabel(ms: number | null): string {
               target="_blank"
               rel="noreferrer"
             >
-              打开最后一条评论
+              Open latest comment
             </a>
             <span
               v-else
               class="button disabled"
             >
-              打开最后一条评论
+              Open latest comment
             </span>
             <a
               v-if="row.links.ci"
@@ -308,13 +308,13 @@ function replyLabel(ms: number | null): string {
               target="_blank"
               rel="noreferrer"
             >
-              打开 CI 日志
+              Open CI log
             </a>
             <span
               v-else
               class="button disabled"
             >
-              打开 CI 日志
+              Open CI log
             </span>
           </p>
         </article>
