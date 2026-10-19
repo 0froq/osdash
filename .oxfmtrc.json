@@ -1,0 +1,18 @@
+{
+  "semi": false,
+  "singleQuote": true,
+  "arrowParens": "avoid",
+  "quoteProps": "consistent",
+  "singleAttributePerLine": true,
+  "htmlWhitespaceSensitivity": "strict",
+  "ignorePatterns": [
+    ".nuxt/**",
+    ".output/**",
+    "dist/**",
+    "public/**",
+    ".agents/**",
+    "AGENTS.md",
+    "pnpm-lock.yaml",
+    "void.lock.json"
+  ]
+}

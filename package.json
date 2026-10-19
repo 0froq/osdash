@@ -1,0 +1,55 @@
+{
+  "name": "osdash",
+  "version": "0.1.0",
+  "private": true,
+  "description": "froQ's read-only open-source contribution board.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "deploy": "void deploy --platform cloudflare",
+    "preview": "nuxt preview",
+    "preview:deploy": "pnpm build && cf previews deploy",
+    "lint": "vp lint --config .oxlintrc.json .",
+    "lint:fix": "vp lint --config .oxlintrc.json . --fix",
+    "fmt": "vp fmt --config .oxfmtrc.json .",
+    "fmt:check": "vp fmt --config .oxfmtrc.json . --check",
+    "check": "vp run lint && vp run fmt:check && vp run typecheck",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "nuxt prepare",
+    "prepare": "npx simple-git-hooks",
+    "test": "vp test --config tooling/vite.config.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "catalog:prod",
+    "nuxt": "catalog:prod",
+    "vue": "catalog:prod"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:dev",
+    "cf": "catalog:dev",
+    "into-the-void": "catalog:",
+    "jiti": "catalog:",
+    "lint-staged": "catalog:dev",
+    "simple-git-hooks": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vite-plus": "catalog:dev",
+    "void": "catalog:dev",
+    "vue-tsc": "catalog:dev",
+    "wrangler": "catalog:dev"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm i --frozen-lockfile --ignore-scripts --offline && npx lint-staged"
+  },
+  "lint-staged": {
+    "*": [
+      "vp lint --config .oxlintrc.json --fix --no-error-on-unmatched-pattern",
+      "vp fmt --config .oxfmtrc.json --no-error-on-unmatched-pattern"
+    ]
+  },
+  "engines": {
+    "node": "^24.21.0 || >=26.0.0"
+  },
+  "packageManager": "pnpm@12.11.2"
+}
