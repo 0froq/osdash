@@ -23,7 +23,15 @@
 
 `workers_dev` 是 `false`，生产不挂 `*.workers.dev`。`preview_urls` 显式保持 `true`。Cloudflare 的默认是「没写 `preview_urls` 时跟 `workers_dev` 走」；`workers_dev` 关掉后如果不写 `preview_urls: true`，预览地址会一起关掉。预览适配器原样读这两个值，所以分支预览配置里的 `workersDev` 也是 false，`previewUrls` 仍是 true。
 
-GitHub Actions 只跑 check 和 test，不发布。
+### 自动部署
+
+- 生产：`.github/workflows/deploy.yml`，push 到 `main` 时先跑 check、test，再 `pnpm exec void deploy --platform cloudflare`。格式参照 `void init --github`（Void 1.1.12 `dist/init-*.mjs` 的 `getWorkflowYaml`，platform cloudflare 分支）生成的 `void-deploy.yml`。
+- 仓库 secrets：`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`、`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`。可选 variable：`CLOUDFLARE_WORKERS_SUBDOMAIN`（Worker Version 没有 preview URL 时才需要）。
+- Access 探活：Void 的 `/__void/ready` 探活读 `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET`，发 `CF-Access-Client-Id` / `CF-Access-Client-Secret` 头；两者都有时优先于 `CF_ACCESS_TOKEN`（本地用 `cloudflared access token`）。service token 要被探活目标的 Access 应用（预览 URL 的 Access）放行，policy action 用 Service Auth。Void 没有跳过探活的开关。
+- 分支预览：Cloudflare Workers Builds。构建命令留空（`pnpm preview:deploy` 自己先 `pnpm build`），非生产分支部署命令 `pnpm preview:deploy`；生产分支 deploy command 设成 no-op（`true`），避免和 Actions 重复发布。环境变量 `NODE_VERSION=24.21.0`。和 lig 不同：lig 的生产也走 Workers Builds（`cf deploy`），这里生产只走 Void。
+- `void.lock.json` 已提交：里面是第一次真实 `void deploy` 写出的 account id 和 `CACHE` 的 KV namespace id。CI 是干净 checkout，要靠它复用同一个 namespace。
+
+GitHub Actions 的 `check.yml` 只跑 check 和 test。
 
 ### 非静态 appType，查到的做法
 
@@ -43,7 +51,7 @@ Nitro 不会读 `void.config.ts` 或 `wrangler.config.ts` 来判断要不要开 
 
 没有在这个环境里执行 `void deploy` 或 `cf previews deploy`（没有 Cloudflare 凭据）。Void 是否会按 `framework` 吃下这份 Nitro 产物、以及 `bindings.kv()` 不带 id 时预览会不会自己建 namespace，都还没被一次真实发布证实。
 
-本地构建时 Void 写过一份 `void.lock.json`。`resolved.kv_namespaces` 里 binding 是 `CACHE`，id 是字符串 `local`。这不是 Cloudflare 分配的 namespace id，提交进去会让以后的部署以为 namespace 已经存在。那份文件已删掉，等第一次真正的 `void deploy` 写出真实 id 再提交。
+现在提交的 `void.lock.json` 来自真实部署，KV id 是 Cloudflare 分配的。不要提交本地构建写出的 `local` 占位 id。
 
 `wrangler.config.ts` 的 `assetsDirectory: './.output/public'` 沿 lig 的预览适配留下；cf 文档说有 `cloudflare.config.ts` 时构建不一定读这份 Wrangler 配置。Nitro 构建日志会建议 `npx wrangler`，这个仓库不跑那条命令。
 

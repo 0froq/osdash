@@ -24,4 +24,4 @@ pnpm exec vp run test
 
 ## 部署
 
-生产用 Void，分支预览用 `cf previews deploy`。不要跑 wrangler 命令。配置怎么来的写在 `AGENTS.md`。这个仓库还没有执行过真正的 `void deploy`，KV 的 namespace id 也还没写进 `void.lock.json`。
+生产用 Void，分支预览用 `cf previews deploy`。不要跑 wrangler 命令。配置怎么来的写在 `AGENTS.md`。push 到 `main` 由 GitHub Actions（`deploy.yml`）跑 Void 发布；Workers Builds 只发分支预览。
