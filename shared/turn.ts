@@ -1,13 +1,8 @@
-export const SELF = '0froq'
+import { claimLevel, claimWaitingSince, pendingClaimQuestion, selfClaimedStaleTone } from './claim'
+import type { CommentClassification } from './claim-types'
+import { isBot, isSelf } from './identity'
 
-export const BOT_LOGINS = [
-  'coderabbitai',
-  'codecov',
-  'netlify',
-  'vercel',
-  'coldtea-pr-lens',
-  'chatgpt-codex-connector',
-] as const
+export { BOT_LOGINS, isBot, isSelf, SELF } from './identity'
 
 export const DAY_MS = 24 * 60 * 60 * 1000
 export const RECENT_MS = 14 * DAY_MS
@@ -27,6 +22,11 @@ export type Activity = {
   actor: Actor
   url?: string
   reviewState?: ReviewState
+  body?: string
+  authorAssociation?: string
+  commentId?: string
+  updatedAt?: string
+  classification?: CommentClassification
 }
 
 export type CheckStatus =
@@ -59,6 +59,14 @@ export type ItemState = 'open' | 'merged' | 'closed'
 
 export type ItemKind = 'pr' | 'issue'
 
+export type LinkedPullRequest = {
+  repo: string
+  number: number
+  url: string
+  state: ItemState
+  author: Actor
+}
+
 export type Item = {
   kind: ItemKind
   repo: string
@@ -71,16 +79,20 @@ export type Item = {
   author: Actor
   activities: Activity[]
   checks: Check[]
+  assignees?: Actor[]
+  linkedPullRequests?: LinkedPullRequest[]
 }
 
 export type Turn = 'me' | 'maintainer' | 'done'
 
 export type Tone = 'none' | 'yellow' | 'red'
 
+export type BoardLabel = 'CI awaiting approval' | 'Self-claimed'
+
 export type Verdict = {
   turn: Turn
   reason: string
-  labels: Array<'CI awaiting approval'>
+  labels: BoardLabel[]
   waitingSince: string
   ageMs: number
   tone: Tone
@@ -106,17 +118,6 @@ export type BoardStats = {
   merged: number
   open: number
   averageFirstReplyMs: number | null
-}
-
-export function isBot(actor: Actor): boolean {
-  if (actor.typename === 'Bot') return true
-  if (actor.login.endsWith('[bot]')) return true
-  const login = actor.login.toLowerCase()
-  return BOT_LOGINS.some(name => name === login)
-}
-
-export function isSelf(actor: Actor): boolean {
-  return actor.login.toLowerCase() === SELF
 }
 
 function byTime(first: Activity, second: Activity): number {
@@ -273,13 +274,40 @@ export function judge(item: Item, nowMs: number): Verdict {
   const lastHuman = humans.at(-1) ?? activities[0]!
   const waitingSince = lastHuman.at
   const ageMs = Math.max(0, nowMs - Date.parse(waitingSince))
-  const labels: Array<'CI awaiting approval'> = awaitingCi(item.checks)
-    ? ['CI awaiting approval']
-    : []
+  const labels: BoardLabel[] = awaitingCi(item.checks) ? ['CI awaiting approval'] : []
   const links = {
     item: item.url,
     comment: commentUrl(activities),
     ci: ciUrl(item.checks),
+  }
+
+  if (item.kind === 'issue' && item.state === 'open' && claimLevel(item)) {
+    const waitingSince = claimWaitingSince(item)
+    const ageMs = Math.max(0, nowMs - Date.parse(waitingSince))
+    if (pendingClaimQuestion(item)) {
+      const turn: Turn = 'maintainer'
+      return {
+        turn,
+        reason: 'Claim pending approval',
+        labels,
+        waitingSince,
+        ageMs,
+        tone: waitingTone(turn, ageMs),
+        links,
+      }
+    }
+    const level = claimLevel(item)!
+    const claimLabels: BoardLabel[] =
+      level === 'self-claimed' ? [...labels, 'Self-claimed'] : labels
+    return {
+      turn: 'me',
+      reason: 'Claimed, open a PR',
+      labels: claimLabels,
+      waitingSince,
+      ageMs,
+      tone: level === 'self-claimed' ? selfClaimedStaleTone(ageMs) : 'none',
+      links,
+    }
   }
 
   if (item.state === 'merged' || item.state === 'closed') {

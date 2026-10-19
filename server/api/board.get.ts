@@ -41,7 +41,10 @@ export default defineEventHandler(async event => {
   }
 
   try {
-    const loaded = await loadBoard(token, now)
+    const loaded = await loadBoard(token, now, {
+      AI: event.context.cloudflare?.env?.AI,
+      CACHE: store,
+    })
     const body = {
       generatedAt: now.toISOString(),
       cached: false,

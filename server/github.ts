@@ -1,3 +1,5 @@
+import { enrichIssueClassificationsForEnv, type ClaimClassifierEnv } from './claim-classifier'
+import { hideIssueForLinkedPr, includeIssueOnBoard } from '../shared/claim'
 import {
   type Activity,
   type Actor,
@@ -5,6 +7,7 @@ import {
   type CheckConclusion,
   type CheckStatus,
   type Item,
+  type LinkedPullRequest,
   type ReviewState,
   present,
   type BoardItem,
@@ -19,8 +22,12 @@ type RawActor = {
 }
 
 type RawComment = {
+  id?: string
   url?: string
   createdAt?: string
+  updatedAt?: string
+  body?: string
+  authorAssociation?: string
   author?: RawActor | null
 }
 
@@ -54,10 +61,21 @@ type RawCommit = {
   } | null
 }
 
+type RawPullRequest = {
+  __typename?: 'PullRequest'
+  number?: number
+  url?: string
+  state?: string
+  merged?: boolean
+  author?: RawActor | null
+  repository?: { nameWithOwner?: string }
+}
+
 type RawTimeline = {
   __typename?: string
   createdAt?: string
   actor?: RawActor | null
+  source?: RawPullRequest | null
 }
 
 type RawNode = {
@@ -75,6 +93,7 @@ type RawNode = {
   reviews?: { nodes?: Array<RawReview | null> | null }
   commits?: { nodes?: Array<{ commit?: RawCommit | null } | null> | null }
   timelineItems?: { nodes?: Array<RawTimeline | null> | null }
+  assignees?: { nodes?: Array<RawActor | null> | null }
 }
 
 type SearchPayload = {
@@ -106,7 +125,15 @@ const QUERY = `
           repository { nameWithOwner }
           author { __typename login }
           comments(last: 30) {
-            nodes { url createdAt author { __typename login } }
+            nodes {
+              id
+              url
+              createdAt
+              updatedAt
+              body
+              authorAssociation
+              author { __typename login }
+            }
           }
           reviews(last: 20) {
             nodes { url state submittedAt author { __typename login } }
@@ -149,8 +176,37 @@ const QUERY = `
           createdAt
           repository { nameWithOwner }
           author { __typename login }
+          assignees(first: 10) {
+            nodes { __typename login }
+          }
           comments(last: 30) {
-            nodes { url createdAt author { __typename login } }
+            nodes {
+              id
+              url
+              createdAt
+              updatedAt
+              body
+              authorAssociation
+              author { __typename login }
+            }
+          }
+          timelineItems(last: 30, itemTypes: [CROSS_REFERENCED_EVENT]) {
+            nodes {
+              __typename
+              ... on CrossReferencedEvent {
+                source {
+                  __typename
+                  ... on PullRequest {
+                    number
+                    url
+                    state
+                    merged
+                    author { __typename login }
+                    repository { nameWithOwner }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -256,6 +312,10 @@ export function mapNode(node: RawNode): Item | null {
       at: comment.createdAt,
       actor: actorOf(comment.author),
       url: comment.url,
+      body: comment.body,
+      authorAssociation: comment.authorAssociation,
+      commentId: comment.id ?? comment.url ?? comment.createdAt,
+      updatedAt: comment.updatedAt ?? comment.createdAt,
     })
   }
   for (const review of node.reviews?.nodes ?? []) {
@@ -310,6 +370,31 @@ export function mapNode(node: RawNode): Item | null {
   const merged = node.__typename === 'PullRequest' && node.merged === true
   const state = merged ? 'merged' : node.state === 'CLOSED' ? 'closed' : 'open'
 
+  const assignees =
+    node.__typename === 'Issue'
+      ? (node.assignees?.nodes ?? []).flatMap(raw => (raw?.login ? [actorOf(raw)] : []))
+      : []
+
+  const linkedPullRequests: LinkedPullRequest[] = []
+  if (node.__typename === 'Issue') {
+    for (const event of node.timelineItems?.nodes ?? []) {
+      if (event?.__typename !== 'CrossReferencedEvent') continue
+      const source = event.source
+      if (source?.__typename !== 'PullRequest') continue
+      if (!source.number || !source.url || !source.repository?.nameWithOwner || !source.state)
+        continue
+      const prMerged = source.merged === true
+      const prState = prMerged ? 'merged' : source.state === 'CLOSED' ? 'closed' : 'open'
+      linkedPullRequests.push({
+        repo: source.repository.nameWithOwner,
+        number: source.number,
+        url: source.url,
+        state: prState,
+        author: actorOf(source.author),
+      })
+    }
+  }
+
   return {
     kind: node.__typename === 'PullRequest' ? 'pr' : 'issue',
     repo: node.repository.nameWithOwner,
@@ -322,6 +407,8 @@ export function mapNode(node: RawNode): Item | null {
     author,
     activities,
     checks,
+    assignees,
+    linkedPullRequests,
   }
 }
 
@@ -350,6 +437,7 @@ async function graphql(
 export async function loadBoard(
   token: string,
   now: Date,
+  classifierEnv: ClaimClassifierEnv = {},
 ): Promise<{ items: BoardItem[]; truncated: boolean }> {
   const since = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   const queries = [
@@ -358,9 +446,10 @@ export async function loadBoard(
     `author:0froq -user:0froq is:pr is:closed closed:>=${since}`,
     `author:0froq -user:0froq is:issue is:open`,
     `author:0froq -user:0froq is:issue is:closed closed:>=${since}`,
+    `commenter:0froq -user:0froq is:issue is:open`,
   ]
   const seen = new Set<string>()
-  const items: BoardItem[] = []
+  const raw: Item[] = []
   let truncated = false
 
   for (const query of queries) {
@@ -372,7 +461,7 @@ export async function loadBoard(
         const mapped = mapNode(node)
         if (!mapped || seen.has(`${mapped.repo}#${mapped.number}`)) continue
         seen.add(`${mapped.repo}#${mapped.number}`)
-        items.push(present(mapped, now.getTime()))
+        raw.push(mapped)
       }
       const pageInfo = data.search?.pageInfo
       if (!pageInfo?.hasNextPage) break
@@ -384,6 +473,13 @@ export async function loadBoard(
       if (!cursor) break
     }
   }
+
+  await enrichIssueClassificationsForEnv(raw, classifierEnv, now.getTime())
+
+  const items = raw
+    .filter(item => includeIssueOnBoard(item))
+    .filter(item => !hideIssueForLinkedPr(item))
+    .map(item => present(item, now.getTime()))
 
   return { items, truncated }
 }

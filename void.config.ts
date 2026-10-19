@@ -9,6 +9,7 @@ export default defineConfig({
     build: 'pnpm exec vp run build',
     bindings: {
       kv: 'CACHE',
+      ai: 'AI',
     },
   },
   cloudflare: {
