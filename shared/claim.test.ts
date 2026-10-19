@@ -157,6 +157,16 @@ it('confirmed and assigned claims do not show the self-claimed badge', () => {
   assert.deepEqual(confirmed.labels, [])
 })
 
+it('invalidates when the issue is assigned to someone else', () => {
+  const assignedElsewhere = issue({
+    assignees: [user('pi0')],
+    activities: [comment({ actor: user('0froq'), at: ago(DAY_MS), body: "I'll open a PR" })],
+  })
+  assert.equal(isClaimInvalidated(assignedElsewhere), true)
+  assert.equal(claimLevel(assignedElsewhere), null)
+  assert.equal(includeIssueOnBoard(assignedElsewhere), false)
+})
+
 it('invalidates when someone else links a PR', () => {
   const invalidated = issue({
     linkedPullRequests: [

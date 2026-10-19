@@ -78,9 +78,16 @@ function maintainerRepliedAfter(activities: Activity[], at: string): boolean {
   )
 }
 
+function assignedToSomeoneElse(item: Item): boolean {
+  const assignees = item.assignees ?? []
+  return assignees.length > 0 && !assignees.some(assignee => isSelf(assignee))
+}
+
 export function isClaimInvalidated(item: Item): boolean {
   if (item.kind !== 'issue') return false
   if (item.state === 'closed' || item.state === 'merged') return true
+
+  if (assignedToSomeoneElse(item)) return true
 
   const othersPr = item.linkedPullRequests?.some(pr => !isSelf(pr.author)) ?? false
   if (othersPr) return true
