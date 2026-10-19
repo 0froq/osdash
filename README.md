@@ -24,4 +24,4 @@ pnpm exec vp run test
 
 ## 部署
 
-生产用 Void，分支预览用 `cf previews deploy`。不要跑 wrangler 命令。配置怎么来的写在 `AGENTS.md`。push 到 `main` 由 GitHub Actions（`deploy.yml`）跑 Void 发布；Workers Builds 只发分支预览。
+生产用 Void，分支预览用 `cf previews deploy`。不要跑 wrangler 命令。配置怎么来的写在 `AGENTS.md`。Workers Builds 发布：`main` 跑 `pnpm exec void deploy --platform cloudflare`，其它分支跑 `pnpm preview:deploy`。
