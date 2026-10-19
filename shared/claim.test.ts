@@ -228,6 +228,19 @@ it('colors self-claimed waits past 7 and 14 days', () => {
   assert.equal(stale.tone, 'red')
 })
 
+it('does not downgrade or remove a self-claimed issue after 14 days, only stale color', () => {
+  const item = issue({
+    activities: [comment({ actor: user('0froq'), at: ago(20 * DAY_MS), body: "I'll open a PR" })],
+  })
+  assert.equal(claimLevel(item), 'self-claimed')
+  assert.equal(includeIssueOnBoard(item), true)
+  const verdict = judge(item, NOW)
+  assert.equal(verdict.turn, 'me')
+  assert.equal(verdict.reason, 'Claimed, open a PR')
+  assert.deepEqual(verdict.labels, ['Self-claimed'])
+  assert.equal(verdict.tone, 'red')
+})
+
 it('uses the claim comment time as waitingSince', () => {
   const at = ago(3 * DAY_MS)
   const since = claimWaitingSince(
