@@ -48,9 +48,9 @@ function column(turn: Turn): BoardItem[] {
 }
 
 const columns = computed(() => [
-  { turn: 'me' as const, title: 'Your turn', rows: column('me') },
-  { turn: 'maintainer' as const, title: 'Waiting', rows: column('maintainer') },
-  { turn: 'done' as const, title: 'Recently closed', rows: column('done') },
+  { turn: 'me' as const, title: 'Your move', rows: column('me') },
+  { turn: 'maintainer' as const, title: 'Waiting on others', rows: column('maintainer') },
+  { turn: 'done' as const, title: 'Done', rows: column('done') },
 ])
 
 const flat = computed(() => columns.value.flatMap(entry => entry.rows))

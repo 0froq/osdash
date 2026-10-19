@@ -85,7 +85,7 @@ it('when 0froq replied last, it is the maintainer turn', () => {
   assert.equal(verdict.tone, 'none')
 })
 
-it('bot-only comment, Vercel preview failed, workflow awaiting approve: maintainer turn with CI pending approval', () => {
+it('bot-only comment, Vercel preview failed, workflow awaiting approve: maintainer turn with CI awaiting approval', () => {
   const verdict = judge(
     item({
       activities: [
@@ -113,7 +113,7 @@ it('bot-only comment, Vercel preview failed, workflow awaiting approve: maintain
     NOW,
   )
   assert.equal(verdict.turn, 'maintainer')
-  assert.deepEqual(verdict.labels, ['CI pending approval'])
+  assert.deepEqual(verdict.labels, ['CI awaiting approval'])
   assert.equal(verdict.links.ci, 'https://github.com/eggjs/egg/actions/runs/9')
 })
 

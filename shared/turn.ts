@@ -80,7 +80,7 @@ export type Tone = 'none' | 'yellow' | 'red'
 export type Verdict = {
   turn: Turn
   reason: string
-  labels: Array<'CI pending approval'>
+  labels: Array<'CI awaiting approval'>
   waitingSince: string
   ageMs: number
   tone: Tone
@@ -273,8 +273,8 @@ export function judge(item: Item, nowMs: number): Verdict {
   const lastHuman = humans.at(-1) ?? activities[0]!
   const waitingSince = lastHuman.at
   const ageMs = Math.max(0, nowMs - Date.parse(waitingSince))
-  const labels: Array<'CI pending approval'> = awaitingCi(item.checks)
-    ? ['CI pending approval']
+  const labels: Array<'CI awaiting approval'> = awaitingCi(item.checks)
+    ? ['CI awaiting approval']
     : []
   const links = {
     item: item.url,
