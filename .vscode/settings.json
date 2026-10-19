@@ -1,0 +1,4 @@
+{
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "oxc.fmt.disableNestedConfig": true
+}
