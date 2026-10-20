@@ -15,6 +15,31 @@ export interface ClaimCommentClassifier {
   classify(context: ClaimClassifierContext): Promise<CommentClassification>
 }
 
+export const CLEF_MAX_PRIOR_COMMENTS = 5
+export const CLEF_MAX_COMMENT_BODY_CHARS = 500
+export const CLEF_MAX_STATE_TOKEN_ESTIMATE = 3000
+export const CLEF_CHARS_PER_TOKEN_ESTIMATE = 4
+
+export function estimateStateTokens(state: unknown): number {
+  return Math.ceil(JSON.stringify(state).length / CLEF_CHARS_PER_TOKEN_ESTIMATE)
+}
+
+function truncateBody(body: string, maxChars: number): string {
+  if (body.length <= maxChars) return body
+  return body.slice(0, maxChars)
+}
+
+function isFocusComment(context: ClaimClassifierContext, activity: Activity): boolean {
+  if (context.comment.commentId && activity.commentId) {
+    return activity.commentId === context.comment.commentId
+  }
+  return (
+    activity.at === context.comment.at &&
+    activity.actor.login === context.comment.actor.login &&
+    activity.body === context.comment.body
+  )
+}
+
 export function threadComments(activities: Activity[]): Activity[] {
   return activities
     .filter(activity => activity.kind === 'comment')
@@ -22,23 +47,42 @@ export function threadComments(activities: Activity[]): Activity[] {
 }
 
 export function buildClassifierState(context: ClaimClassifierContext): Record<string, unknown> {
-  const comments = threadComments(context.thread).map(activity => ({
-    at: activity.at,
-    author: activity.actor.login,
-    author_association: activity.authorAssociation ?? null,
-    body: activity.body ?? '',
-    focus: activity.commentId === context.comment.commentId,
-  }))
-  return {
+  const focusAt = Date.parse(context.comment.at)
+  const prior = threadComments(context.thread)
+    .filter(activity => !isFocusComment(context, activity) && Date.parse(activity.at) < focusAt)
+    .slice(-CLEF_MAX_PRIOR_COMMENTS)
+    .map(activity => ({
+      at: activity.at,
+      author: activity.actor.login,
+      author_association: activity.authorAssociation ?? null,
+      body: truncateBody(activity.body ?? '', CLEF_MAX_COMMENT_BODY_CHARS),
+    }))
+
+  let focusBody = context.comment.body ?? ''
+  let priorComments = prior
+
+  const build = (): Record<string, unknown> => ({
     issue_title: context.issueTitle,
     focus_comment: {
       author: context.comment.actor.login,
       author_association: context.comment.authorAssociation ?? null,
-      body: context.comment.body ?? '',
+      body: focusBody,
       role: context.role,
     },
-    comments,
+    prior_comments: priorComments,
+  })
+
+  let state = build()
+  while (estimateStateTokens(state) > CLEF_MAX_STATE_TOKEN_ESTIMATE && priorComments.length > 0) {
+    priorComments = priorComments.slice(1)
+    state = build()
   }
+  while (estimateStateTokens(state) > CLEF_MAX_STATE_TOKEN_ESTIMATE && focusBody.length > 0) {
+    focusBody = truncateBody(focusBody, focusBody.length - CLEF_MAX_COMMENT_BODY_CHARS)
+    state = build()
+  }
+
+  return state
 }
 
 export function effectiveClassification(activity: Activity): CommentClassification {
