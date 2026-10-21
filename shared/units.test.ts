@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { it } from 'vite-plus/test'
 import { expandMissingLinkedPulls } from './timeline'
-import { buildUnitDrafts } from './units'
-import type { Actor, Item } from './turn'
+import { buildUnitDrafts, toUnit } from './units'
+import { judge, type Actor, type Item } from './turn'
 
 const VIEWER = 'octo-dev'
 
@@ -190,4 +190,80 @@ it('keeps two issues on one pull request card', () => {
     drafts[0]?.issues.map(issue => issue.number).sort((left, right) => left - right),
     [4, 5],
   )
+})
+
+const NOW = Date.parse('2026-10-19T12:00:00.000Z')
+
+it('sets myTurn only for an open card whose verdict is mine', () => {
+  const mineItem = item('pr', 3, {
+    checks: [{ name: 'test', status: 'COMPLETED', conclusion: 'FAILURE' }],
+  })
+  const waitingItem = item('pr', 4, {
+    checks: [{ name: 'lint', status: 'COMPLETED', conclusion: 'SUCCESS' }],
+  })
+  const otherItem = item('pr', 5, {
+    checks: [{ name: 'lint', status: 'COMPLETED', conclusion: 'SUCCESS' }],
+    activities: [
+      {
+        kind: 'comment',
+        at: '2026-10-18T00:00:00.000Z',
+        actor: user('someone'),
+        body: 'I hit the same crash.',
+      },
+    ],
+  })
+  const mergedItem = item('pr', 6, {
+    state: 'merged',
+    closedAt: '2026-10-18T00:00:00.000Z',
+    checks: [{ name: 'test', status: 'COMPLETED', conclusion: 'FAILURE' }],
+  })
+
+  const mine = toUnit(buildUnitDrafts([mineItem])[0]!, judge(mineItem, NOW), NOW)
+  const waiting = toUnit(buildUnitDrafts([waitingItem])[0]!, judge(waitingItem, NOW), NOW)
+  const other = toUnit(buildUnitDrafts([otherItem])[0]!, judge(otherItem, NOW), NOW)
+  const merged = toUnit(buildUnitDrafts([mergedItem])[0]!, judge(mergedItem, NOW), NOW)
+
+  assert.equal(judge(mineItem, NOW).turn, 'mine')
+  assert.equal(mine.myTurn, true)
+  assert.equal(mine.ended, false)
+  assert.equal(judge(waitingItem, NOW).turn, 'maintainer')
+  assert.equal(waiting.myTurn, false)
+  assert.equal(judge(otherItem, NOW).turn, 'other')
+  assert.equal(other.myTurn, false)
+  assert.equal(merged.ended, true)
+  assert.equal(merged.myTurn, false)
+})
+
+it('ignores the viewer and dropped bots when dating the latest other activity', () => {
+  const pull = item('pr', 7, {
+    checks: [],
+    activities: [
+      {
+        kind: 'comment',
+        at: '2026-10-10T00:00:00.000Z',
+        actor: user('vercel[bot]'),
+        body: 'Preview failed to deploy.',
+      },
+      {
+        kind: 'comment',
+        at: '2026-10-12T00:00:00.000Z',
+        actor: user('someone'),
+        body: 'Looks related to the cache.',
+      },
+      {
+        kind: 'comment',
+        at: '2026-10-15T00:00:00.000Z',
+        actor: user(VIEWER),
+        body: 'I will look tomorrow.',
+      },
+      {
+        kind: 'comment',
+        at: '2026-10-16T00:00:00.000Z',
+        actor: { typename: 'Bot', login: 'cla-assistant[bot]' },
+        body: 'You need to sign the CLA before this pull request can be merged.',
+      },
+    ],
+  })
+  const unit = toUnit(buildUnitDrafts([pull])[0]!, judge(pull, NOW), NOW)
+  assert.equal(unit.lastOtherActivityAt, '2026-10-16T00:00:00.000Z')
 })

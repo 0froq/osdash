@@ -1,8 +1,17 @@
 import { claimLevel, includeIssueOnBoard } from './claim'
 import { contributionTypes } from './contribution'
 import { isSelf, viewerLoginOf } from './identity'
-import type { UnitCategory, UnitHistoryPr, UnitIssue, UnitKind } from './unit'
-import type { ClosingIssue, Item, ItemState } from './turn'
+import { combineItems } from './timeline'
+import { isDroppedBot } from './turn-rules'
+import type { Unit, UnitCategory, UnitHistoryPr, UnitIssue, UnitKind } from './unit'
+import {
+  firstReplyMs,
+  type Check,
+  type ClosingIssue,
+  type Item,
+  type ItemState,
+  type Verdict,
+} from './turn'
 
 export const SUPERSEDE_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -323,6 +332,74 @@ function sharedPulls(
     .map(pr => prByKey.get(itemKey(pr.repo, pr.number)) ?? pr)
     .sort((left, right) => left.number - right.number)
     .map(pr => ({ repo: pr.repo, number: pr.number, url: pr.url }))
+}
+
+function combinedItem(items: readonly Item[]): Item | null {
+  if (items.length === 0) return null
+  if (items.length === 1) return items[0] ?? null
+  return combineItems([...items])
+}
+
+function checkMovesUnread(check: Check): boolean {
+  return check.conclusion === 'FAILURE' || check.conclusion === 'SUCCESS'
+}
+
+export function lastOtherActivityAt(items: readonly Item[], nowMs: number): string | null {
+  const combined = combinedItem(items)
+  if (!combined) return null
+  const viewer = viewerLoginOf(combined)
+  let latest = Number.NEGATIVE_INFINITY
+  for (const activity of combined.activities) {
+    if (isSelf(activity.actor, viewer) || isDroppedBot(activity)) continue
+    const at = Date.parse(activity.at)
+    if (at > latest) latest = at
+  }
+  if (combined.checks.some(checkMovesUnread) && nowMs > latest) latest = nowMs
+  if (!Number.isFinite(latest)) return null
+  return new Date(latest).toISOString()
+}
+
+export function toUnit(draft: UnitDraft, verdict: Verdict, nowMs: number): Unit {
+  const primary = draft.primary
+  const ended = primary.state !== 'open'
+  const prefix = draft.kind === 'pr' ? 'pr' : 'issue'
+  return {
+    id: `${prefix}:${primary.repo}#${primary.number}`,
+    kind: draft.kind,
+    category: draft.category,
+    tags: verdict.contributions,
+    repo: primary.repo,
+    number: primary.number,
+    title: primary.title,
+    url: primary.url,
+    state: primary.state,
+    createdAt: primary.createdAt,
+    closedAt: primary.closedAt,
+    issues: draft.issues,
+    history: draft.history,
+    fixedBy: draft.fixedBy,
+    myTurn: !ended && verdict.turn === 'mine',
+    ended,
+    reason: verdict.reason,
+    reasonCode: verdict.reasonCode,
+    reasonActor: verdict.reasonActor,
+    quote: verdict.quote,
+    labels: verdict.labels,
+    marks: verdict.marks,
+    tone: verdict.tone,
+    lastActivityAt: verdict.waitingSince,
+    lastOtherActivityAt: lastOtherActivityAt(draft.members, nowMs),
+    ageMs: verdict.ageMs,
+    firstReplyMs: firstReplyMs(combinedItem(draft.members) ?? primary),
+    links: verdict.links,
+    members: draft.members.map(item => ({
+      repo: item.repo,
+      number: item.number,
+      kind: item.kind,
+      updatedAt: item.updatedAt,
+      headSha: item.headSha,
+    })),
+  }
 }
 
 function fixedByFor(issue: Item, byKey: ReadonlyMap<string, Item>): FixedBy | null {
