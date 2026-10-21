@@ -11,6 +11,8 @@ export default defineNuxtConfig({
     '@fontsource-variable/geist-mono/index.css',
     '@fontsource/instrument-serif/400.css',
     '@fontsource/instrument-serif/400-italic.css',
+    '~/assets/css/tokens.css',
+    '~/assets/css/inbox.css',
     '~/assets/css/board.css',
   ],
 
