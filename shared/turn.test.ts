@@ -164,7 +164,7 @@ it('after CHANGES_REQUESTED, a 0froq push moves it off my turn', () => {
     url: 'https://github.com/eggjs/egg/pull/12#pullrequestreview-1',
   })
   const waiting = judge(item({ activities: [requested], checks: [check()] }), NOW)
-  assert.equal(waiting.turn, 'me')
+  assert.equal(waiting.turn, 'mine')
   assert.equal(waiting.reason, 'fengmk2 requested changes')
 
   const pushed = judge(
@@ -199,7 +199,7 @@ it('a real lint failure is my turn', () => {
     }),
     NOW,
   )
-  assert.equal(verdict.turn, 'me')
+  assert.equal(verdict.turn, 'mine')
   assert.equal(verdict.reason, 'CI lint failed')
   assert.equal(verdict.links.ci, 'https://github.com/eggjs/egg/runs/lint')
   assert.equal(verdict.tone, 'none')
@@ -216,7 +216,7 @@ it('only colors maintainer-waiting items past 7 and 14 days', () => {
     item({ checks: [check({ conclusion: 'FAILURE' })] }),
     Date.parse(open.createdAt) + 20 * DAY_MS,
   )
-  assert.equal(mine.turn, 'me')
+  assert.equal(mine.turn, 'mine')
   assert.equal(mine.tone, 'none')
 })
 
@@ -238,4 +238,307 @@ it('averages the first reply from someone other than 0froq', () => {
   assert.equal(stats.open, 2)
   assert.equal(stats.merged, 1)
   assert.equal(stats.averageFirstReplyMs, DAY_MS)
+})
+
+it('drops bot comments except a failing CLA check and an actionable CodeRabbit note', () => {
+  const cla = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('cla-assistant[bot]', 'Bot'),
+          at: ago(60 * 60 * 1000),
+          body: 'You need to sign the CLA before this pull request can be merged.',
+        }),
+      ],
+      checks: [check()],
+    }),
+    NOW,
+  )
+  assert.equal(cla.turn, 'mine')
+  assert.equal(cla.reason, 'CLA check failed')
+  assert.equal(cla.ambiguous, false)
+
+  const summary = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('coderabbitai', 'Bot'),
+          at: ago(60 * 60 * 1000),
+          body: 'Review summary. Actionable comments posted: 0',
+        }),
+      ],
+    }),
+    NOW,
+  )
+  assert.equal(summary.turn, 'maintainer')
+  assert.equal(summary.reason, 'Opened, waiting on maintainer')
+
+  const rabbit = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('coderabbitai[bot]', 'Bot'),
+          at: ago(60 * 60 * 1000),
+          body: 'Actionable comments posted: 1. Potential issue: the cache key ignores the host.',
+        }),
+      ],
+      checks: [check()],
+    }),
+    NOW,
+  )
+  assert.equal(rabbit.turn, 'mine')
+  assert.equal(rabbit.reason, 'CodeRabbit asked for changes')
+})
+
+it('a maintainer mention or a rebase request is mine, and a third party is other', () => {
+  const mention = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('fengmk2'),
+          at: ago(2 * 60 * 60 * 1000),
+          body: '@0froq can you take another look?',
+          authorAssociation: 'OWNER',
+        }),
+      ],
+      checks: [check()],
+    }),
+    NOW,
+  )
+  assert.equal(mention.turn, 'mine')
+  assert.equal(mention.reason, 'fengmk2 mentioned you')
+  assert.equal(mention.ambiguous, false)
+
+  const rebase = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('pi0'),
+          at: ago(2 * 60 * 60 * 1000),
+          body: 'Could you rebase onto main?',
+          authorAssociation: 'MEMBER',
+        }),
+      ],
+      checks: [check()],
+    }),
+    NOW,
+  )
+  assert.equal(rebase.turn, 'mine')
+  assert.equal(rebase.reason, 'pi0 asked for a PR or rebase')
+
+  const other = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('someone'),
+          at: ago(2 * 60 * 60 * 1000),
+          body: 'I hit the same crash on Linux.',
+          authorAssociation: 'CONTRIBUTOR',
+        }),
+      ],
+      checks: [check()],
+    }),
+    NOW,
+  )
+  assert.equal(other.turn, 'other')
+  assert.equal(other.ambiguous, false)
+})
+
+it('sends froQ questions, unanswered issues, and clean pull requests to the maintainer', () => {
+  const question = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('0froq'),
+          at: ago(60 * 60 * 1000),
+          body: 'Should this guard be optional?',
+        }),
+      ],
+      checks: [check()],
+    }),
+    NOW,
+  )
+  assert.equal(question.turn, 'maintainer')
+  assert.equal(question.reason, 'Asked, waiting on maintainer')
+  assert.equal(question.ambiguous, false)
+
+  const unanswered = judge(
+    item({
+      kind: 'issue',
+      author: user('0froq'),
+      activities: [],
+      checks: [],
+    }),
+    NOW,
+  )
+  assert.equal(unanswered.turn, 'maintainer')
+  assert.equal(unanswered.reason, 'Opened, waiting on maintainer')
+
+  const clean = judge(item({ checks: [check()] }), NOW)
+  assert.equal(clean.turn, 'maintainer')
+  assert.equal(clean.ambiguous, false)
+})
+
+it('leaves a statement and an unclear help comment for clef, and ignores Thanks', () => {
+  const statement = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('0froq'),
+          at: ago(3 * 60 * 60 * 1000),
+          body: 'I traced this to the cache key.',
+          commentId: 'c-statement',
+          updatedAt: ago(3 * 60 * 60 * 1000),
+        }),
+      ],
+      checks: [check()],
+    }),
+    NOW,
+  )
+  assert.equal(statement.ambiguous, true)
+  assert.equal(statement.turn, 'maintainer')
+  assert.equal(statement.focusCommentId, 'c-statement')
+
+  const help =
+    'The root cause is a leaked listener on the worker. Repro: fire two parallel requests and watch the context stick. '.repeat(
+      4,
+    )
+  const unclear = judge(
+    item({
+      kind: 'issue',
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('0froq'),
+          at: ago(2 * 60 * 60 * 1000),
+          body: help,
+          commentId: 'c-help',
+          updatedAt: ago(2 * 60 * 60 * 1000),
+        }),
+      ],
+      checks: [],
+    }),
+    NOW,
+  )
+  assert.equal(unclear.ambiguous, true)
+  assert.equal(unclear.contributions.includes('help'), true)
+
+  const thanks = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('0froq'),
+          at: ago(60 * 60 * 1000),
+          body: 'Thanks!',
+        }),
+      ],
+      checks: [check()],
+    }),
+    NOW,
+  )
+  assert.equal(thanks.ambiguous, false)
+  assert.equal(thanks.turn, 'maintainer')
+  assert.equal(thanks.reason, 'Opened, waiting on maintainer')
+
+  const fixed = judge(
+    item({
+      kind: 'issue',
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('0froq'),
+          at: ago(60 * 60 * 1000),
+          body: 'This is already fixed on main.',
+        }),
+      ],
+      checks: [],
+    }),
+    NOW,
+  )
+  assert.equal(fixed.ambiguous, false)
+  assert.equal(fixed.turn, 'maintainer')
+  assert.equal(fixed.reason, 'Already fixed, waiting on maintainer')
+  assert.equal(fixed.contributions.includes('help'), true)
+})
+
+it('records claim, proposal, help, and non-code independently', () => {
+  const verdict = judge(
+    item({
+      kind: 'issue',
+      title: 'Add a dark theme namespace and a directory listing',
+      body: 'Can I take this? The root cause is a missing namespace export. Repro: import the theme from the package root.',
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('0froq'),
+          at: ago(2 * DAY_MS),
+          body: 'Can I take this?',
+        }),
+        activity({
+          kind: 'comment',
+          actor: user('0froq'),
+          at: ago(DAY_MS),
+          body: "I'll open a PR",
+        }),
+      ],
+      checks: [],
+    }),
+    NOW,
+  )
+  assert.deepEqual(verdict.contributions, ['claim', 'proposal', 'help', 'non-code'])
+  assert.equal(verdict.turn, 'mine')
+})
+
+it('derives stalled from the timer past 14 days and not on the boundary', () => {
+  const open = item()
+  const atBoundary = judge(open, Date.parse(open.createdAt) + 14 * DAY_MS)
+  assert.equal(atBoundary.marks.includes('stalled >14d'), false)
+  const past = judge(open, Date.parse(open.createdAt) + 14 * DAY_MS + 1)
+  assert.equal(past.turn, 'maintainer')
+  assert.equal(past.marks.includes('stalled >14d'), true)
+
+  const closed = judge(item({ state: 'merged', closedAt: ago(20 * DAY_MS) }), NOW)
+  assert.equal(closed.turn, 'none')
+  assert.deepEqual(closed.marks, [])
+})
+
+it('treats a CLA action_required check as mine and a workflow action_required check as maintainer', () => {
+  const cla = judge(
+    item({
+      checks: [
+        check({
+          name: 'CLA',
+          status: 'COMPLETED',
+          conclusion: 'ACTION_REQUIRED',
+        }),
+      ],
+    }),
+    NOW,
+  )
+  assert.equal(cla.turn, 'mine')
+  assert.equal(cla.reason, 'CLA check failed')
+
+  const workflow = judge(
+    item({
+      checks: [
+        check({
+          name: 'workflow approve',
+          status: 'WAITING',
+          conclusion: 'ACTION_REQUIRED',
+        }),
+      ],
+    }),
+    NOW,
+  )
+  assert.equal(workflow.turn, 'maintainer')
+  assert.deepEqual(workflow.labels, ['CI awaiting approval'])
 })

@@ -5,7 +5,7 @@ import { mockItems } from '../mock'
 import { createNotionSource } from '../notion'
 import { summarize } from '../../shared/turn'
 
-const KEY = 'board:v1'
+const KEY = 'board:v2'
 const TTL_SECONDS = 10 * 60
 
 export default defineEventHandler(async event => {
@@ -41,10 +41,15 @@ export default defineEventHandler(async event => {
   }
 
   try {
-    const loaded = await loadBoard(token, now, {
-      AI: event.context.cloudflare?.env?.AI,
-      CACHE: store,
-    })
+    const loaded = await loadBoard(
+      token,
+      now,
+      {
+        AI: event.context.cloudflare?.env?.AI,
+        CACHE: store,
+      },
+      { fresh: refresh },
+    )
     const body = {
       generatedAt: now.toISOString(),
       cached: false,

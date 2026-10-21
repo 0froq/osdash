@@ -1,5 +1,8 @@
 import { enrichIssueClassificationsForEnv, type ClaimClassifierEnv } from './claim-classifier'
+import { enrichItemsFromRest } from './github-rest'
+import { maybeClassifyTurn } from './turn-classifier'
 import { hideIssueForLinkedPr, includeIssueOnBoard } from '../shared/claim'
+import { mergeLinkedItems } from '../shared/timeline'
 import {
   type Activity,
   type Actor,
@@ -87,6 +90,9 @@ type RawNode = {
   merged?: boolean
   closedAt?: string | null
   createdAt?: string
+  updatedAt?: string
+  body?: string
+  headRefOid?: string
   repository?: { nameWithOwner?: string }
   author?: RawActor | null
   comments?: { nodes?: Array<RawComment | null> | null }
@@ -122,6 +128,9 @@ const QUERY = `
           merged
           closedAt
           createdAt
+          updatedAt
+          body
+          headRefOid
           repository { nameWithOwner }
           author { __typename login }
           comments(last: 30) {
@@ -136,7 +145,16 @@ const QUERY = `
             }
           }
           reviews(last: 20) {
-            nodes { url state submittedAt author { __typename login } }
+            nodes {
+              id
+              url
+              state
+              submittedAt
+              updatedAt
+              body
+              authorAssociation
+              author { __typename login }
+            }
           }
           commits(last: 20) {
             nodes {
@@ -174,6 +192,8 @@ const QUERY = `
           state
           closedAt
           createdAt
+          updatedAt
+          body
           repository { nameWithOwner }
           author { __typename login }
           assignees(first: 10) {
@@ -328,6 +348,10 @@ export function mapNode(node: RawNode): Item | null {
       actor: actorOf(review.author),
       url: review.url,
       reviewState: state,
+      body: review.body,
+      authorAssociation: review.authorAssociation,
+      commentId: review.id ?? review.url ?? at,
+      updatedAt: review.updatedAt ?? at,
     })
   }
 
@@ -409,6 +433,9 @@ export function mapNode(node: RawNode): Item | null {
     checks,
     assignees,
     linkedPullRequests,
+    body: node.body,
+    updatedAt: node.updatedAt,
+    headSha: node.headRefOid,
   }
 }
 
@@ -438,6 +465,7 @@ export async function loadBoard(
   token: string,
   now: Date,
   classifierEnv: ClaimClassifierEnv = {},
+  options: { fresh?: boolean } = {},
 ): Promise<{ items: BoardItem[]; truncated: boolean }> {
   const since = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   const queries = [
@@ -474,12 +502,20 @@ export async function loadBoard(
     }
   }
 
+  await enrichItemsFromRest(token, raw, classifierEnv.CACHE, now.getTime(), options.fresh === true)
   await enrichIssueClassificationsForEnv(raw, classifierEnv, now.getTime())
 
-  const items = raw
+  const visible = mergeLinkedItems(raw)
     .filter(item => includeIssueOnBoard(item))
     .filter(item => !hideIssueForLinkedPr(item))
-    .map(item => present(item, now.getTime()))
+
+  const items: BoardItem[] = []
+  for (const item of visible) {
+    const board = present(item, now.getTime())
+    items.push(
+      await maybeClassifyTurn(item, board, classifierEnv, now.getTime(), options.fresh === true),
+    )
+  }
 
   return { items, truncated }
 }

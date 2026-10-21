@@ -70,11 +70,15 @@ Nitro 不会读 `void.config.ts` 或 `wrangler.config.ts` 来判断要不要开 
 ## 数据
 
 - `server/github.ts` 用 GitHub GraphQL。查询是 `author:0froq -user:0froq`，PR 和 issue 分开搜：开着的，或 `closed:>=` 14 天前。每种最多 5 页、每页 20 条。
-- 判断在 `shared/turn.ts` 的 `judge`。创建本身算作者的一条真人动静。bot：`__typename == Bot`，login 以 `[bot]` 结尾，或 login 在 `coderabbitai`、`codecov`、`netlify`、`vercel`、`coldtea-pr-lens`、`chatgpt-codex-connector`。
-- 轮到谁按这个顺序停：已合并或已关闭；有真实 CI 失败；最新一条已提交的 review 是 `CHANGES_REQUESTED` 且之后 0froq 没有 push；最后一条真人动静不是 0froq；否则等维护者。`PENDING` 的 review 不算「最新一条已提交的 review」。
+- 判断在 `shared/turn.ts` 的 `judge`。创建本身算作者的一条真人动静。bot：`__typename == Bot`，login 以 `[bot]` 结尾，或 login 在 `coderabbitai`、`codecov`、`netlify`、`vercel`、`coldtea-pr-lens`、`chatgpt-codex-connector`。丢掉 bot 评论，但失败的 CLA 检查和 CodeRabbit 可执行评论算「轮到我」。
+- 每条 issue / PR 再拉 REST timeline（`/repos/{owner}/{repo}/issues/{number}/timeline`）和 PR head 的 check runs。`action_required` 且名字不是 CLA，是首次贡献者 workflow 等维护者批准。timeline 按 `updatedAt` 做 KV 键，check run 按 head sha，刷新 `?refresh=1` 不读 KV。
+- issue 和 PR 只按 timeline 的 `cross-referenced` / `connected`（以及 GraphQL 的 cross-reference）并成一条。不从正文猜 `Fixes #`。
+- 贡献类型和回合是两套字段。类型可多选：claim、proposal、help、non-code。回合是 `mine` / `maintainer` / `other` / `none`。计时是距最近一条相关动静的天数。「said I'd do it but haven't」是 mine 且认领了但还没有自己的 PR；「stalled >14d」是回合不是 none 且超过 14 天。刚好 14 天不算。
+- 回合先走规则：已合并或已关闭是 none；真实 CI 失败、CLA 失败、最新已提交 review 是 `CHANGES_REQUESTED` 且之后 0froq 没有 push、维护者最后一条评论 @ 了 0froq、或维护者要 PR / rebase，都是 mine。维护者看 `author_association` 的 OWNER / MEMBER / COLLABORATOR。0froq 的问句、0froq 的 issue 还没人回、干净 PR 等评审，是 maintainer。最后一条真人评论来自其他人，是 other。`PENDING` 的 review 不算「最新一条已提交的 review」。
+- 只有规则定不下来才叫 clef：0froq 最后一条真人评论是陈述，或一段收尾不清楚的长帮助评论。输入最近 3 条真人评论、关联 PR 状态、距今天数。输出恰好一个回合，外加它依据的那句话。置信度低于 0.7，或依据的是 `Thanks!` 这类客套收尾，退回规则默认。缓存键 `turn-clf:v1:{commentId}:{updatedAt}`。认领分类仍用 `claim-clf:v1:{commentId}:{updatedAt}`。
 - Vercel / Netlify 的预览、部署、授权类失败不算真实 CI 失败。lint 失败算。
-- CI 还在排队、进行中、等待，或 conclusion 是 `ACTION_REQUIRED` 时加「CI 待批」。
-- 等待从最后一条真人动静算。只有「等维护者」上色：超过 7 天黄，超过 14 天红。刚好 7 天、刚好 14 天不上更深的颜色。
+- CI 还在排队、进行中、等待，或 conclusion 是 `ACTION_REQUIRED` 时加「CI awaiting approval」。
+- 等待从最后一条相关动静算。只有 maintainer 上色：超过 7 天黄，超过 14 天红。刚好 7 天、刚好 14 天不上更深的颜色。mine 的回合芯片始终是红的。
 - 平均首次回复：别人（不是 0froq、不是 bot）第一条非创建动静减去创建时间。没有回复的不进平均。
 - `?refresh=1` 跳过 KV。开发时页面带 `mock=1`，生产构建里 `import.meta.dev` 为假，样例不会打开。
 - Notion 只在 `server/notion.ts`。`createNotionSource().connected` 是 `false`，不发请求。

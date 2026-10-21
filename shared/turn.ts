@@ -1,6 +1,27 @@
 import { claimLevel, claimWaitingSince, pendingClaimQuestion, selfClaimedStaleTone } from './claim'
 import type { CommentClassification } from './claim-types'
+import { isFailingClaCheck } from './checks'
+import {
+  contributionTypes,
+  hasOpenedFix,
+  isClearHelpClosure,
+  type ContributionType,
+} from './contribution'
+
+export { contributionLabel } from './contribution'
 import { isBot, isSelf } from './identity'
+import {
+  asksForPrOrRebase,
+  isCoderabbitActionable,
+  isDroppedBot,
+  isFailingClaComment,
+  isMaintainerActivity,
+  isPoliteCloser,
+  isQuestionText,
+  isStatementText,
+  isUnclearHelp,
+  mentionsSelf,
+} from './turn-rules'
 
 export { BOT_LOGINS, isBot, isSelf, SELF } from './identity'
 
@@ -67,6 +88,24 @@ export type LinkedPullRequest = {
   author: Actor
 }
 
+export type TimelineLink = {
+  event: 'cross-referenced' | 'connected'
+  repo: string
+  number: number
+  kind: ItemKind
+  url?: string
+}
+
+export type ItemPart = {
+  kind: ItemKind
+  repo: string
+  number: number
+  url: string
+  title: string
+  authorLogin: string
+  body?: string
+}
+
 export type Item = {
   kind: ItemKind
   repo: string
@@ -81,9 +120,21 @@ export type Item = {
   checks: Check[]
   assignees?: Actor[]
   linkedPullRequests?: LinkedPullRequest[]
+  /** Issue or pull request body. Opening text, not a comment. */
+  body?: string
+  updatedAt?: string
+  headSha?: string
+  /** `cross-referenced` and `connected` timeline events only. */
+  timelineLinks?: TimelineLink[]
+  /** Set when an issue and its pull request were merged into this item. */
+  parts?: ItemPart[]
 }
 
-export type Turn = 'me' | 'maintainer' | 'done'
+export type Turn = 'mine' | 'maintainer' | 'other' | 'none'
+
+export type { ContributionType } from './contribution'
+
+export type DerivedMark = "said I'd do it but haven't" | 'stalled >14d'
 
 export type Tone = 'none' | 'yellow' | 'red'
 
@@ -101,6 +152,13 @@ export type Verdict = {
     comment: string | null
     ci: string | null
   }
+  contributions: ContributionType[]
+  marks: DerivedMark[]
+  /** Rules could not decide; clef may override `turn` when it is confident. */
+  ambiguous: boolean
+  quote: string | null
+  focusCommentId: string | null
+  focusUpdatedAt: string | null
 }
 
 export type BoardItem = Verdict & {
@@ -112,6 +170,7 @@ export type BoardItem = Verdict & {
   state: ItemState
   closedAt: string | null
   firstReplyMs: number | null
+  parts: ItemPart[]
 }
 
 export type BoardStats = {
@@ -247,7 +306,7 @@ function commentUrl(activities: Activity[]): string | null {
   const comments = activities.filter(
     activity => activity.kind === 'comment' || activity.kind === 'review',
   )
-  const human = [...comments].reverse().find(activity => !isBot(activity.actor) && activity.url)
+  const human = [...comments].reverse().find(activity => !isDroppedBot(activity) && activity.url)
   return human?.url ?? [...comments].reverse().find(activity => activity.url)?.url ?? null
 }
 
@@ -268,11 +327,62 @@ export function waitingTone(turn: Turn, ageMs: number): Tone {
   return 'none'
 }
 
-export function judge(item: Item, nowMs: number): Verdict {
+type CoreVerdict = Omit<Verdict, 'contributions' | 'marks' | 'quote'>
+
+function derivedMarks(
+  turn: Turn,
+  ageMs: number,
+  types: readonly ContributionType[],
+  item: Item,
+): DerivedMark[] {
+  const marks: DerivedMark[] = []
+  if (turn === 'mine' && types.includes('claim') && !hasOpenedFix(item)) {
+    marks.push("said I'd do it but haven't")
+  }
+  if (turn !== 'none' && ageMs > 14 * DAY_MS) marks.push('stalled >14d')
+  return marks
+}
+
+function relevantActivities(activities: Activity[]): Activity[] {
+  return activities.filter(activity => !isDroppedBot(activity))
+}
+
+function withoutPoliteTail(activities: Activity[]): Activity[] {
+  const copy = [...activities]
+  while (copy.length > 0) {
+    const last = copy.at(-1)
+    if (
+      last &&
+      last.kind === 'comment' &&
+      isSelf(last.actor) &&
+      last.body &&
+      isPoliteCloser(last.body)
+    ) {
+      copy.pop()
+      continue
+    }
+    break
+  }
+  return copy
+}
+
+function selfActedAfter(activities: Activity[], at: string): boolean {
+  const moment = Date.parse(at)
+  return activities.some(
+    activity =>
+      isSelf(activity.actor) &&
+      !isBot(activity.actor) &&
+      Date.parse(activity.at) > moment &&
+      (activity.kind === 'comment' || activity.kind === 'review' || activity.kind === 'push'),
+  )
+}
+
+function coreVerdict(item: Item, nowMs: number): CoreVerdict {
   const activities = withCreation(item)
-  const humans = activities.filter(activity => !isBot(activity.actor))
-  const lastHuman = humans.at(-1) ?? activities[0]!
-  const waitingSince = lastHuman.at
+  const relevant = relevantActivities(activities)
+  const lastRelevant = relevant.at(-1) ?? activities[0]!
+  const lastHuman = withoutPoliteTail(relevant).at(-1) ?? lastRelevant
+  const waitingSince = lastRelevant.at
   const ageMs = Math.max(0, nowMs - Date.parse(waitingSince))
   const labels: BoardLabel[] = awaitingCi(item.checks) ? ['CI awaiting approval'] : []
   const links = {
@@ -280,45 +390,50 @@ export function judge(item: Item, nowMs: number): Verdict {
     comment: commentUrl(activities),
     ci: ciUrl(item.checks),
   }
+  const quiet = {
+    labels,
+    waitingSince,
+    ageMs,
+    links,
+    ambiguous: false,
+    focusCommentId: null,
+    focusUpdatedAt: null,
+  }
 
   if (item.kind === 'issue' && item.state === 'open' && claimLevel(item)) {
-    const waitingSince = claimWaitingSince(item)
-    const ageMs = Math.max(0, nowMs - Date.parse(waitingSince))
+    const claimSince = claimWaitingSince(item)
+    const claimAge = Math.max(0, nowMs - Date.parse(claimSince))
     if (pendingClaimQuestion(item)) {
       const turn: Turn = 'maintainer'
       return {
+        ...quiet,
         turn,
         reason: 'Claim pending approval',
-        labels,
-        waitingSince,
-        ageMs,
-        tone: waitingTone(turn, ageMs),
-        links,
+        waitingSince: claimSince,
+        ageMs: claimAge,
+        tone: waitingTone(turn, claimAge),
       }
     }
     const level = claimLevel(item)!
     const claimLabels: BoardLabel[] =
       level === 'self-claimed' ? [...labels, 'Self-claimed'] : labels
     return {
-      turn: 'me',
+      ...quiet,
+      turn: 'mine',
       reason: 'Claimed, open a PR',
       labels: claimLabels,
-      waitingSince,
-      ageMs,
-      tone: level === 'self-claimed' ? selfClaimedStaleTone(ageMs) : 'none',
-      links,
+      waitingSince: claimSince,
+      ageMs: claimAge,
+      tone: level === 'self-claimed' ? selfClaimedStaleTone(claimAge) : 'none',
     }
   }
 
   if (item.state === 'merged' || item.state === 'closed') {
     return {
-      turn: 'done',
+      ...quiet,
+      turn: 'none',
       reason: item.state === 'merged' ? 'Merged' : 'Closed',
-      labels,
-      waitingSince,
-      ageMs,
       tone: 'none',
-      links,
     }
   }
 
@@ -326,50 +441,143 @@ export function judge(item: Item, nowMs: number): Verdict {
   if (failed.length > 0) {
     const lint = failed.find(check => /lint/i.test(check.name))
     return {
-      turn: 'me',
+      ...quiet,
+      turn: 'mine',
       reason: failureReason(lint ?? failed[0]!),
-      labels,
-      waitingSince,
-      ageMs,
       tone: 'none',
-      links,
     }
+  }
+
+  const claCheck = item.checks.find(isFailingClaCheck)
+  if (claCheck?.conclusion === 'ACTION_REQUIRED') {
+    return { ...quiet, turn: 'mine', reason: 'CLA check failed', tone: 'none' }
+  }
+
+  const claComment = [...relevant].reverse().find(isFailingClaComment)
+  if (claComment && !selfActedAfter(relevant, claComment.at)) {
+    return { ...quiet, turn: 'mine', reason: 'CLA check failed', tone: 'none' }
   }
 
   const review = latestDecidedReview(activities)
   if (review?.reviewState === 'CHANGES_REQUESTED' && !pushedBySelfAfter(activities, review.at)) {
     return {
-      turn: 'me',
+      ...quiet,
+      turn: 'mine',
       reason: reviewReason(review.actor.login, 'CHANGES_REQUESTED'),
-      labels,
-      waitingSince,
-      ageMs,
       tone: 'none',
-      links,
+    }
+  }
+
+  const rabbit = [...relevant].reverse().find(isCoderabbitActionable)
+  if (rabbit && !selfActedAfter(relevant, rabbit.at)) {
+    return { ...quiet, turn: 'mine', reason: 'CodeRabbit asked for changes', tone: 'none' }
+  }
+
+  const lastMaintainer = relevant
+    .filter(
+      activity =>
+        (activity.kind === 'comment' || activity.kind === 'review') &&
+        Boolean(activity.body) &&
+        isMaintainerActivity(activity),
+    )
+    .at(-1)
+  if (lastMaintainer?.body && !selfActedAfter(relevant, lastMaintainer.at)) {
+    if (mentionsSelf(lastMaintainer.body)) {
+      return {
+        ...quiet,
+        turn: 'mine',
+        reason: `${lastMaintainer.actor.login} mentioned you`,
+        tone: 'none',
+      }
+    }
+    if (asksForPrOrRebase(lastMaintainer.body)) {
+      return {
+        ...quiet,
+        turn: 'mine',
+        reason: `${lastMaintainer.actor.login} asked for a PR or rebase`,
+        tone: 'none',
+      }
+    }
+  }
+
+  if (lastHuman.kind === 'comment' && lastHuman.body && isSelf(lastHuman.actor)) {
+    if (isQuestionText(lastHuman.body)) {
+      const turn: Turn = 'maintainer'
+      return {
+        ...quiet,
+        turn,
+        reason: 'Asked, waiting on maintainer',
+        tone: waitingTone(turn, ageMs),
+      }
+    }
+    if (isClearHelpClosure(lastHuman.body)) {
+      const turn: Turn = 'maintainer'
+      const reason = /\balready fixed\b/i.test(lastHuman.body)
+        ? 'Already fixed, waiting on maintainer'
+        : 'Workaround noted, waiting on maintainer'
+      return { ...quiet, turn, reason, tone: waitingTone(turn, ageMs) }
+    }
+    if (isStatementText(lastHuman.body) || isUnclearHelp(lastHuman.body)) {
+      const turn: Turn = 'maintainer'
+      return {
+        ...quiet,
+        turn,
+        reason: humanReason(lastHuman),
+        tone: waitingTone(turn, ageMs),
+        ambiguous: true,
+        focusCommentId: lastHuman.commentId ?? lastHuman.url ?? null,
+        focusUpdatedAt: lastHuman.updatedAt ?? lastHuman.at,
+      }
     }
   }
 
   if (!isSelf(lastHuman.actor)) {
-    return {
-      turn: 'me',
-      reason: humanReason(lastHuman),
-      labels,
-      waitingSince,
-      ageMs,
-      tone: 'none',
-      links,
+    if (isMaintainerActivity(lastHuman)) {
+      const turn: Turn = 'maintainer'
+      return {
+        ...quiet,
+        turn,
+        reason: humanReason(lastHuman),
+        tone: waitingTone(turn, ageMs),
+      }
     }
+    return { ...quiet, turn: 'other', reason: humanReason(lastHuman), tone: 'none' }
   }
 
   const turn: Turn = 'maintainer'
   return {
+    ...quiet,
     turn,
     reason: humanReason(lastHuman),
-    labels,
-    waitingSince,
-    ageMs,
     tone: waitingTone(turn, ageMs),
-    links,
+  }
+}
+
+export function judge(item: Item, nowMs: number): Verdict {
+  const core = coreVerdict(item, nowMs)
+  const contributions = contributionTypes(item)
+  return {
+    ...core,
+    contributions,
+    marks: derivedMarks(core.turn, core.ageMs, contributions, item),
+    quote: null,
+  }
+}
+
+export function withResolvedTurn<T extends Verdict>(
+  item: Item,
+  verdict: T,
+  turn: Turn,
+  quote: string | null,
+): T {
+  return {
+    ...verdict,
+    turn,
+    quote,
+    ambiguous: false,
+    reason: quote ?? verdict.reason,
+    tone: waitingTone(turn, verdict.ageMs),
+    marks: derivedMarks(turn, verdict.ageMs, verdict.contributions, item),
   }
 }
 
@@ -383,6 +591,17 @@ export function firstReplyMs(item: Item): number | null {
 }
 
 export function present(item: Item, nowMs: number): BoardItem {
+  const parts = item.parts ?? [
+    {
+      kind: item.kind,
+      repo: item.repo,
+      number: item.number,
+      url: item.url,
+      title: item.title,
+      authorLogin: item.author.login,
+      body: item.body,
+    },
+  ]
   return {
     id: `${item.repo}#${item.number}`,
     kind: item.kind,
@@ -392,6 +611,7 @@ export function present(item: Item, nowMs: number): BoardItem {
     state: item.state,
     closedAt: item.closedAt,
     firstReplyMs: firstReplyMs(item),
+    parts,
     ...judge(item, nowMs),
   }
 }
@@ -404,6 +624,29 @@ export function summarize(items: readonly BoardItem[]): BoardStats {
     averageFirstReplyMs:
       replies.length === 0 ? null : replies.reduce((sum, ms) => sum + ms, 0) / replies.length,
   }
+}
+
+export function turnLabel(turn: Turn): string {
+  switch (turn) {
+    case 'mine':
+      return 'Mine'
+    case 'maintainer':
+      return 'Maintainer'
+    case 'other':
+      return 'Other'
+    case 'none':
+      return 'None'
+    default: {
+      const exhaustive: never = turn
+      return exhaustive
+    }
+  }
+}
+
+export function formatTimer(ms: number): string {
+  if (ms < DAY_MS) return formatDuration(ms)
+  const days = Math.floor(ms / DAY_MS)
+  return `${days}d`
 }
 
 export function formatDuration(ms: number): string {
