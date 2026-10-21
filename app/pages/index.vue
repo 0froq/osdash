@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { formatDuration, RECENT_MS, summarize, type BoardItem, type Turn } from '#shared/turn'
+import {
+  contributionLabel,
+  formatDuration,
+  formatTimer,
+  RECENT_MS,
+  summarize,
+  turnLabel,
+  type BoardItem,
+  type Turn,
+} from '#shared/turn'
 import { THEME_KEY } from '~/theme'
 
 type ThemeName = 'light' | 'dark'
@@ -39,18 +48,22 @@ const generatedMs = computed(() => (generatedAt.value ? Date.parse(generatedAt.v
 
 function column(turn: Turn): BoardItem[] {
   const rows = visible.value.filter(item => item.turn === turn)
-  if (turn === 'done') {
+  if (turn === 'none') {
     return rows
-      .filter(item => item.closedAt && generatedMs.value - Date.parse(item.closedAt) <= RECENT_MS)
+      .filter(item => {
+        if (item.state === 'open') return true
+        return item.closedAt !== null && generatedMs.value - Date.parse(item.closedAt) <= RECENT_MS
+      })
       .sort((first, second) => Date.parse(second.closedAt ?? '') - Date.parse(first.closedAt ?? ''))
   }
   return [...rows].sort((first, second) => second.ageMs - first.ageMs)
 }
 
 const columns = computed(() => [
-  { turn: 'me' as const, title: 'Your move', rows: column('me') },
-  { turn: 'maintainer' as const, title: 'Waiting on others', rows: column('maintainer') },
-  { turn: 'done' as const, title: 'Done', rows: column('done') },
+  { turn: 'mine' as const, title: 'Mine', rows: column('mine') },
+  { turn: 'maintainer' as const, title: 'Maintainer', rows: column('maintainer') },
+  { turn: 'other' as const, title: 'Other', rows: column('other') },
+  { turn: 'none' as const, title: 'None', rows: column('none') },
 ])
 
 const flat = computed(() => columns.value.flatMap(entry => entry.rows))
@@ -58,6 +71,11 @@ const flat = computed(() => columns.value.flatMap(entry => entry.rows))
 watch(flat, rows => {
   if (!rows.some(row => row.id === selectedId.value)) selectedId.value = rows[0]?.id ?? ''
 })
+
+function reveal(id: string) {
+  selectedId.value = id
+  document.getElementById(id)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
 
 function move(step: number) {
   const rows = flat.value
@@ -67,7 +85,17 @@ function move(step: number) {
     rows.findIndex(row => row.id === selectedId.value),
   )
   const next = Math.min(rows.length - 1, Math.max(0, index + step))
-  selectedId.value = rows[next]!.id
+  reveal(rows[next]!.id)
+}
+
+function moveGroup(step: number) {
+  const groups = columns.value.filter(entry => entry.rows.length > 0)
+  if (groups.length === 0) return
+  const current = groups.findIndex(entry => entry.rows.some(row => row.id === selectedId.value))
+  const next = Math.min(groups.length - 1, Math.max(0, current + step))
+  const row = groups[next]?.rows[0]
+  if (!row) return
+  reveal(row.id)
 }
 
 function openSelected() {
@@ -113,6 +141,12 @@ function onKey(event: KeyboardEvent) {
   } else if (event.key === 'k') {
     event.preventDefault()
     move(-1)
+  } else if (event.key === 'h') {
+    event.preventDefault()
+    moveGroup(-1)
+  } else if (event.key === 'l') {
+    event.preventDefault()
+    moveGroup(1)
   } else if (event.key === 'o') {
     event.preventDefault()
     openSelected()
@@ -165,7 +199,7 @@ function replyLabel(ms: number | null): string {
         <p class="quiet">0froq open-source contributions, read-only</p>
       </div>
       <p class="hint">
-        j / k move · o open
+        h / l groups · j / k move · o open
         <template v-if="mock"> · local sample</template>
         <template v-else-if="cached"> · cached</template>
         <template v-if="truncated"> · capped at 100</template>
@@ -238,6 +272,7 @@ function replyLabel(ms: number | null): string {
         v-for="entry in columns"
         :key="entry.turn"
         class="column"
+        :class="[entry.turn, { active: entry.rows.some(row => row.id === selectedId) }]"
       >
         <h2>
           {{ entry.title }}
@@ -263,12 +298,34 @@ function replyLabel(ms: number | null): string {
               class="age"
               :class="row.tone"
             >
-              {{ formatDuration(row.ageMs) }}
+              {{ formatTimer(row.ageMs) }}
             </p>
           </div>
           <h3 class="title">{{ row.title }}</h3>
+          <p class="chips">
+            <span
+              v-for="type in row.contributions"
+              :key="type"
+              class="chip"
+            >
+              {{ contributionLabel(type) }}
+            </span>
+            <span
+              class="chip turn"
+              :class="row.turn"
+            >
+              {{ turnLabel(row.turn) }}
+            </span>
+            <span
+              v-for="mark in row.marks"
+              :key="mark"
+              class="chip mark"
+            >
+              {{ mark }}
+            </span>
+          </p>
           <p class="detail">
-            <span>{{ row.reason }}</span>
+            <span>{{ row.quote ?? row.reason }}</span>
             <span
               v-for="label in row.labels"
               :key="label"
@@ -276,6 +333,21 @@ function replyLabel(ms: number | null): string {
             >
               {{ label }}
             </span>
+          </p>
+          <p
+            v-if="row.parts.length > 1"
+            class="parts"
+          >
+            <a
+              v-for="part in row.parts"
+              :key="part.url"
+              class="button"
+              :href="part.url"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {{ part.kind === 'pr' ? 'PR' : 'Issue' }} #{{ part.number }}
+            </a>
           </p>
           <p class="actions">
             <a

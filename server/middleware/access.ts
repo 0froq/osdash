@@ -1,5 +1,5 @@
 import { createError, getHeader, type H3Event } from 'h3'
-import { evaluateAccess } from '../access'
+import { accessAudiences, evaluateAccess } from '../access'
 
 function binding(event: H3Event, name: 'ACCESS_TEAM_DOMAIN' | 'ACCESS_AUD'): string | undefined {
   const fromWorker = event.context.cloudflare?.env?.[name]
@@ -14,7 +14,7 @@ export default defineEventHandler(async event => {
     dev: import.meta.dev,
     assertion: getHeader(event, 'cf-access-jwt-assertion'),
     teamDomain: binding(event, 'ACCESS_TEAM_DOMAIN'),
-    audience: binding(event, 'ACCESS_AUD'),
+    audience: accessAudiences(binding(event, 'ACCESS_AUD')),
   })
   if (decision === 'forbidden') throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
 })

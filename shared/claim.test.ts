@@ -153,9 +153,10 @@ it('claimed without linked PR is your move', () => {
     }),
     NOW,
   )
-  assert.equal(verdict.turn, 'me')
+  assert.equal(verdict.turn, 'mine')
   assert.equal(verdict.reason, 'Claimed, open a PR')
   assert.deepEqual(verdict.labels, ['Self-claimed'])
+  assert.deepEqual(verdict.marks, ["said I'd do it but haven't"])
 })
 
 it('confirmed and assigned claims do not show the self-claimed badge', () => {
@@ -263,7 +264,7 @@ it('does not downgrade or remove a self-claimed issue after 14 days, only stale 
   assert.equal(claimLevel(item), 'self-claimed')
   assert.equal(includeIssueOnBoard(item), true)
   const verdict = judge(item, NOW)
-  assert.equal(verdict.turn, 'me')
+  assert.equal(verdict.turn, 'mine')
   assert.equal(verdict.reason, 'Claimed, open a PR')
   assert.deepEqual(verdict.labels, ['Self-claimed'])
   assert.equal(verdict.tone, 'red')

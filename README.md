@@ -2,7 +2,7 @@
 
 froQ 的开源贡献看板。只读。生产域名是 `osdash.froq.me`。
 
-它列出 `author:0froq -user:0froq` 的 PR 和 issue：所有还开着的，加上最近 14 天内关闭的。判断「轮到我」还是「等维护者」，缓存在 Cloudflare KV。
+它列出 `author:0froq -user:0froq` 的 PR 和 issue：所有还开着的，加上最近 14 天内关闭的。timeline 把关联的 issue 和 PR 收成一条，再标贡献类型和回合（mine / maintainer / other / none）。缓存在 Cloudflare KV。
 
 ## 本地
 

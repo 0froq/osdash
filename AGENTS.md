@@ -70,29 +70,33 @@ Nitro 不会读 `void.config.ts` 或 `wrangler.config.ts` 来判断要不要开 
 ## 数据
 
 - `server/github.ts` 用 GitHub GraphQL。查询是 `author:0froq -user:0froq`，PR 和 issue 分开搜：开着的，或 `closed:>=` 14 天前。每种最多 5 页、每页 20 条。
-- 判断在 `shared/turn.ts` 的 `judge`。创建本身算作者的一条真人动静。bot：`__typename == Bot`，login 以 `[bot]` 结尾，或 login 在 `coderabbitai`、`codecov`、`netlify`、`vercel`、`coldtea-pr-lens`、`chatgpt-codex-connector`。
-- 轮到谁按这个顺序停：已合并或已关闭；有真实 CI 失败；最新一条已提交的 review 是 `CHANGES_REQUESTED` 且之后 0froq 没有 push；最后一条真人动静不是 0froq；否则等维护者。`PENDING` 的 review 不算「最新一条已提交的 review」。
+- 判断在 `shared/turn.ts` 的 `judge`。创建本身算作者的一条真人动静。bot：`__typename == Bot`，login 以 `[bot]` 结尾，或 login 在 `coderabbitai`、`codecov`、`netlify`、`vercel`、`coldtea-pr-lens`、`chatgpt-codex-connector`。丢掉 bot 评论，但失败的 CLA 检查和 CodeRabbit 可执行评论算「轮到我」。
+- 每条 issue / PR 再拉 REST timeline（`/repos/{owner}/{repo}/issues/{number}/timeline`）和 PR head 的 check runs。`action_required` 且名字不是 CLA，是首次贡献者 workflow 等维护者批准。timeline 按 `updatedAt` 做 KV 键，check run 按 head sha，刷新 `?refresh=1` 不读 KV。
+- issue 和 PR 只按 timeline 的 `cross-referenced` / `connected`（以及 GraphQL 的 cross-reference）并成一条。不从正文猜 `Fixes #`。
+- 贡献类型和回合是两套字段。类型可多选：claim、proposal、help、non-code。回合是 `mine` / `maintainer` / `other` / `none`。计时是距最近一条相关动静的天数。「said I'd do it but haven't」是 mine 且认领了但还没有自己的 PR；「stalled >14d」是回合不是 none 且超过 14 天。刚好 14 天不算。
+- 回合先走规则：已合并或已关闭是 none；真实 CI 失败、CLA 失败、最新已提交 review 是 `CHANGES_REQUESTED` 且之后 0froq 没有 push、维护者最后一条评论 @ 了 0froq、或维护者要 PR / rebase，都是 mine。维护者看 `author_association` 的 OWNER / MEMBER / COLLABORATOR。0froq 的问句、0froq 的 issue 还没人回、干净 PR 等评审，是 maintainer。最后一条真人评论来自其他人，是 other。`PENDING` 的 review 不算「最新一条已提交的 review」。
+- 只有规则定不下来才叫 clef：0froq 最后一条真人评论是陈述，或一段收尾不清楚的长帮助评论。输入最近 3 条真人评论、关联 PR 状态、距今天数。输出恰好一个回合，外加它依据的那句话。置信度低于 0.7，或依据的是 `Thanks!` 这类客套收尾，退回规则默认。缓存键 `turn-clf:v1:{commentId}:{updatedAt}`。认领分类仍用 `claim-clf:v1:{commentId}:{updatedAt}`。
 - Vercel / Netlify 的预览、部署、授权类失败不算真实 CI 失败。lint 失败算。
-- CI 还在排队、进行中、等待，或 conclusion 是 `ACTION_REQUIRED` 时加「CI 待批」。
-- 等待从最后一条真人动静算。只有「等维护者」上色：超过 7 天黄，超过 14 天红。刚好 7 天、刚好 14 天不上更深的颜色。
+- CI 还在排队、进行中、等待，或 conclusion 是 `ACTION_REQUIRED` 时加「CI awaiting approval」。
+- 等待从最后一条相关动静算。只有 maintainer 上色：超过 7 天黄，超过 14 天红。刚好 7 天、刚好 14 天不上更深的颜色。mine 的回合芯片始终是红的。
 - 平均首次回复：别人（不是 0froq、不是 bot）第一条非创建动静减去创建时间。没有回复的不进平均。
 - `?refresh=1` 跳过 KV。开发时页面带 `mock=1`，生产构建里 `import.meta.dev` 为假，样例不会打开。
 - Notion 只在 `server/notion.ts`。`createNotionSource().connected` 是 `false`，不发请求。
 
 ## Cloudflare Access
 
-生产构建（`import.meta.dev === false`）里，`server/middleware/access.ts` 要求每个请求带 `Cf-Access-Jwt-Assertion`。`nuxt dev` 跳过，不校验。缺头、缺 `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD`、签名或声明校验失败，都只回 403，不把失败原因写进响应。
+生产构建（`import.meta.dev === false`）里，`server/middleware/access.ts` 要求每个请求带 `Cf-Access-Jwt-Assertion`。`nuxt dev` 跳过，不校验。缺头、缺 `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD`、`ACCESS_AUD` 拆完是空列表、签名或声明校验失败，都只回 403，不把失败原因写进响应。
 
-校验用 `jose` 的 `jwtVerify`，算法只接受 `RS256`。`ACCESS_TEAM_DOMAIN` 可以是 team 名（`froq`）或团队域名（`https://froq.cloudflareaccess.com`）。JWKS 固定是 `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`，`iss` 必须是 `https://<team>.cloudflareaccess.com`，`aud` 必须等于 `ACCESS_AUD`。依据是 Cloudflare 的 [Validate JWTs](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)：Workers 示例用 `createRemoteJWKSet` 和 `jwtVerify({ issuer, audience })`。
+校验用 `jose` 的 `jwtVerify`，算法只接受 `RS256`。`ACCESS_TEAM_DOMAIN` 可以是 team 名（`froq`）或团队域名（`https://froq.cloudflareaccess.com`）。JWKS 固定是 `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`，`iss` 必须是 `https://<team>.cloudflareaccess.com`。`ACCESS_AUD` 可以是一个 aud，也可以是逗号分隔的多个。`server/middleware/access.ts` 和 `server/access.ts` 按逗号拆开、去掉两端空白、丢掉空段，把这个数组交给 `jwtVerify` 的 `audience`。token 的 `aud` 命中其中任意一个即可。空列表仍是 403。依据是 Cloudflare 的 [Validate JWTs](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)：Workers 示例用 `createRemoteJWKSet` 和 `jwtVerify({ issuer, audience })`。
 
 Access 应用这样配：
 
 1. Cloudflare Zero Trust → Access controls → Applications，新建 Self-hosted application，目标域名 `osdash.froq.me`。
 2. 加上允许的身份源和 policy。
-3. 在应用的 Additional settings 里复制 Application Audience (AUD) Tag，这就是 `ACCESS_AUD`。删掉重建应用之前它不变。
+3. 在应用的 Additional settings 里复制 Application Audience (AUD) Tag，这就是 `ACCESS_AUD` 里的一项。删掉重建应用之前它不变。生产和分支预览各有一个 aud 时，用逗号写在同一个 `ACCESS_AUD` 里。
 4. `ACCESS_TEAM_DOMAIN` 用团队域名 `https://<team>.cloudflareaccess.com`。
 5. 用 `void secret put` 写入这两个值。预览适配器里也声明了同名 secret，分支预览若要过这层 middleware，部署环境里同样要有这两个值。
 
 预览地址另外用 Worker 设置里的 Access 开关保护，不要靠把 `osdash.froq.me` 配到预览上。文档路径（[Preview URLs](https://developers.cloudflare.com/workers/configuration/previews/)、[Cloudflare Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)，2026-10-19 读到）：Workers & Pages → 选中 `osdash` → Settings → Domains & Routes，在 Preview URLs 上点 Enable Cloudflare Access。只保护这一个 Worker 的预览时，也可以走该 Worker 的 Access 页，选 Previews only。开关打开后，Access 会挡在预览 URL 前面。这次没有登录 dashboard 点过这个开关。
 
-这层 middleware 在所有非 dev 构建里都会跑，包括分支预览。预览 Access 应用如果发了另一个 `aud`，请求仍会被 403，直到 `ACCESS_AUD` 和那张 token 的 audience 一致。预览文档还写了：打开 Access 之后，要在 Worker 里用它给出的 `aud` 和 JWKS 再验一次 token。
+这层 middleware 在所有非 dev 构建里都会跑，包括分支预览。预览 Access 应用会发另一个 `aud`。把那个 aud 和生产的 aud 用逗号写进同一个 `ACCESS_AUD`，token 命中其中任意一个就过这层校验。预览文档还写了：打开 Access 之后，要在 Worker 里用它给出的 `aud` 和 JWKS 再验一次 token。

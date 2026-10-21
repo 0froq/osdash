@@ -112,6 +112,47 @@ it('rejects an expired token and a token from another issuer', async () => {
   )
 })
 
+it('accepts a token for a later audience in a comma-separated ACCESS_AUD', async () => {
+  const { keys, sign } = await fixture()
+  const preview = '9c2e1b0a4d6f8e7c5b3a1928374655647382910a0b1c2d3e4f5061728394a5b6'
+  const assertion = await sign({ audience: preview })
+  assert.equal(
+    await evaluateAccess({
+      dev: false,
+      assertion,
+      teamDomain: TEAM,
+      audience: ` ${AUD} , , ${preview} `,
+      keys,
+    }),
+    'ok',
+  )
+})
+
+it('rejects a token whose audience is not in the ACCESS_AUD list', async () => {
+  const { keys, sign } = await fixture()
+  const assertion = await sign({ audience: 'not-in-the-list' })
+  assert.equal(
+    await evaluateAccess({
+      dev: false,
+      assertion,
+      teamDomain: TEAM,
+      audience: `${AUD}, preview-aud`,
+      keys,
+    }),
+    'forbidden',
+  )
+  assert.equal(
+    await evaluateAccess({
+      dev: false,
+      assertion: await sign(),
+      teamDomain: TEAM,
+      audience: ' , ',
+      keys,
+    }),
+    'forbidden',
+  )
+})
+
 it('skips validation in local dev', async () => {
   assert.equal(
     await evaluateAccess({

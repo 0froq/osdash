@@ -45,14 +45,26 @@ function keysFor(issuer: string): JWTVerifyGetKey {
   return keys
 }
 
+/** Split `ACCESS_AUD` on commas. Blank segments are dropped. */
+export function accessAudiences(value: string | readonly string[] | undefined): string[] {
+  if (value === undefined) return []
+  const pieces = typeof value === 'string' ? [value] : value
+  return pieces
+    .flatMap(piece => piece.split(','))
+    .map(piece => piece.trim())
+    .filter(piece => piece !== '')
+}
+
 export async function verifyAccessJwt(
   jwt: string,
-  options: { teamDomain: string; audience: string; keys?: JWTVerifyGetKey },
+  options: { teamDomain: string; audience: readonly string[]; keys?: JWTVerifyGetKey },
 ): Promise<void> {
+  const audience = accessAudiences(options.audience)
+  if (audience.length === 0) throw new Error('Invalid ACCESS_AUD')
   const issuer = accessIssuer(options.teamDomain)
   await jwtVerify(jwt, options.keys ?? keysFor(issuer), {
     issuer,
-    audience: options.audience,
+    audience,
     algorithms: ['RS256'],
   })
 }
@@ -61,15 +73,16 @@ export async function evaluateAccess(input: {
   dev: boolean
   assertion: string | undefined
   teamDomain: string | undefined
-  audience: string | undefined
+  audience: string | readonly string[] | undefined
   keys?: JWTVerifyGetKey
 }): Promise<'ok' | 'forbidden'> {
   if (input.dev) return 'ok'
-  if (!input.assertion || !input.teamDomain || !input.audience) return 'forbidden'
+  const audience = accessAudiences(input.audience)
+  if (!input.assertion || !input.teamDomain || audience.length === 0) return 'forbidden'
   try {
     await verifyAccessJwt(input.assertion, {
       teamDomain: input.teamDomain,
-      audience: input.audience,
+      audience,
       keys: input.keys,
     })
     return 'ok'
