@@ -23,23 +23,21 @@ export function waitingAge(ageMs: number): string {
 export function absoluteTime(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
+  const day = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric' }).format(date)
+  const clock = new Intl.DateTimeFormat('zh-CN', {
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
   }).format(date)
+  return `${day} ${clock}`
 }
 
 export function absoluteDay(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    weekday: 'short',
-  }).format(date)
+  const day = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric' }).format(date)
+  const weekday = new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(date)
+  return `${day} ${weekday}`
 }
 
 /** Compact duration used in the stats line, matching the plan's `1d 3h` example. */

@@ -109,6 +109,7 @@ onBeforeUnmount(() => {
       >
         {{ copy.menu.logout }}
       </button>
+      <p class="menu-shortcuts">{{ copy.shortcutsLabel }} {{ copy.shortcuts }}</p>
     </div>
   </div>
 </template>

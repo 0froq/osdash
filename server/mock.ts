@@ -503,6 +503,32 @@ export function mockTimeline(unitId: string, nowMs: number): TimelinePayload | n
         body: 'Thanks, looking.',
         html_url: unit.url,
       },
+      ...(unitId === 'pr:vitejs/vite#18820'
+        ? [
+            {
+              id: `${unitId}:bot-a`,
+              event: 'commented',
+              created_at: at(4),
+              actor: { login: 'vercel[bot]', type: 'Bot' },
+              body: 'Preview deployed.',
+            },
+            {
+              id: `${unitId}:bot-b`,
+              event: 'commented',
+              created_at: at(3),
+              actor: { login: 'vercel[bot]', type: 'Bot' },
+              body: 'Preview updated.',
+            },
+            {
+              id: `${unitId}:cla`,
+              event: 'commented',
+              created_at: at(2),
+              actor: { login: 'cla-assistant[bot]', type: 'Bot' },
+              body: 'CLA not signed. Please sign the CLA.',
+              html_url: unit.url,
+            },
+          ]
+        : []),
     ],
     source,
   )

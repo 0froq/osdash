@@ -143,20 +143,98 @@ function openMenu(unit: UnitView, event: MouseEvent): void {
   menu.value = { unit, x: event.clientX, y: event.clientY }
 }
 
-async function markRead(unit: UnitView): Promise<void> {
+function markRead(unit: UnitView): void {
   menu.value = null
-  if (!unit.unread) return
-  const previous = unit.unread
-  inbox.updateUnit(unit.id, { unread: false })
-  try {
-    await $fetch(import.meta.dev ? '/api/seen?mock=1' : '/api/seen', {
-      method: 'POST',
-      body: { id: unit.id, at: new Date().toISOString() },
-    })
-  } catch {
-    inbox.updateUnit(unit.id, { unread: previous })
-  }
+  seen.mark(unit)
 }
+
+function queryRecord(): Record<string, string> {
+  const next: Record<string, string> = {}
+  for (const [key, value] of Object.entries(route.query)) {
+    if (typeof value === 'string' && value.length > 0) next[key] = value
+  }
+  return next
+}
+
+const selectedId = ref('')
+let pushedOpen = false
+const seen = useSeen(inbox.updateUnit)
+const openId = computed(() => (typeof route.query.open === 'string' ? route.query.open : ''))
+const openUnit = computed(() => inbox.units.value.find(unit => unit.id === openId.value) ?? null)
+
+const flat = computed(() => {
+  if (!showHome.value) return visible.value
+  return (['mine', 'activity', 'waiting', 'ended'] as const).flatMap(section =>
+    showSection(sectionRows(section)) ? sectionRows(section) : [],
+  )
+})
+
+function selectUnit(unit: UnitView): void {
+  selectedId.value = unit.id
+  if (openId.value === unit.id) {
+    seen.mark(unit)
+    return
+  }
+  pushedOpen = true
+  void router.push({ query: { ...queryRecord(), open: unit.id } })
+}
+
+function closePreview(): void {
+  if (menu.value) {
+    menu.value = null
+    return
+  }
+  if (!openId.value) return
+  if (pushedOpen) {
+    pushedOpen = false
+    void router.back()
+    return
+  }
+  writeQuery({ open: undefined })
+}
+
+function moveTo(id: string): void {
+  selectedId.value = id
+  document.querySelector(`[data-unit="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' })
+}
+
+function selectedUnit(): UnitView | undefined {
+  return inbox.units.value.find(unit => unit.id === selectedId.value)
+}
+
+watch([openId, () => inbox.units.value], () => {
+  const id = openId.value
+  if (!id) return
+  selectedId.value = id
+  const unit = inbox.units.value.find(item => item.id === id)
+  if (unit) seen.mark(unit)
+})
+
+useShortcuts({
+  flat,
+  selectedId,
+  move: moveTo,
+  open() {
+    const unit = flat.value.find(item => item.id === selectedId.value) ?? flat.value[0]
+    if (unit) selectUnit(unit)
+  },
+  close: closePreview,
+  star() {
+    const unit = selectedUnit()
+    if (unit) void prefs.setStar(unit, !unit.starred)
+  },
+  later() {
+    const unit = selectedUnit()
+    if (unit) void prefs.setLater(unit, tomorrowMorning())
+  },
+  read() {
+    const unit = selectedUnit()
+    if (unit) seen.mark(unit)
+  },
+  home() {
+    selectView('home')
+  },
+})
 
 function applyLater(unit: UnitView, preset: string | null): void {
   menu.value = null
@@ -274,6 +352,8 @@ onMounted(() => {
             :key="unit.id"
             :unit="unit"
             size="large"
+            :selected="unit.id === selectedId"
+            @select="selectUnit(unit)"
             @menu="openMenu(unit, $event)"
           />
         </Section>
@@ -288,6 +368,8 @@ onMounted(() => {
             :key="unit.id"
             :unit="unit"
             size="row"
+            :selected="unit.id === selectedId"
+            @select="selectUnit(unit)"
             @menu="openMenu(unit, $event)"
           />
         </Section>
@@ -302,6 +384,8 @@ onMounted(() => {
             :key="unit.id"
             :unit="unit"
             size="small"
+            :selected="unit.id === selectedId"
+            @select="selectUnit(unit)"
             @menu="openMenu(unit, $event)"
           />
         </Section>
@@ -317,6 +401,8 @@ onMounted(() => {
             :key="unit.id"
             :unit="unit"
             size="small"
+            :selected="unit.id === selectedId"
+            @select="selectUnit(unit)"
             @menu="openMenu(unit, $event)"
           />
         </Section>
@@ -333,6 +419,8 @@ onMounted(() => {
           :key="unit.id"
           :unit="unit"
           size="large"
+          :selected="unit.id === selectedId"
+          @select="selectUnit(unit)"
           @menu="openMenu(unit, $event)"
         />
       </Section>
@@ -348,6 +436,8 @@ onMounted(() => {
           :key="unit.id"
           :unit="unit"
           size="large"
+          :selected="unit.id === selectedId"
+          @select="selectUnit(unit)"
           @menu="openMenu(unit, $event)"
         />
       </Section>
@@ -362,6 +452,8 @@ onMounted(() => {
           :key="unit.id"
           :unit="unit"
           size="small"
+          :selected="unit.id === selectedId"
+          @select="selectUnit(unit)"
           @menu="openMenu(unit, $event)"
         />
       </Section>
@@ -376,5 +468,15 @@ onMounted(() => {
       @star="toggleStar(menu.unit)"
       @later="applyLater(menu.unit, $event)"
     />
+    <template #preview>
+      <PreviewPanel
+        :unit="openUnit"
+        :viewer="inbox.viewer.value?.login ?? ''"
+        :mobile="media.isMobile.value"
+        @close="closePreview"
+        @star="openUnit && toggleStar(openUnit)"
+        @later="openUnit && applyLater(openUnit, $event)"
+      />
+    </template>
   </InboxShell>
 </template>

@@ -80,6 +80,78 @@ export const copy = {
   },
   emptyLater: '没有稍后要看的',
   emptyStarred: '没有星标',
+  preview: {
+    empty: '选一张卡看时间线',
+    close: '关闭',
+    openGithub: '在 GitHub 打开 ↗',
+    source: '原文 ↗',
+    expand: '展开',
+    collapse: '收起',
+    truncated: '更早的动静没拉全',
+    loading: '正在读取时间线',
+    failed: '时间线没读出来',
+    retry: '重试',
+    you: '你',
+    historySummary: '之前的 PR',
+    botNoise: '机器人消息',
+    ciPassed: '通过',
+    ciFailed: '失败',
+  },
+  shortcuts: 'j / k 移动 · Enter / o 打开 · Esc 关闭 · s 星标 · l 稍后 · e 已读 · g h 回首页',
+  shortcutsLabel: '快捷键',
+  openedFor(age: string): string {
+    return `已开 ${age}`
+  },
+  sharedWith(number: number): string {
+    return `也被 #${number} 引用`
+  },
+  historyPr(number: number): string {
+    return `#${number}（已关闭）`
+  },
+  sourcePr(number: number): string {
+    return `PR #${number}`
+  },
+  sourceIssue(number: number): string {
+    return `issue #${number}`
+  },
+  botGroup(count: number): string {
+    return `${count} 条机器人消息`
+  },
+  ciGroup(passed: number, failed: number): string {
+    return `CI 通过 ${passed} · 失败 ${failed}`
+  },
+  event: {
+    opened: '打开了',
+    comment: '评论了',
+    reviewComment: '在代码上评论了',
+    commit: '提交了',
+    forcePush: '强推了',
+    labeled: '加了标签',
+    unlabeled: '去掉了标签',
+    assigned: '指派了',
+    unassigned: '取消了指派',
+    reviewRequested: '请求了评审',
+    crossRef: '提到了',
+    connected: '关联了',
+    renamed: '改了标题',
+    merged: '合并了',
+    closed: '关闭了',
+    reopened: '重新打开了',
+    approved: '批准了',
+    changes: '要求修改',
+    commented: '评论了',
+    dismissed: '撤回了评审',
+    pending: '有一条未提交的评审',
+    ci: '跑了 CI',
+    ciSuccess: '通过了',
+    ciFailure: '失败了',
+    ciCancelled: '取消了',
+    ciSkipped: '跳过了',
+    ciNeutral: '没有结论',
+    ciAction: '等批准',
+    ciTimedOut: '超时了',
+    ciStale: '过期了',
+  },
   greet(period: string, name: string): string {
     return `${period}，${name}`
   },
