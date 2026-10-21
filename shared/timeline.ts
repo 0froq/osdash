@@ -194,7 +194,7 @@ function mergeChecks(items: readonly Item[]): Check[] {
   return [...byName.values()]
 }
 
-function combine(cluster: Item[]): Item {
+export function combineItems(cluster: Item[]): Item {
   const parts = cluster.map(toPart)
   if (cluster.length === 1) {
     const only = cluster[0]!
@@ -287,5 +287,5 @@ export function mergeLinkedItems(items: readonly Item[]): Item[] {
     else groups.set(root, [item])
   }
 
-  return [...groups.values()].map(cluster => combine(cluster))
+  return [...groups.values()].map(cluster => combineItems(cluster))
 }
