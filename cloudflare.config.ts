@@ -23,7 +23,8 @@ export default defineConfig({
     env: {
       // nitro cloudflare-module serves /_nuxt/* via env.ASSETS when run_worker_first is on.
       ASSETS: bindings.assets(),
-      CACHE: bindings.kv(),
+      // Preview-only KV (osdash-preview-cache); production uses its own namespace via void.config.ts.
+      CACHE: bindings.kv({ id: '8f2f255a41e143e386864dfae8b188ff' }),
       AI: bindings.ai(),
       GITHUB_CLIENT_ID: bindings.secret(),
       GITHUB_CLIENT_SECRET: bindings.secret(),
