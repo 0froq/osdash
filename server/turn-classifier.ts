@@ -20,6 +20,7 @@ export type TurnClassifierEnv = {
   CACHE?: CacheStore
   viewerLogin?: string
   byok?: ByokSettings | null
+  clefLogins?: readonly string[]
 }
 
 type ChoiceAnswer = {
@@ -115,9 +116,11 @@ export async function maybeClassifyTurn<T extends Verdict>(
   nowMs: number,
   fresh = false,
 ): Promise<T> {
-  const viewerLogin = env.viewerLogin ?? item.viewerLogin ?? '0froq'
+  const viewerLogin = env.viewerLogin
+  if (!viewerLogin) throw new Error('viewerLogin missing')
   const byok = env.byok ?? null
-  if (!verdict.ambiguous || !clefEnabledForUser(viewerLogin, byok)) return verdict
+  const allowList = env.clefLogins ?? []
+  if (!verdict.ambiguous || !clefEnabledForUser(viewerLogin, byok, allowList)) return verdict
 
   const commentId = verdict.focusCommentId
   const updatedAt = verdict.focusUpdatedAt
@@ -136,7 +139,7 @@ export async function maybeClassifyTurn<T extends Verdict>(
 
   try {
     let result: TurnModelResult | null = null
-    if (usesWorkersAiClef(viewerLogin) && env.AI) {
+    if (usesWorkersAiClef(viewerLogin, allowList) && env.AI) {
       result = await askClefWorkers(env.AI, item, verdict, viewerLogin)
     } else if (byok) {
       result = await classifyTurnWithByok(byok, item, verdict, viewerLogin)

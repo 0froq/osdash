@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { it } from 'vite-plus/test'
 import type { CacheStore } from './cache'
-import { clefEnabledForUser, readByok, usesWorkersAiClef, writeByok } from './byok'
+import { clefEnabledForUser, parseClefLogins, readByok, usesWorkersAiClef, writeByok } from './byok'
 
 const SECRET = 'byok-secret-for-tests'
 
@@ -18,21 +18,27 @@ function memoryStore(): CacheStore {
   }
 }
 
-it('enables Workers AI clef only for 0froq', () => {
-  assert.equal(usesWorkersAiClef('0froq'), true)
-  assert.equal(usesWorkersAiClef('0FroQ'), true)
-  assert.equal(usesWorkersAiClef('alice'), false)
+it('gives Workers AI clef to nobody when the allow list is empty', () => {
+  const allow: readonly string[] = []
+  assert.equal(usesWorkersAiClef('0froq', allow), false)
+  assert.equal(usesWorkersAiClef('alice', allow), false)
+  assert.equal(clefEnabledForUser('0froq', null, allow), false)
+  assert.equal(clefEnabledForUser('alice', null, allow), false)
 })
 
-it('enables clef for 0froq without BYOK and for others only with BYOK', () => {
-  assert.equal(clefEnabledForUser('0froq', null), true)
-  assert.equal(clefEnabledForUser('alice', null), false)
+it('matches a comma-separated clef allow list after trim and lowercasing', () => {
+  const allow = parseClefLogins('0froq, Foo ')
+  assert.equal(usesWorkersAiClef('foo', allow), true)
+  assert.equal(usesWorkersAiClef('Foo', allow), true)
+  assert.equal(usesWorkersAiClef('0froq', allow), true)
+  assert.equal(usesWorkersAiClef('alice', allow), false)
+  assert.equal(clefEnabledForUser('foo', null, allow), true)
   assert.equal(
-    clefEnabledForUser('alice', {
-      baseUrl: 'https://api.example.com/v1',
-      apiKey: 'k',
-      model: 'm',
-    }),
+    clefEnabledForUser(
+      'alice',
+      { baseUrl: 'https://api.example.com/v1', apiKey: 'k', model: 'm' },
+      allow,
+    ),
     true,
   )
 })

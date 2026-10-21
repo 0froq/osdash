@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import { readByok } from './byok'
+import { parseClefLogins, readByok } from './byok'
 import { bindingString, workerEnv } from './bindings'
 import { readCache, writeCache } from './cache'
 import { loadBoard } from './github'
@@ -45,6 +45,7 @@ export async function buildBoardPayload(
       CACHE: store,
       viewerLogin: user.login,
       byok,
+      clefLogins: parseClefLogins(bindingString(event, 'OSDASH_CLEF_LOGINS')),
     },
     { fresh },
   )

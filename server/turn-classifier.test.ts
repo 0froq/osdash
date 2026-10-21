@@ -2,8 +2,10 @@ import assert from 'node:assert/strict'
 import { it } from 'vite-plus/test'
 import { DAY_MS, judge, type Item } from '../shared/turn'
 import { turnCacheKey } from '../shared/turn-classifier'
-import { maybeClassifyTurn } from './turn-classifier'
+import { maybeClassifyTurn, type TurnClassifierEnv } from './turn-classifier'
 import type { AiBinding } from './claim-classifier-clef'
+
+const CLEF: TurnClassifierEnv = { viewerLogin: '0froq', clefLogins: ['0froq'] }
 
 const NOW = Date.parse('2026-10-19T12:00:00.000Z')
 
@@ -50,7 +52,7 @@ it('uses clef when the rule is undecided and falls back when confidence is low',
   const verdict = judge(item, NOW)
   assert.equal(verdict.ambiguous, true)
   assert.equal(verdict.turn, 'maintainer')
-  const next = await maybeClassifyTurn(item, verdict, { AI: ai }, NOW)
+  const next = await maybeClassifyTurn(item, verdict, { ...CLEF, AI: ai }, NOW)
   assert.equal(calls, 1)
   assert.equal(next.turn, 'maintainer')
   assert.equal(next.quote, null)
@@ -81,8 +83,8 @@ it('accepts a confident clef turn and the sentence it quoted', async () => {
   }
   const item = statementItem()
   const verdict = judge(item, NOW)
-  const first = await maybeClassifyTurn(item, verdict, { AI: ai, CACHE: store }, NOW)
-  const second = await maybeClassifyTurn(item, verdict, { AI: ai, CACHE: store }, NOW)
+  const first = await maybeClassifyTurn(item, verdict, { ...CLEF, AI: ai, CACHE: store }, NOW)
+  const second = await maybeClassifyTurn(item, verdict, { ...CLEF, AI: ai, CACHE: store }, NOW)
   assert.equal(calls, 1)
   assert.equal(first.turn, 'other')
   assert.equal(first.quote, 'I traced this to the cache key.')
@@ -108,7 +110,7 @@ it('does not call clef when the rules already decided', async () => {
   const verdict = judge(item, NOW)
   assert.equal(verdict.turn, 'mine')
   assert.equal(verdict.ambiguous, false)
-  const next = await maybeClassifyTurn(item, verdict, { AI: ai }, NOW)
+  const next = await maybeClassifyTurn(item, verdict, { ...CLEF, AI: ai }, NOW)
   assert.equal(calls, 0)
   assert.equal(next.turn, 'mine')
 })
@@ -133,7 +135,7 @@ it('rejects a confident turn that relies on Thanks', async () => {
     focusUpdatedAt: item.activities[0]!.at,
   }
   item.activities[0]!.body = 'Thanks!'
-  const next = await maybeClassifyTurn(item, overridden, { AI: ai }, NOW)
+  const next = await maybeClassifyTurn(item, overridden, { ...CLEF, AI: ai }, NOW)
   assert.equal(next.turn, 'maintainer')
   assert.equal(next.quote, null)
 })

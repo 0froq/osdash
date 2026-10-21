@@ -5,7 +5,13 @@ import { judge } from '../shared/turn'
 import { cacheKeyForComment } from '../shared/claim-classifier'
 import { CLEF_MODEL } from '../shared/claim-types'
 import { DAY_MS, type Activity, type Actor, type Item } from '../shared/turn'
-import { createCachingClaimClassifier, enrichIssueClassifications } from './claim-classifier'
+import {
+  createCachingClaimClassifier,
+  enrichIssueClassifications,
+  type ClaimClassifierEnv,
+} from './claim-classifier'
+
+const CLEF: ClaimClassifierEnv = { viewerLogin: '0froq', clefLogins: ['0froq'] }
 import type { AiBinding } from './claim-classifier-clef'
 
 const NOW = Date.parse('2026-10-19T12:00:00.000Z')
@@ -69,7 +75,7 @@ it('classifies claim intent via clef-flash', async () => {
       }
     },
   }
-  const classifier = createCachingClaimClassifier({ AI: ai }, NOW)
+  const classifier = createCachingClaimClassifier({ ...CLEF, AI: ai }, NOW)
   const items = [issue([selfComment("I'll open a PR")])]
   await enrichIssueClassifications(items, classifier)
   assert.equal(items[0]!.activities[0]!.classification?.intent, 'claim')
@@ -88,7 +94,7 @@ it('classifies ask intent for permission questions', async () => {
       },
     }),
   }
-  const classifier = createCachingClaimClassifier({ AI: ai }, NOW)
+  const classifier = createCachingClaimClassifier({ ...CLEF, AI: ai }, NOW)
   const items = [issue([selfComment('Can I take this?')])]
   await enrichIssueClassifications(items, classifier)
   const verdict = judge(items[0]!, NOW)
@@ -105,7 +111,7 @@ it('classifies withdraw intent and invalidates the claim', async () => {
       },
     }),
   }
-  const classifier = createCachingClaimClassifier({ AI: ai }, NOW)
+  const classifier = createCachingClaimClassifier({ ...CLEF, AI: ai }, NOW)
   const items = [issue([selfComment('go ahead without me')])]
   await enrichIssueClassifications(items, classifier)
   assert.equal(claimLevel(items[0]!), null)
@@ -127,7 +133,7 @@ it('caps confirmed claims when intent confidence is below 0.7', async () => {
       }
     },
   }
-  const classifier = createCachingClaimClassifier({ AI: ai }, NOW)
+  const classifier = createCachingClaimClassifier({ ...CLEF, AI: ai }, NOW)
   const items = [
     issue([
       selfComment("I'll open a PR", {
@@ -158,7 +164,7 @@ it('falls back to keyword rules when the model errors', async () => {
     },
   }
   const classifier = createCachingClaimClassifier(
-    { AI: ai, CACHE: { get: async () => null, put: async () => {} } },
+    { ...CLEF, AI: ai, CACHE: { get: async () => null, put: async () => {} } },
     NOW,
   )
   const items = [issue([selfComment("I'll open a PR")])]
@@ -188,7 +194,7 @@ it('reuses KV cache entries keyed by comment id and updated_at', async () => {
       }
     },
   }
-  const classifier = createCachingClaimClassifier({ AI: ai, CACHE: store }, NOW)
+  const classifier = createCachingClaimClassifier({ ...CLEF, AI: ai, CACHE: store }, NOW)
   const comment = selfComment("I'll open a PR")
   const items = [issue([comment])]
   await enrichIssueClassifications(items, classifier)

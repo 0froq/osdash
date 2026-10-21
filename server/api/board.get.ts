@@ -20,7 +20,7 @@ export default defineEventHandler(async event => {
       notion: { connected: createNotionSource().connected },
       stats: summarize(items),
       items,
-      viewerLogin: '0froq',
+      viewerLogin: 'octo-dev',
     }
   }
 

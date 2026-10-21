@@ -20,15 +20,19 @@ export type ClaimClassifierEnv = {
   CACHE?: CacheStore
   viewerLogin?: string
   byok?: ByokSettings | null
+  clefLogins?: readonly string[]
 }
 
 export function createCachingClaimClassifier(
   env: ClaimClassifierEnv,
   nowMs: number,
 ): ClaimCommentClassifier {
-  const viewerLogin = env.viewerLogin ?? '0froq'
+  const viewerLogin = env.viewerLogin
+  if (!viewerLogin) throw new Error('viewerLogin missing')
+  const allowList = env.clefLogins ?? []
   const inner = createClefClaimClassifier(
-    clefEnabledForUser(viewerLogin, env.byok ?? null) && usesWorkersAiClef(viewerLogin)
+    clefEnabledForUser(viewerLogin, env.byok ?? null, allowList) &&
+      usesWorkersAiClef(viewerLogin, allowList)
       ? env.AI
       : undefined,
   )

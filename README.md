@@ -7,7 +7,7 @@ Multi-user, read-only open-source contribution board. Each visitor signs in with
 - **Nuxt 4** on **Cloudflare Workers** (Nitro `cloudflare-module`). Production deploys with **Void** (`void.config.ts`); branch previews use `cloudflare.config.ts`.
 - **GitHub OAuth** (`read:user`): callback exchanges the code for a user access token, encrypts it with **AES-GCM** (`SESSION_SECRET`), stores it in **KV** under `session:v1:*`, and sets an **httpOnly** session cookie. The browser never sees the GitHub token.
 - **Board data**: GraphQL search per logged-in user, enriched timeline links via GraphQL (`CROSS_REFERENCED` / `CONNECTED`) with REST fallback only when links are missing; PR check runs still use REST when needed. Responses are cached in **KV** per user (`board:v3:{login}`) with **stale-while-revalidate** (serve cache, refresh in the background via `waitUntil`).
-- **Turn classification**: existing rules unchanged. **Workers AI clef** runs only for `0froq`. Other users can opt into the same prompts via **BYOK** (OpenAI-compatible base URL, API key, model) stored encrypted per user in KV.
+- **Turn classification**: existing rules unchanged. **Workers AI clef** runs for logins listed in `OSDASH_CLEF_LOGINS` (comma-separated, case-insensitive). Other users can opt into the same prompts via **BYOK** (OpenAI-compatible base URL, API key, model) stored encrypted per user in KV.
 - **Cloudflare Access**: JWT middleware runs only when `OSDASH_ACCESS_ENFORCE=true` (branch previews). Production sets `OSDASH_ACCESS_ENFORCE=false`.
 
 ## Secrets and KV
@@ -18,7 +18,8 @@ Multi-user, read-only open-source contribution board. Each visitor signs in with
 | `GITHUB_CLIENT_SECRET` | Worker secret      | OAuth app client secret                                          |
 | `SESSION_SECRET`       | Worker secret      | AES-GCM key for session + BYOK blobs                             |
 | `CACHE`                | KV binding         | Sessions, board cache, classifier cache, OAuth state             |
-| `AI`                   | Workers AI binding | Clef for `0froq` only                                            |
+| `AI`                   | Workers AI binding | Clef for logins in `OSDASH_CLEF_LOGINS`                          |
+| `OSDASH_CLEF_LOGINS`   | var or secret      | Comma-separated logins. Production example: `0froq`              |
 | `ACCESS_TEAM_DOMAIN`   | Worker secret      | Preview only (when Access enforced)                              |
 | `ACCESS_AUD`           | Worker secret      | Preview only                                                     |
 | `GITHUB_TOKEN`         | Optional legacy    | Not used for per-user board loads; keep empty in new deployments |
