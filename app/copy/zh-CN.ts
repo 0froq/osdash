@@ -67,7 +67,19 @@ export const copy = {
     dark: '深色',
     logout: '退出',
     open: '打开菜单',
+    markRead: '标为已读',
+    star: '星标',
+    unstar: '取消星标',
+    later: '稍后',
+    clearLater: '取消稍后',
   },
+  laterPresets: {
+    tomorrow: '明天早上',
+    threeDays: '3 天后',
+    nextMonday: '下周一',
+  },
+  emptyLater: '没有稍后要看的',
+  emptyStarred: '没有星标',
   greet(period: string, name: string): string {
     return `${period}，${name}`
   },

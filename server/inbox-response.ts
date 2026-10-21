@@ -4,7 +4,14 @@ import { bindingString, workerEnv } from './bindings'
 import { readCache, writeCache } from './cache'
 import { loadUnits } from './github'
 import type { SessionUser } from './session'
-import { inboxCounts, mergeUserState, readPrefs, readSeen, type SeenState } from './user-state'
+import {
+  inboxCounts,
+  mergeUserState,
+  readPrefs,
+  readSeen,
+  type PrefsState,
+  type SeenState,
+} from './user-state'
 import { summarize } from '../shared/turn'
 import type { Unit, UnitView } from '../shared/unit'
 
@@ -102,9 +109,10 @@ export async function presentInbox(
   nowMs: number,
   flags: { cached: boolean; revalidating?: boolean; mock: boolean },
   seenOverride?: SeenState,
+  prefsOverride?: PrefsState,
 ): Promise<InboxPayload> {
   const seen = seenOverride ?? (await readSeen(store, user.login, nowMs))
-  const prefs = await readPrefs(store, user.login, nowMs)
+  const prefs = prefsOverride ?? (await readPrefs(store, user.login, nowMs))
   const units = mergeUserState(body.units, seen, prefs, nowMs)
   return {
     generatedAt: body.generatedAt,

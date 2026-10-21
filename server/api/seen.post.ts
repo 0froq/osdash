@@ -1,6 +1,7 @@
 import { createError, readBody } from 'h3'
 import { readInboxCache } from '../inbox-response'
 import { workerEnv } from '../bindings'
+import { devMock, mockMarkSeen, mockUnitsNow } from '../mock-state'
 import { writeSeen, type SeenMark } from '../user-state'
 
 type SeenBody = {
@@ -11,7 +12,8 @@ type SeenBody = {
 
 export default defineEventHandler(async event => {
   const user = event.context.osdashUser
-  if (!user) throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
+  if (!user && !devMock(event))
+    throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
 
   const body = (await readBody(event)) as SeenBody
   const marks: SeenMark[] = []
@@ -27,6 +29,12 @@ export default defineEventHandler(async event => {
   }
 
   const nowMs = Date.now()
+  if (devMock(event)) {
+    const seen = mockMarkSeen(marks, mockUnitsNow(nowMs), nowMs)
+    return { ok: true as const, seen }
+  }
+
+  if (!user) throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
   const store = workerEnv(event).CACHE
   const cached = await readInboxCache(store, user.login, nowMs)
   const seen = await writeSeen(store, user.login, marks, cached?.units ?? [], nowMs)

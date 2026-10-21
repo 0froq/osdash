@@ -6,6 +6,7 @@ defineProps<{
   count: number
   layout: 'mine' | 'activity' | 'waiting' | 'ended'
   collapsible?: boolean
+  empty?: string
 }>()
 </script>
 
@@ -24,7 +25,7 @@ defineProps<{
         <p
           v-if="count === 0"
           class="empty-state"
-          >{{ copy.emptySection }}</p
+          >{{ empty || copy.emptySection }}</p
         >
       </div>
     </details>
@@ -38,7 +39,7 @@ defineProps<{
         <p
           v-if="count === 0"
           class="empty-state"
-          >{{ copy.emptySection }}</p
+          >{{ empty || copy.emptySection }}</p
         >
       </div>
     </template>

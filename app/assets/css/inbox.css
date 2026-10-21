@@ -43,12 +43,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 32px;
+  width: 100%;
+  min-height: 40px;
   padding: 4px 8px;
+  border: 0;
   border-radius: var(--radius);
+  background: transparent;
   color: var(--muted);
+  cursor: pointer;
   font-family: var(--font-text);
   font-size: 14px;
+  text-align: left;
 }
 
 .side-link.current {
@@ -392,9 +397,13 @@ img.avatar {
   align-items: center;
   min-height: 40px;
   padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
   background: transparent;
   color: var(--fg);
+  cursor: pointer;
   font-family: var(--font-meta);
+  font-size: 12px;
 }
 
 .nav-chip.current {
@@ -414,6 +423,49 @@ img.avatar {
 .empty-state {
   color: var(--muted);
   font-size: 14px;
+}
+
+.repo-row {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.card-menu {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 168px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+.card-menu button,
+.card-menu-label {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font-size: 14px;
+  text-align: left;
+}
+
+.card-menu button {
+  cursor: pointer;
+}
+
+.card-menu-label {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 12px;
+  line-height: 40px;
 }
 
 .section[data-layout='mine'] .empty-state,

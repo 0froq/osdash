@@ -11,7 +11,10 @@ const props = defineProps<{
   selected?: boolean
 }>()
 
-const emit = defineEmits<{ select: [] }>()
+const emit = defineEmits<{
+  select: []
+  menu: [event: MouseEvent]
+}>()
 
 const line = computed(() => {
   if (props.unit.reasonCode === 'clef' && props.unit.quote) return props.unit.quote
@@ -33,6 +36,7 @@ const endedWhen = computed(() =>
     :class="[size, { dashed: unit.kind === 'issue-only', selected }]"
     :data-unit="unit.id"
     @click="emit('select')"
+    @contextmenu.prevent="emit('menu', $event)"
   >
     <CardMeta
       :repo="unit.repo"

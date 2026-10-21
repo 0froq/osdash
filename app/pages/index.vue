@@ -1,8 +1,187 @@
 <script setup lang="ts">
+import type { UnitCategory, UnitView } from '#shared/unit'
 import { copy } from '~/copy/zh-CN'
+import { placeUnit, type InboxSection } from '~/composables/useInbox'
+import type { InboxViewName } from '~/components/inbox/Sidebar.vue'
+import { nextMondayMorning, threeDaysLater, tomorrowMorning } from '~/utils/later'
 
 const inbox = useInbox()
 const media = useMedia()
+const prefs = usePrefs(inbox.updateUnit)
+const route = useRoute()
+const router = useRouter()
+
+const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'helped']
+const repo = ref('')
+const menu = ref<{ unit: UnitView; x: number; y: number } | null>(null)
+
+const view = computed<InboxViewName>(() => {
+  const value = route.query.view
+  if (value === 'later' || value === 'starred' || value === 'ended') return value
+  return 'home'
+})
+
+const category = computed<UnitCategory | null>(() => {
+  const value = route.query.cat
+  if (
+    value === 'claimed-fix' ||
+    value === 'direct-pr' ||
+    value === 'reported' ||
+    value === 'helped'
+  )
+    return value
+  return null
+})
+
+function placed(unit: UnitView): InboxSection | 'hidden' {
+  return placeUnit(unit, inbox.nowMs.value)
+}
+
+function onHome(unit: UnitView): boolean {
+  const section = placed(unit)
+  return (
+    section === 'mine' || section === 'activity' || section === 'waiting' || section === 'ended'
+  )
+}
+
+const categoryCounts = computed(() => {
+  const totals: Record<UnitCategory, number> = {
+    'claimed-fix': 0,
+    'direct-pr': 0,
+    'reported': 0,
+    'helped': 0,
+  }
+  for (const unit of inbox.units.value) {
+    if (!onHome(unit)) continue
+    totals[unit.category] += 1
+  }
+  return totals
+})
+
+const homeCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'mine').length)
+const laterCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'later').length)
+const endedCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'ended').length)
+const starredCount = computed(() => inbox.units.value.filter(unit => unit.starred).length)
+
+function inView(unit: UnitView): boolean {
+  if (view.value === 'later') return placed(unit) === 'later'
+  if (view.value === 'starred') return unit.starred
+  if (view.value === 'ended') return placed(unit) === 'ended'
+  return onHome(unit)
+}
+
+const pool = computed(() =>
+  inbox.units.value.filter(
+    unit => inView(unit) && (!category.value || unit.category === category.value),
+  ),
+)
+
+const repoChips = computed(() => {
+  const totals = new Map<string, number>()
+  for (const unit of pool.value) totals.set(unit.repo, (totals.get(unit.repo) ?? 0) + 1)
+  return [...totals.entries()]
+    .sort((first, second) => first[0].localeCompare(second[0]))
+    .map(([name, count]) => ({ name, count }))
+})
+
+const visible = computed(() => {
+  const rows = pool.value.filter(unit => (repo.value ? unit.repo === repo.value : true))
+  rows.sort((first, second) => second.ageMs - first.ageMs)
+  return rows
+})
+
+function sectionRows(section: InboxSection): UnitView[] {
+  const rows = visible.value.filter(unit => placed(unit) === section)
+  if (section === 'ended') {
+    return rows.sort(
+      (first, second) => Date.parse(second.closedAt ?? '') - Date.parse(first.closedAt ?? ''),
+    )
+  }
+  return [...rows].sort((first, second) => second.ageMs - first.ageMs)
+}
+
+const showHome = computed(() => view.value === 'home')
+const filtering = computed(() => category.value !== null || repo.value.length > 0)
+
+function showSection(rows: UnitView[]): boolean {
+  return !filtering.value || rows.length > 0
+}
+
+function writeQuery(patch: Record<string, string | undefined>): void {
+  const next: Record<string, string> = {}
+  for (const [key, value] of Object.entries(route.query)) {
+    if (typeof value === 'string' && value.length > 0) next[key] = value
+  }
+  for (const [key, value] of Object.entries(patch)) {
+    if (!value) delete next[key]
+    else next[key] = value
+  }
+  void router.replace({ query: next })
+}
+
+function selectView(next: InboxViewName): void {
+  repo.value = ''
+  menu.value = null
+  writeQuery({ view: next === 'home' ? undefined : next, cat: undefined })
+}
+
+function selectCategory(next: UnitCategory): void {
+  repo.value = ''
+  menu.value = null
+  writeQuery({
+    view: undefined,
+    cat: category.value === next ? undefined : next,
+  })
+}
+
+function selectRepo(name: string): void {
+  repo.value = name
+}
+
+function openMenu(unit: UnitView, event: MouseEvent): void {
+  event.preventDefault()
+  menu.value = { unit, x: event.clientX, y: event.clientY }
+}
+
+async function markRead(unit: UnitView): Promise<void> {
+  menu.value = null
+  if (!unit.unread) return
+  const previous = unit.unread
+  inbox.updateUnit(unit.id, { unread: false })
+  try {
+    await $fetch(import.meta.dev ? '/api/seen?mock=1' : '/api/seen', {
+      method: 'POST',
+      body: { id: unit.id, at: new Date().toISOString() },
+    })
+  } catch {
+    inbox.updateUnit(unit.id, { unread: previous })
+  }
+}
+
+function applyLater(unit: UnitView, preset: string | null): void {
+  menu.value = null
+  if (preset === null) {
+    void prefs.setLater(unit, null)
+    return
+  }
+  if (preset === 'tomorrow') {
+    void prefs.setLater(unit, tomorrowMorning())
+    return
+  }
+  if (preset === 'three-days') {
+    void prefs.setLater(unit, threeDaysLater())
+    return
+  }
+  if (preset === 'monday') {
+    void prefs.setLater(unit, nextMondayMorning())
+    return
+  }
+}
+
+function toggleStar(unit: UnitView): void {
+  menu.value = null
+  void prefs.setStar(unit, !unit.starred)
+}
 
 onMounted(() => {
   void inbox.load(false)
@@ -13,24 +192,40 @@ onMounted(() => {
   <InboxShell :mobile="media.isMobile.value">
     <template #sidebar>
       <Sidebar
-        v-if="inbox.counts.value && inbox.viewer.value"
-        :counts="inbox.counts.value"
+        v-if="inbox.viewer.value"
         :viewer="inbox.viewer.value"
         :pending="inbox.pending.value"
+        :view="view"
+        :category="category"
+        :home-count="homeCount"
+        :later-count="laterCount"
+        :starred-count="starredCount"
+        :ended-count="endedCount"
+        :category-counts="categoryCounts"
         @refresh="inbox.load(true)"
         @logout="inbox.logout()"
+        @view="selectView"
+        @category="selectCategory"
       />
       <MobileNav
-        v-if="inbox.counts.value && inbox.viewer.value"
-        :counts="inbox.counts.value"
+        v-if="inbox.viewer.value"
         :viewer="inbox.viewer.value"
         :pending="inbox.pending.value"
+        :view="view"
+        :category="category"
+        :home-count="homeCount"
+        :later-count="laterCount"
+        :starred-count="starredCount"
+        :ended-count="endedCount"
+        :category-counts="categoryCounts"
         @refresh="inbox.load(true)"
         @logout="inbox.logout()"
+        @view="selectView"
+        @category="selectCategory"
       />
     </template>
     <p
-      v-if="inbox.pending.value && !inbox.counts.value"
+      v-if="inbox.pending.value && !inbox.viewer.value"
       class="inbox-status"
       >{{ copy.loading }}</p
     >
@@ -40,10 +235,10 @@ onMounted(() => {
       role="alert"
       >{{ inbox.error.value }}</p
     >
-    <template v-if="inbox.counts.value && inbox.stats.value">
+    <template v-if="inbox.stats.value && inbox.viewer.value">
       <Greeting
         :name="inbox.displayName.value"
-        :mine="inbox.counts.value.mine"
+        :mine="homeCount"
         :merged="inbox.stats.value.merged"
         :open="inbox.stats.value.open"
         :average-first-reply-ms="inbox.stats.value.averageFirstReplyMs"
@@ -58,61 +253,128 @@ onMounted(() => {
         class="inbox-status"
         >{{ copy.truncated }}</p
       >
+      <FilterChips
+        :repos="repoChips"
+        :active="repo"
+        @select="selectRepo"
+      />
       <EmptyState
         v-if="!inbox.pending.value && inbox.units.value.length === 0"
         :text="copy.emptyInbox"
       />
-      <template v-else>
+      <template v-else-if="showHome">
         <Section
+          v-if="showSection(sectionRows('mine'))"
           :title="copy.sections.mine"
-          :count="inbox.counts.value.mine"
+          :count="sectionRows('mine').length"
           layout="mine"
         >
           <UnitCard
-            v-for="unit in inbox.mine.value"
+            v-for="unit in sectionRows('mine')"
             :key="unit.id"
             :unit="unit"
             size="large"
+            @menu="openMenu(unit, $event)"
           />
         </Section>
         <Section
+          v-if="showSection(sectionRows('activity'))"
           :title="copy.sections.activity"
-          :count="inbox.counts.value.activity"
+          :count="sectionRows('activity').length"
           layout="activity"
         >
           <UnitCard
-            v-for="unit in inbox.activity.value"
+            v-for="unit in sectionRows('activity')"
             :key="unit.id"
             :unit="unit"
             size="row"
+            @menu="openMenu(unit, $event)"
           />
         </Section>
         <Section
+          v-if="showSection(sectionRows('waiting'))"
           :title="copy.sections.waiting"
-          :count="inbox.counts.value.waiting"
+          :count="sectionRows('waiting').length"
           layout="waiting"
         >
           <UnitCard
-            v-for="unit in inbox.waiting.value"
+            v-for="unit in sectionRows('waiting')"
             :key="unit.id"
             :unit="unit"
             size="small"
+            @menu="openMenu(unit, $event)"
           />
         </Section>
         <Section
+          v-if="showSection(sectionRows('ended'))"
           :title="copy.sections.ended"
-          :count="inbox.counts.value.ended"
+          :count="sectionRows('ended').length"
           layout="ended"
           collapsible
         >
           <UnitCard
-            v-for="unit in inbox.ended.value"
+            v-for="unit in sectionRows('ended')"
             :key="unit.id"
             :unit="unit"
             size="small"
+            @menu="openMenu(unit, $event)"
           />
         </Section>
       </template>
+      <Section
+        v-else-if="view === 'later'"
+        :title="copy.nav.later"
+        :count="visible.length"
+        layout="mine"
+        :empty="copy.emptyLater"
+      >
+        <UnitCard
+          v-for="unit in visible"
+          :key="unit.id"
+          :unit="unit"
+          size="large"
+          @menu="openMenu(unit, $event)"
+        />
+      </Section>
+      <Section
+        v-else-if="view === 'starred'"
+        :title="copy.nav.starred"
+        :count="visible.length"
+        layout="mine"
+        :empty="copy.emptyStarred"
+      >
+        <UnitCard
+          v-for="unit in visible"
+          :key="unit.id"
+          :unit="unit"
+          size="large"
+          @menu="openMenu(unit, $event)"
+        />
+      </Section>
+      <Section
+        v-else
+        :title="copy.sections.ended"
+        :count="visible.length"
+        layout="ended"
+      >
+        <UnitCard
+          v-for="unit in visible"
+          :key="unit.id"
+          :unit="unit"
+          size="small"
+          @menu="openMenu(unit, $event)"
+        />
+      </Section>
     </template>
+    <CardMenu
+      v-if="menu"
+      :unit="menu.unit"
+      :x="menu.x"
+      :y="menu.y"
+      @close="menu = null"
+      @read="markRead(menu.unit)"
+      @star="toggleStar(menu.unit)"
+      @later="applyLater(menu.unit, $event)"
+    />
   </InboxShell>
 </template>

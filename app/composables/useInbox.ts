@@ -142,6 +142,12 @@ export function useInbox() {
     await navigateTo('/login')
   }
 
+  function updateUnit(id: string, patch: Partial<UnitView>): void {
+    const unit = units.value.find(item => item.id === id)
+    if (!unit) return
+    Object.assign(unit, patch)
+  }
+
   onBeforeUnmount(() => {
     if (revalidateTimer) clearTimeout(revalidateTimer)
   })
@@ -168,5 +174,6 @@ export function useInbox() {
     load,
     logout,
     apply,
+    updateUnit,
   }
 }

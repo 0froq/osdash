@@ -1,18 +1,27 @@
 <script setup lang="ts">
-import type { InboxCounts, InboxViewer } from '~/composables/useInbox'
+import type { UnitCategory } from '#shared/unit'
+import type { InboxViewer } from '~/composables/useInbox'
+import type { InboxViewName } from '~/components/inbox/Sidebar.vue'
 import { copy } from '~/copy/zh-CN'
 import { categoryLabel } from '~/utils/category'
-import type { UnitCategory } from '#shared/unit'
 
 defineProps<{
-  counts: InboxCounts
   viewer: InboxViewer
   pending: boolean
+  view: InboxViewName
+  category: UnitCategory | null
+  homeCount: number
+  laterCount: number
+  starredCount: number
+  endedCount: number
+  categoryCounts: Record<UnitCategory, number>
 }>()
 
 const emit = defineEmits<{
   refresh: []
   logout: []
+  view: [view: InboxViewName]
+  category: [category: UnitCategory]
 }>()
 
 const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'helped']
@@ -34,38 +43,53 @@ const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'hel
       class="chip-row"
       :aria-label="copy.nav.home"
     >
-      <span class="nav-chip current">
-        {{ copy.nav.home }}
-        <span class="chip-count">{{ counts.mine }}</span>
-      </span>
-      <span class="nav-chip">
-        {{ copy.nav.later }}
-        <span
-          v-if="counts.later"
-          class="chip-count"
-          >{{ counts.later }}</span
-        >
-      </span>
-      <span class="nav-chip">
-        {{ copy.nav.starred }}
-        <span
-          v-if="counts.starred"
-          class="chip-count"
-          >{{ counts.starred }}</span
-        >
-      </span>
-      <span
-        v-for="category in categories"
-        :key="category"
+      <button
         class="nav-chip"
+        :class="{ current: view === 'home' && !category }"
+        type="button"
+        @click="emit('view', 'home')"
       >
-        {{ categoryLabel(category) }}
-        <span class="chip-count">{{ counts.byCategory[category] }}</span>
-      </span>
-      <span class="nav-chip">
+        {{ copy.nav.home }}
+        <span class="chip-count">{{ homeCount }}</span>
+      </button>
+      <button
+        class="nav-chip"
+        :class="{ current: view === 'later' }"
+        type="button"
+        @click="emit('view', 'later')"
+      >
+        {{ copy.nav.later }}
+        <span class="chip-count">{{ laterCount }}</span>
+      </button>
+      <button
+        class="nav-chip"
+        :class="{ current: view === 'starred' }"
+        type="button"
+        @click="emit('view', 'starred')"
+      >
+        {{ copy.nav.starred }}
+        <span class="chip-count">{{ starredCount }}</span>
+      </button>
+      <button
+        v-for="item in categories"
+        :key="item"
+        class="nav-chip"
+        :class="{ current: category === item }"
+        type="button"
+        @click="emit('category', item)"
+      >
+        {{ categoryLabel(item) }}
+        <span class="chip-count">{{ categoryCounts[item] }}</span>
+      </button>
+      <button
+        class="nav-chip"
+        :class="{ current: view === 'ended' }"
+        type="button"
+        @click="emit('view', 'ended')"
+      >
         {{ copy.sections.ended }}
-        <span class="chip-count">{{ counts.ended }}</span>
-      </span>
+        <span class="chip-count">{{ endedCount }}</span>
+      </button>
     </nav>
   </header>
 </template>

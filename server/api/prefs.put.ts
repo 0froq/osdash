@@ -1,5 +1,6 @@
 import { createError, readBody } from 'h3'
 import { workerEnv } from '../bindings'
+import { devMock, mockPatchPrefs } from '../mock-state'
 import { writePrefs, type PrefsPatch } from '../user-state'
 
 type PrefsBody = {
@@ -9,7 +10,8 @@ type PrefsBody = {
 
 export default defineEventHandler(async event => {
   const user = event.context.osdashUser
-  if (!user) throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
+  if (!user && !devMock(event))
+    throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
 
   const body = (await readBody(event)) as PrefsBody
   const patch: PrefsPatch = {}
@@ -24,6 +26,8 @@ export default defineEventHandler(async event => {
     throw createError({ statusCode: 400, statusMessage: 'star or later is required' })
   }
 
+  if (devMock(event)) return { ok: true as const, prefs: mockPatchPrefs(patch) }
+  if (!user) throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
   const prefs = await writePrefs(workerEnv(event).CACHE, user.login, patch, Date.now())
   return { ok: true as const, prefs }
 })

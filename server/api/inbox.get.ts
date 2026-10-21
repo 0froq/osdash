@@ -8,15 +8,15 @@ import {
   readInboxCache,
   type InboxPayload,
 } from '../inbox-response'
-import { MOCK_VIEWER, mockSeen, mockUnits } from '../mock'
+import { MOCK_VIEWER, mockUnits } from '../mock'
+import { devMock, mockPrefsState, mockSeenState } from '../mock-state'
 import type { SessionUser } from '../session'
 
 export default defineEventHandler(async event => {
   const query = getQuery(event)
   const now = new Date()
   const nowMs = now.getTime()
-  const mock = import.meta.dev && (query.mock === '1' || process.env.OSDASH_MOCK === '1')
-  if (mock) {
+  if (devMock(event)) {
     const user: SessionUser = { login: MOCK_VIEWER, token: '', name: 'Octo Dev' }
     return presentInbox(
       undefined,
@@ -28,7 +28,8 @@ export default defineEventHandler(async event => {
       },
       nowMs,
       { cached: false, mock: true },
-      mockSeen(nowMs),
+      mockSeenState(nowMs),
+      mockPrefsState(),
     )
   }
 
