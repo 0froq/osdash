@@ -89,6 +89,15 @@ export type LinkedPullRequest = {
   author: Actor
 }
 
+export type ClosingIssue = {
+  repo: string
+  number: number
+  url: string
+  state: ItemState
+  title: string
+  authorLogin: string
+}
+
 export type TimelineLink = {
   event: 'cross-referenced' | 'connected'
   repo: string
@@ -121,6 +130,8 @@ export type Item = {
   checks: Check[]
   assignees?: Actor[]
   linkedPullRequests?: LinkedPullRequest[]
+  /** Issues this pull request closes, from GitHub's closingIssuesReferences. */
+  closingIssues?: ClosingIssue[]
   /** Issue or pull request body. Opening text, not a comment. */
   body?: string
   updatedAt?: string

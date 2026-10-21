@@ -11,7 +11,9 @@ import {
   type Check,
   type CheckConclusion,
   type CheckStatus,
+  type ClosingIssue,
   type Item,
+  type ItemState,
   type LinkedPullRequest,
   type ReviewState,
   present,
@@ -123,6 +125,16 @@ type RawNode = {
   commits?: { nodes?: Array<{ commit?: RawCommit | null } | null> | null }
   timelineItems?: { nodes?: Array<RawTimeline | null> | null }
   assignees?: { nodes?: Array<RawActor | null> | null }
+  closingIssuesReferences?: {
+    nodes?: Array<{
+      number?: number
+      url?: string
+      state?: string
+      title?: string
+      repository?: { nameWithOwner?: string }
+      author?: RawActor | null
+    } | null> | null
+  }
 }
 
 type SearchPayload = {
@@ -192,6 +204,16 @@ const PULL_REQUEST_FIELDS = `
               }
             }
           }
+          closingIssuesReferences(first: 10) {
+            nodes {
+              number
+              url
+              state
+              title
+              repository { nameWithOwner }
+              author { __typename login }
+            }
+          }
           timelineItems(
             last: 30
             itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT, CROSS_REFERENCED_EVENT, CONNECTED_EVENT]
@@ -242,7 +264,7 @@ const PULL_REQUEST_FIELDS = `
           }
 `
 
-const QUERY = `
+export const QUERY = `
   query Board($query: String!, $cursor: String) {
     search(query: $query, type: ISSUE, first: ${PAGE_SIZE}, after: $cursor) {
       pageInfo { hasNextPage endCursor }
@@ -615,6 +637,23 @@ export function mapNode(node: RawNode, viewerLogin?: string): Item | null {
       ? (node.assignees?.nodes ?? []).flatMap(raw => (raw?.login ? [actorOf(raw)] : []))
       : []
 
+  const closingIssues: ClosingIssue[] = []
+  if (node.__typename === 'PullRequest') {
+    for (const issue of node.closingIssuesReferences?.nodes ?? []) {
+      if (!issue?.number || !issue.url || !issue.title || !issue.repository?.nameWithOwner) continue
+      const issueState: ItemState =
+        issue.state === 'CLOSED' ? 'closed' : issue.state === 'MERGED' ? 'merged' : 'open'
+      closingIssues.push({
+        repo: issue.repository.nameWithOwner,
+        number: issue.number,
+        url: issue.url,
+        state: issueState,
+        title: issue.title,
+        authorLogin: issue.author?.login ?? 'ghost',
+      })
+    }
+  }
+
   const linkedPullRequests: LinkedPullRequest[] = []
   if (node.__typename === 'Issue') {
     for (const event of node.timelineItems?.nodes ?? []) {
@@ -649,6 +688,7 @@ export function mapNode(node: RawNode, viewerLogin?: string): Item | null {
     checks,
     assignees,
     linkedPullRequests,
+    closingIssues,
     body: node.body,
     updatedAt: node.updatedAt,
     headSha: node.headRefOid,
