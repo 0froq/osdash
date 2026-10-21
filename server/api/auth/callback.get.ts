@@ -1,7 +1,7 @@
 import { createError, getQuery, sendRedirect } from 'h3'
 import { bindingString, workerEnv } from '../../bindings'
 import { readCache } from '../../cache'
-import { exchangeOAuthCode, fetchGitHubLogin } from '../../auth/github-oauth'
+import { exchangeOAuthCode, fetchGitHubUser } from '../../auth/github-oauth'
 import { getRequestOrigin } from '../../request-origin'
 import { createSession, setSessionCookie } from '../../session'
 
@@ -29,8 +29,13 @@ export default defineEventHandler(async event => {
   const origin = getRequestOrigin(event)
   const redirectUri = `${origin}/api/auth/callback`
   const token = await exchangeOAuthCode(clientId, clientSecret, code, redirectUri)
-  const login = await fetchGitHubLogin(token)
-  const sessionId = await createSession(store, sessionSecret, { login, token })
+  const profile = await fetchGitHubUser(token)
+  const sessionId = await createSession(store, sessionSecret, {
+    login: profile.login,
+    token,
+    name: profile.name ?? undefined,
+    avatarUrl: profile.avatarUrl ?? undefined,
+  })
   setSessionCookie(event, sessionId)
   return sendRedirect(event, '/', 302)
 })

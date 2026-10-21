@@ -40,7 +40,13 @@ export async function exchangeOAuthCode(
   return payload.access_token
 }
 
-export async function fetchGitHubLogin(token: string): Promise<string> {
+export type GitHubUser = {
+  login: string
+  name: string | null
+  avatarUrl: string | null
+}
+
+export async function fetchGitHubUser(token: string): Promise<GitHubUser> {
   const response = await fetch('https://api.github.com/user', {
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -51,7 +57,15 @@ export async function fetchGitHubLogin(token: string): Promise<string> {
     signal: AbortSignal.timeout(20_000),
   })
   if (!response.ok) throw new Error(`GitHub user lookup failed: HTTP ${response.status}`)
-  const payload = (await response.json()) as { login?: string }
+  const payload = (await response.json()) as {
+    login?: string
+    name?: string | null
+    avatar_url?: string | null
+  }
   if (!payload.login) throw new Error('GitHub user lookup returned no login')
-  return payload.login
+  return {
+    login: payload.login,
+    name: payload.name ?? null,
+    avatarUrl: payload.avatar_url ?? null,
+  }
 }
