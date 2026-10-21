@@ -6,6 +6,8 @@ export type RawRestCheckRun = {
   conclusion?: string | null
   html_url?: string | null
   details_url?: string | null
+  started_at?: string | null
+  completed_at?: string | null
 }
 
 function checkStatus(value: string | undefined): CheckStatus {

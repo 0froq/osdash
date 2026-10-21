@@ -1,6 +1,7 @@
 import { readCache, writeCache, type CacheStore } from './cache'
 import { checksFromRest, mergeCheckLists, type RawRestCheckRun } from '../shared/checks'
-import { linksFromTimeline, type RawTimelineEvent } from '../shared/timeline'
+import { normalizeRestTimeline, type RawRestTimelineEvent } from '../shared/events'
+import { linksFromTimeline } from '../shared/timeline'
 import type { Item } from '../shared/turn'
 
 export const TIMELINE_TTL_SECONDS = 6 * 60 * 60
@@ -21,6 +22,16 @@ export function checksCacheKey(viewerLogin: string, repo: string, sha: string): 
   return `checks:v2:${viewerLogin}:${repo}:${sha}`
 }
 
+export function eventsCacheKey(
+  viewerLogin: string,
+  repo: string,
+  number: number,
+  updatedAt: string | undefined,
+): string {
+  const base = `${viewerLogin}:${repo}#${number}`
+  return updatedAt ? `events:v1:${base}:${updatedAt}` : `events:v1:${base}`
+}
+
 function githubHeaders(token: string): HeadersInit {
   return {
     'Authorization': `Bearer ${token}`,
@@ -30,7 +41,7 @@ function githubHeaders(token: string): HeadersInit {
   }
 }
 
-type StopFlag = { stop: boolean }
+export type StopFlag = { stop: boolean }
 
 async function githubJson<T>(token: string, url: string, stop: StopFlag): Promise<T | null> {
   if (stop.stop) return null
@@ -47,15 +58,15 @@ async function githubJson<T>(token: string, url: string, stop: StopFlag): Promis
   return (await response.json()) as T
 }
 
-async function loadTimeline(
+export async function loadTimeline(
   token: string,
   item: Item,
   stop: StopFlag,
-): Promise<RawTimelineEvent[] | null> {
-  const events: RawTimelineEvent[] = []
+): Promise<RawRestTimelineEvent[] | null> {
+  const events: RawRestTimelineEvent[] = []
   for (let page = 1; page <= 3; page++) {
     const url = `https://api.github.com/repos/${item.repo}/issues/${item.number}/timeline?per_page=100&page=${page}`
-    const batch = await githubJson<RawTimelineEvent[]>(token, url, stop)
+    const batch = await githubJson<RawRestTimelineEvent[]>(token, url, stop)
     if (!batch) return events.length > 0 ? events : null
     if (!Array.isArray(batch) || batch.length === 0) break
     events.push(...batch)
@@ -64,7 +75,7 @@ async function loadTimeline(
   return events
 }
 
-async function loadCheckRuns(
+export async function loadCheckRuns(
   token: string,
   item: Item,
   stop: StopFlag,
@@ -111,8 +122,22 @@ export async function enrichItemsFromRest(
         } else {
           const events = await loadTimeline(token, item, stop)
           if (events) {
-            links = linksFromTimeline(events)
+            links = linksFromTimeline(
+              events.map(event => ({ ...event, source: event.source ?? undefined })),
+            )
             await writeCache(store, timelineKey, JSON.stringify(links), TIMELINE_TTL_SECONDS, nowMs)
+            const normalized = normalizeRestTimeline(events, {
+              repo: item.repo,
+              number: item.number,
+              kind: item.kind,
+            })
+            await writeCache(
+              store,
+              eventsCacheKey(viewerLogin, item.repo, item.number, item.updatedAt),
+              JSON.stringify(normalized),
+              TIMELINE_TTL_SECONDS,
+              nowMs,
+            )
           }
         }
       }
