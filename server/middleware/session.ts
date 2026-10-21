@@ -12,7 +12,8 @@ declare module 'h3' {
 
 export default defineEventHandler(async event => {
   const path = event.path
-  if (path.startsWith('/api/auth/')) return
+  // /api/auth/me needs the session; login/callback/logout don't.
+  if (path.startsWith('/api/auth/') && !path.startsWith('/api/auth/me')) return
 
   const sessionId = sessionIdFromEvent(event)
   if (!sessionId) return
