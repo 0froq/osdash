@@ -86,7 +86,7 @@ it('accepts a confident clef turn and the sentence it quoted', async () => {
   assert.equal(first.turn, 'other')
   assert.equal(first.quote, 'I traced this to the cache key.')
   assert.equal(second.turn, 'other')
-  assert.equal(memory.has(turnCacheKey('c-statement', verdict.focusUpdatedAt!)), true)
+  assert.equal(memory.has(turnCacheKey('c-statement', verdict.focusUpdatedAt!, '0froq')), true)
 })
 
 it('does not call clef when the rules already decided', async () => {

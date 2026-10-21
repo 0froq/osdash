@@ -1,5 +1,5 @@
 import type { Activity, Item } from './turn'
-import { isSelf } from './identity'
+import { isSelf, viewerLoginOf } from './identity'
 import { classifyIntentKeyword } from './claim-keywords'
 import type { ClaimIntent, CommentClassification, ClassificationSource } from './claim-types'
 import { INTENT_CONFIRM_THRESHOLD, MAINTAINER_OK_THRESHOLD } from './claim-types'
@@ -139,14 +139,20 @@ export function mergeClassification(
   }
 }
 
-export function cacheKeyForComment(commentId: string, updatedAt: string): string {
+export function cacheKeyForComment(
+  commentId: string,
+  updatedAt: string,
+  viewerLogin?: string,
+): string {
+  if (viewerLogin) return `claim-clf:v1:${viewerLogin}:${commentId}:${updatedAt}`
   return `claim-clf:v1:${commentId}:${updatedAt}`
 }
 
 export function shouldClassifyMaintainerComment(item: Item, comment: Activity): boolean {
+  const viewer = viewerLoginOf(item)
   const moment = Date.parse(comment.at)
   return threadComments(item.activities).some(
-    activity => isSelf(activity.actor) && isClaimOrAskBefore(activity, moment),
+    activity => isSelf(activity.actor, viewer) && isClaimOrAskBefore(activity, moment),
   )
 }
 

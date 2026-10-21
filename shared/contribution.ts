@@ -1,5 +1,5 @@
 import { isAskActivity, isClaimActivity } from './claim-classifier'
-import { isSelf } from './identity'
+import { isSelf, viewerLoginOf } from './identity'
 import type { Item, ItemPart } from './turn'
 
 export type ContributionType = 'claim' | 'proposal' | 'help' | 'non-code'
@@ -70,26 +70,28 @@ function ownParts(item: Item): ItemPart[] {
   ]
 }
 
-function selfAuthored(login: string): boolean {
-  return login.toLowerCase() === '0froq'
+function selfAuthored(login: string, viewer: string): boolean {
+  return login.toLowerCase() === viewer.toLowerCase()
 }
 
 export function hasOpenedFix(item: Item): boolean {
-  return ownParts(item).some(part => part.kind === 'pr' && selfAuthored(part.authorLogin))
+  const viewer = viewerLoginOf(item)
+  return ownParts(item).some(part => part.kind === 'pr' && selfAuthored(part.authorLogin, viewer))
 }
 
 export function contributionTypes(item: Item): ContributionType[] {
+  const viewer = viewerLoginOf(item)
   const found = new Set<ContributionType>()
   if (hasOpenedFix(item)) found.add('claim')
 
   const texts: string[] = []
   for (const part of ownParts(item)) {
-    if (!selfAuthored(part.authorLogin)) continue
+    if (!selfAuthored(part.authorLogin, viewer)) continue
     texts.push(part.title)
     if (part.body) texts.push(part.body)
   }
   for (const activity of item.activities) {
-    if (!isSelf(activity.actor) || !activity.body) continue
+    if (!isSelf(activity.actor, viewer) || !activity.body) continue
     texts.push(activity.body)
     if (isClaimActivity(activity)) found.add('claim')
     if (isAskActivity(activity)) found.add('proposal')

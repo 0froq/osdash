@@ -1,5 +1,5 @@
 import type { Activity, Item, Tone } from './turn'
-import { isBot, isSelf } from './identity'
+import { isBot, isSelf, viewerLoginOf } from './identity'
 import { isMaintainerAssociation } from './claim-types'
 import {
   canConfirmClaim,
@@ -22,28 +22,28 @@ function sortedComments(activities: Activity[]): Activity[] {
   return threadComments(activities)
 }
 
-function myClaimComments(activities: Activity[]): Activity[] {
+function myClaimComments(activities: Activity[], viewer: string): Activity[] {
   return sortedComments(activities).filter(
-    activity => isSelf(activity.actor) && activity.body && isClaimActivity(activity),
+    activity => isSelf(activity.actor, viewer) && activity.body && isClaimActivity(activity),
   )
 }
 
-function latestClaimActivity(activities: Activity[]): Activity | undefined {
+function latestClaimActivity(activities: Activity[], viewer: string): Activity | undefined {
   const claims = sortedComments(activities).filter(
     activity =>
-      isSelf(activity.actor) &&
+      isSelf(activity.actor, viewer) &&
       activity.body &&
       (isClaimActivity(activity) || isAskActivity(activity)),
   )
   return claims.at(-1)
 }
 
-function maintainerRepliedAfter(activities: Activity[], at: string): boolean {
+function maintainerRepliedAfter(activities: Activity[], at: string, viewer: string): boolean {
   const moment = Date.parse(at)
   return sortedComments(activities).some(
     activity =>
       Date.parse(activity.at) > moment &&
-      !isSelf(activity.actor) &&
+      !isSelf(activity.actor, viewer) &&
       !isBot(activity.actor) &&
       (maintainerApproved(activity) ||
         (activity.classification?.maintainerOk === undefined &&
@@ -53,40 +53,42 @@ function maintainerRepliedAfter(activities: Activity[], at: string): boolean {
   )
 }
 
-function assignedToSomeoneElse(item: Item): boolean {
+function assignedToSomeoneElse(item: Item, viewer: string): boolean {
   const assignees = item.assignees ?? []
-  return assignees.length > 0 && !assignees.some(assignee => isSelf(assignee))
+  return assignees.length > 0 && !assignees.some(assignee => isSelf(assignee, viewer))
 }
 
 export function isClaimInvalidated(item: Item): boolean {
+  const viewer = viewerLoginOf(item)
   if (item.kind !== 'issue') return false
   if (item.state === 'closed' || item.state === 'merged') return true
 
-  if (assignedToSomeoneElse(item)) return true
+  if (assignedToSomeoneElse(item, viewer)) return true
 
-  const othersPr = item.linkedPullRequests?.some(pr => !isSelf(pr.author)) ?? false
+  const othersPr = item.linkedPullRequests?.some(pr => !isSelf(pr.author, viewer)) ?? false
   if (othersPr) return true
 
   return sortedComments(item.activities).some(
-    activity => isSelf(activity.actor) && activity.body && isWithdrawActivity(activity),
+    activity => isSelf(activity.actor, viewer) && activity.body && isWithdrawActivity(activity),
   )
 }
 
 export function claimLevel(item: Item): ClaimLevel | null {
+  const viewer = viewerLoginOf(item)
   if (item.kind !== 'issue' || isClaimInvalidated(item)) return null
 
-  if (item.assignees?.some(assignee => isSelf(assignee))) return 'assigned'
+  if (item.assignees?.some(assignee => isSelf(assignee, viewer))) return 'assigned'
 
-  const claims = myClaimComments(item.activities)
+  const claims = myClaimComments(item.activities, viewer)
   const questionOnly =
     claims.length === 0 &&
     sortedComments(item.activities).some(
-      activity => isSelf(activity.actor) && activity.body && isAskActivity(activity),
+      activity => isSelf(activity.actor, viewer) && activity.body && isAskActivity(activity),
     )
   if (claims.length === 0 && !questionOnly) return null
 
   for (const claim of claims) {
-    if (canConfirmClaim(claim) && maintainerRepliedAfter(item.activities, claim.at)) {
+    if (canConfirmClaim(claim) && maintainerRepliedAfter(item.activities, claim.at, viewer)) {
       return 'confirmed'
     }
   }
@@ -95,22 +97,27 @@ export function claimLevel(item: Item): ClaimLevel | null {
 }
 
 export function pendingClaimQuestion(item: Item): boolean {
+  const viewer = viewerLoginOf(item)
   if (item.kind !== 'issue') return false
   if (!claimLevel(item)) return false
 
-  const latest = latestClaimActivity(item.activities)
+  const latest = latestClaimActivity(item.activities, viewer)
   if (!latest?.body || !isAskActivity(latest)) return false
-  return !maintainerRepliedAfter(item.activities, latest.at)
+  return !maintainerRepliedAfter(item.activities, latest.at, viewer)
 }
 
 export function hideIssueForLinkedPr(item: Item): boolean {
+  const viewer = viewerLoginOf(item)
   if (item.kind !== 'issue') return false
-  return item.linkedPullRequests?.some(pr => isSelf(pr.author) && pr.state === 'open') ?? false
+  return (
+    item.linkedPullRequests?.some(pr => isSelf(pr.author, viewer) && pr.state === 'open') ?? false
+  )
 }
 
 export function includeIssueOnBoard(item: Item): boolean {
+  const viewer = viewerLoginOf(item)
   if (item.kind !== 'issue') return true
-  if (isSelf(item.author)) return true
+  if (isSelf(item.author, viewer)) return true
   if (isClaimInvalidated(item)) return false
   return claimLevel(item) !== null
 }
@@ -122,7 +129,7 @@ export function selfClaimedStaleTone(ageMs: number): Tone {
 }
 
 export function claimWaitingSince(item: Item): string {
-  const latest = latestClaimActivity(item.activities)
+  const latest = latestClaimActivity(item.activities, viewerLoginOf(item))
   if (latest) return latest.at
   return item.createdAt
 }

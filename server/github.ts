@@ -3,6 +3,7 @@ import { enrichItemsFromRest } from './github-rest'
 import { maybeClassifyTurn } from './turn-classifier'
 import { hideIssueForLinkedPr, includeIssueOnBoard } from '../shared/claim'
 import { mergeLinkedItems } from '../shared/timeline'
+import type { TimelineLink } from '../shared/turn'
 import {
   type Activity,
   type Actor,
@@ -16,8 +17,19 @@ import {
   type BoardItem,
 } from '../shared/turn'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 25
 const MAX_PAGES = 5
+
+export function boardSearchQueries(login: string, since: string): string[] {
+  const user = login.trim()
+  return [
+    `author:${user} -user:${user} is:pr is:open`,
+    `author:${user} -user:${user} is:pr is:closed closed:>=${since}`,
+    `author:${user} -user:${user} is:issue is:open`,
+    `author:${user} -user:${user} is:issue is:closed closed:>=${since}`,
+    `commenter:${user} -user:${user} is:issue is:open`,
+  ]
+}
 
 type RawActor = {
   __typename?: string
@@ -74,11 +86,21 @@ type RawPullRequest = {
   repository?: { nameWithOwner?: string }
 }
 
+type RawTimelineSubject = {
+  __typename?: string
+  number?: number
+  url?: string
+  state?: string
+  merged?: boolean
+  repository?: { nameWithOwner?: string }
+}
+
 type RawTimeline = {
   __typename?: string
   createdAt?: string
   actor?: RawActor | null
   source?: RawPullRequest | null
+  subject?: RawTimelineSubject | null
 }
 
 type RawNode = {
@@ -175,12 +197,51 @@ const QUERY = `
               }
             }
           }
-          timelineItems(last: 20, itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT]) {
+          timelineItems(
+            last: 30
+            itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT, CROSS_REFERENCED_EVENT, CONNECTED_EVENT]
+          ) {
             nodes {
               __typename
               ... on HeadRefForcePushedEvent {
                 createdAt
                 actor { __typename login }
+              }
+              ... on CrossReferencedEvent {
+                source {
+                  __typename
+                  ... on PullRequest {
+                    number
+                    url
+                    state
+                    merged
+                    repository { nameWithOwner }
+                  }
+                  ... on Issue {
+                    number
+                    url
+                    state
+                    repository { nameWithOwner }
+                  }
+                }
+              }
+              ... on ConnectedEvent {
+                subject {
+                  __typename
+                  ... on PullRequest {
+                    number
+                    url
+                    state
+                    merged
+                    repository { nameWithOwner }
+                  }
+                  ... on Issue {
+                    number
+                    url
+                    state
+                    repository { nameWithOwner }
+                  }
+                }
               }
             }
           }
@@ -210,7 +271,7 @@ const QUERY = `
               author { __typename login }
             }
           }
-          timelineItems(last: 30, itemTypes: [CROSS_REFERENCED_EVENT]) {
+          timelineItems(last: 40, itemTypes: [CROSS_REFERENCED_EVENT, CONNECTED_EVENT]) {
             nodes {
               __typename
               ... on CrossReferencedEvent {
@@ -222,6 +283,31 @@ const QUERY = `
                     state
                     merged
                     author { __typename login }
+                    repository { nameWithOwner }
+                  }
+                  ... on Issue {
+                    number
+                    url
+                    state
+                    repository { nameWithOwner }
+                  }
+                }
+              }
+              ... on ConnectedEvent {
+                subject {
+                  __typename
+                  ... on PullRequest {
+                    number
+                    url
+                    state
+                    merged
+                    author { __typename login }
+                    repository { nameWithOwner }
+                  }
+                  ... on Issue {
+                    number
+                    url
+                    state
                     repository { nameWithOwner }
                   }
                 }
@@ -312,7 +398,43 @@ function mapContext(node: RawCheckRun | RawStatusContext): Check | null {
   }
 }
 
-export function mapNode(node: RawNode): Item | null {
+function timelineSubjectToLink(
+  event: 'cross-referenced' | 'connected',
+  subject: RawTimelineSubject | null | undefined,
+): TimelineLink | null {
+  if (!subject?.number || !subject.repository?.nameWithOwner || !subject.state) return null
+  const kind =
+    subject.__typename === 'PullRequest' || subject.url?.includes('/pull/') ? 'pr' : 'issue'
+  return {
+    event,
+    repo: subject.repository.nameWithOwner,
+    number: subject.number,
+    kind,
+    url: subject.url,
+  }
+}
+
+function timelineLinksFromNode(node: RawNode): TimelineLink[] {
+  const links: TimelineLink[] = []
+  for (const event of node.timelineItems?.nodes ?? []) {
+    if (!event) continue
+    if (event.__typename === 'CrossReferencedEvent') {
+      const source = event.source
+      if (source?.__typename === 'PullRequest' || source?.__typename === 'Issue') {
+        const link = timelineSubjectToLink('cross-referenced', source)
+        if (link) links.push(link)
+      }
+      continue
+    }
+    if (event.__typename === 'ConnectedEvent') {
+      const link = timelineSubjectToLink('connected', event.subject)
+      if (link) links.push(link)
+    }
+  }
+  return links
+}
+
+export function mapNode(node: RawNode, viewerLogin?: string): Item | null {
   if (node.__typename !== 'PullRequest' && node.__typename !== 'Issue') return null
   if (
     !node.number ||
@@ -436,6 +558,8 @@ export function mapNode(node: RawNode): Item | null {
     body: node.body,
     updatedAt: node.updatedAt,
     headSha: node.headRefOid,
+    timelineLinks: timelineLinksFromNode(node),
+    viewerLogin,
   }
 }
 
@@ -463,19 +587,14 @@ async function graphql(
 
 export async function loadBoard(
   token: string,
+  viewerLogin: string,
   now: Date,
   classifierEnv: ClaimClassifierEnv = {},
   options: { fresh?: boolean } = {},
 ): Promise<{ items: BoardItem[]; truncated: boolean }> {
   const since = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  const queries = [
-    // GraphQL search ignores parenthesised OR groups and returns 0, so split them.
-    `author:0froq -user:0froq is:pr is:open`,
-    `author:0froq -user:0froq is:pr is:closed closed:>=${since}`,
-    `author:0froq -user:0froq is:issue is:open`,
-    `author:0froq -user:0froq is:issue is:closed closed:>=${since}`,
-    `commenter:0froq -user:0froq is:issue is:open`,
-  ]
+  const queries = boardSearchQueries(viewerLogin, since)
+  const env = { ...classifierEnv, viewerLogin }
   const seen = new Set<string>()
   const raw: Item[] = []
   let truncated = false
@@ -486,7 +605,7 @@ export async function loadBoard(
       const data = await graphql(token, query, cursor)
       for (const node of data.search?.nodes ?? []) {
         if (!node) continue
-        const mapped = mapNode(node)
+        const mapped = mapNode(node, viewerLogin)
         if (!mapped || seen.has(`${mapped.repo}#${mapped.number}`)) continue
         seen.add(`${mapped.repo}#${mapped.number}`)
         raw.push(mapped)
@@ -502,8 +621,15 @@ export async function loadBoard(
     }
   }
 
-  await enrichItemsFromRest(token, raw, classifierEnv.CACHE, now.getTime(), options.fresh === true)
-  await enrichIssueClassificationsForEnv(raw, classifierEnv, now.getTime())
+  await enrichItemsFromRest(
+    token,
+    viewerLogin,
+    raw,
+    classifierEnv.CACHE,
+    now.getTime(),
+    options.fresh === true,
+  )
+  await enrichIssueClassificationsForEnv(raw, env, now.getTime())
 
   const visible = mergeLinkedItems(raw)
     .filter(item => includeIssueOnBoard(item))
@@ -512,9 +638,7 @@ export async function loadBoard(
   const items: BoardItem[] = []
   for (const item of visible) {
     const board = present(item, now.getTime())
-    items.push(
-      await maybeClassifyTurn(item, board, classifierEnv, now.getTime(), options.fresh === true),
-    )
+    items.push(await maybeClassifyTurn(item, board, env, now.getTime(), options.fresh === true))
   }
 
   return { items, truncated }

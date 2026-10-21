@@ -16,19 +16,36 @@ type ThemeName = 'light' | 'dark'
 type BoardResponse = {
   generatedAt: string
   cached: boolean
+  revalidating?: boolean
   truncated: boolean
   mock: boolean
   stats: ReturnType<typeof summarize>
   items: BoardItem[]
+  viewerLogin?: string
 }
+
+type MeResponse = { authenticated: false } | { authenticated: true; login: string }
+
+type SettingsResponse =
+  | { configured: false; baseUrl: string; model: string }
+  | { configured: true; baseUrl: string; model: string }
 
 const items = ref<BoardItem[]>([])
 const generatedAt = ref<string | null>(null)
 const cached = ref(false)
+const revalidating = ref(false)
 const truncated = ref(false)
 const mock = ref(false)
 const pending = ref(true)
 const error = ref('')
+const viewerLogin = ref('')
+const settingsOpen = ref(false)
+const settingsBaseUrl = ref('')
+const settingsModel = ref('')
+const settingsApiKey = ref('')
+const settingsSaving = ref(false)
+const settingsMessage = ref('')
+let revalidateTimer: ReturnType<typeof setTimeout> | null = null
 const repo = ref('')
 const selectedId = ref('')
 const theme = ref<ThemeName>('light')
@@ -153,8 +170,26 @@ function onKey(event: KeyboardEvent) {
   }
 }
 
-async function load(refresh = false) {
-  pending.value = true
+function applyBoard(body: BoardResponse): void {
+  items.value = body.items
+  generatedAt.value = body.generatedAt
+  cached.value = body.cached
+  revalidating.value = body.revalidating === true
+  truncated.value = body.truncated
+  mock.value = body.mock
+  if (body.viewerLogin) viewerLogin.value = body.viewerLogin
+}
+
+function scheduleRevalidatePoll(): void {
+  if (revalidateTimer) clearTimeout(revalidateTimer)
+  if (!revalidating.value) return
+  revalidateTimer = setTimeout(() => {
+    void load(false, true)
+  }, 4000)
+}
+
+async function load(refresh = false, quiet = false): Promise<void> {
+  if (!quiet) pending.value = true
   error.value = ''
   const params = new URLSearchParams()
   if (import.meta.dev) params.set('mock', '1')
@@ -162,27 +197,88 @@ async function load(refresh = false) {
   const query = params.size > 0 ? `?${params.toString()}` : ''
   try {
     const body = await $fetch<BoardResponse>(`/api/board${query}`)
-    items.value = body.items
-    generatedAt.value = body.generatedAt
-    cached.value = body.cached
-    truncated.value = body.truncated
-    mock.value = body.mock
+    applyBoard(body)
+    scheduleRevalidatePoll()
   } catch (caught) {
+    const status =
+      caught && typeof caught === 'object' && 'statusCode' in caught
+        ? (caught as { statusCode?: number }).statusCode
+        : undefined
+    if (status === 401 && !import.meta.dev) {
+      await navigateTo('/login')
+      return
+    }
     error.value = caught instanceof Error ? caught.message : 'Could not load board'
   } finally {
-    pending.value = false
+    if (!quiet) pending.value = false
   }
 }
 
-onMounted(() => {
+async function logout(): Promise<void> {
+  await $fetch('/api/auth/logout', { method: 'POST' })
+  await navigateTo('/login')
+}
+
+async function openSettings(): Promise<void> {
+  settingsMessage.value = ''
+  settingsApiKey.value = ''
+  try {
+    const body = await $fetch<SettingsResponse>('/api/settings')
+    settingsBaseUrl.value = body.baseUrl
+    settingsModel.value = body.model
+    settingsOpen.value = true
+  } catch {
+    settingsMessage.value = 'Could not load settings'
+    settingsOpen.value = true
+  }
+}
+
+async function saveSettings(clear = false): Promise<void> {
+  settingsSaving.value = true
+  settingsMessage.value = ''
+  try {
+    await $fetch('/api/settings', {
+      method: 'PUT',
+      body: clear
+        ? { clear: true }
+        : {
+            baseUrl: settingsBaseUrl.value,
+            model: settingsModel.value,
+            apiKey: settingsApiKey.value,
+          },
+    })
+    settingsMessage.value = clear ? 'BYOK cleared' : 'Settings saved'
+    settingsApiKey.value = ''
+  } catch (caught) {
+    settingsMessage.value = caught instanceof Error ? caught.message : 'Could not save settings'
+  } finally {
+    settingsSaving.value = false
+  }
+}
+
+onMounted(async () => {
   theme.value = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
   themeReady.value = true
   window.addEventListener('keydown', onKey)
+  if (!import.meta.dev) {
+    try {
+      const me = await $fetch<MeResponse>('/api/auth/me')
+      if (!me.authenticated) {
+        await navigateTo('/login')
+        return
+      }
+      viewerLogin.value = me.login
+    } catch {
+      await navigateTo('/login')
+      return
+    }
+  }
   void load(false)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
+  if (revalidateTimer) clearTimeout(revalidateTimer)
 })
 
 function replyLabel(ms: number | null): string {
@@ -196,11 +292,15 @@ function replyLabel(ms: number | null): string {
     <header class="top">
       <div class="brand">
         <h1>osdash</h1>
-        <p class="quiet">0froq open-source contributions, read-only</p>
+        <p class="quiet">
+          <template v-if="viewerLogin">{{ viewerLogin }} · read-only</template>
+          <template v-else>open-source contributions, read-only</template>
+        </p>
       </div>
       <p class="hint">
         h / l groups · j / k move · o open
         <template v-if="mock"> · local sample</template>
+        <template v-else-if="revalidating"> · updating…</template>
         <template v-else-if="cached"> · cached</template>
         <template v-if="truncated"> · capped at 100</template>
       </p>
@@ -222,6 +322,22 @@ function replyLabel(ms: number | null): string {
             </option>
           </select>
         </label>
+        <button
+          v-if="!mock"
+          class="refresh"
+          type="button"
+          @click="openSettings"
+        >
+          Settings
+        </button>
+        <button
+          v-if="!mock"
+          class="refresh"
+          type="button"
+          @click="logout"
+        >
+          Sign out
+        </button>
         <button
           class="refresh"
           type="button"
@@ -259,6 +375,77 @@ function replyLabel(ms: number | null): string {
         </div>
       </div>
     </header>
+
+    <dialog
+      v-if="settingsOpen"
+      open
+      class="settings-dialog"
+    >
+      <form
+        method="dialog"
+        class="settings-panel"
+        @submit.prevent
+      >
+        <h2>Classifier (BYOK)</h2>
+        <p class="quiet">
+          Optional OpenAI-compatible API for ambiguous turn classification. Workers AI clef stays on
+          for 0froq only.
+        </p>
+        <label>
+          <span class="quiet">Base URL</span>
+          <input
+            v-model="settingsBaseUrl"
+            type="url"
+            placeholder="https://api.openai.com/v1"
+          />
+        </label>
+        <label>
+          <span class="quiet">Model</span>
+          <input
+            v-model="settingsModel"
+            type="text"
+            placeholder="gpt-4o-mini"
+          />
+        </label>
+        <label>
+          <span class="quiet">API key</span>
+          <input
+            v-model="settingsApiKey"
+            type="password"
+            autocomplete="off"
+          />
+        </label>
+        <p
+          v-if="settingsMessage"
+          class="quiet"
+          >{{ settingsMessage }}</p
+        >
+        <p class="actions">
+          <button
+            class="button"
+            type="button"
+            :disabled="settingsSaving"
+            @click="saveSettings(false)"
+          >
+            Save
+          </button>
+          <button
+            class="button"
+            type="button"
+            :disabled="settingsSaving"
+            @click="saveSettings(true)"
+          >
+            Clear
+          </button>
+          <button
+            class="button"
+            type="button"
+            @click="settingsOpen = false"
+            >Close</button
+          >
+        </p>
+      </form>
+    </dialog>
 
     <p
       v-if="error"

@@ -9,7 +9,7 @@ import {
 } from './contribution'
 
 export { contributionLabel } from './contribution'
-import { isBot, isSelf } from './identity'
+import { isBot, isSelf, viewerLoginOf } from './identity'
 import {
   asksForPrOrRebase,
   isCoderabbitActionable,
@@ -128,6 +128,8 @@ export type Item = {
   timelineLinks?: TimelineLink[]
   /** Set when an issue and its pull request were merged into this item. */
   parts?: ItemPart[]
+  /** Logged-in GitHub user this board row was judged for. */
+  viewerLogin?: string
 }
 
 export type Turn = 'mine' | 'maintainer' | 'other' | 'none'
@@ -245,12 +247,12 @@ function latestDecidedReview(activities: Activity[]): Activity | undefined {
     .at(-1)
 }
 
-function pushedBySelfAfter(activities: Activity[], at: string): boolean {
+function pushedBySelfAfter(activities: Activity[], at: string, viewer: string): boolean {
   const moment = Date.parse(at)
   return activities.some(
     activity =>
       activity.kind === 'push' &&
-      isSelf(activity.actor) &&
+      isSelf(activity.actor, viewer) &&
       !isBot(activity.actor) &&
       Date.parse(activity.at) > moment,
   )
@@ -275,20 +277,20 @@ function reviewReason(login: string, state: ReviewState): string {
   }
 }
 
-function humanReason(activity: Activity): string {
+function humanReason(activity: Activity, viewer: string): string {
   switch (activity.kind) {
     case 'create':
       return 'Opened, waiting on maintainer'
     case 'comment':
-      return isSelf(activity.actor)
+      return isSelf(activity.actor, viewer)
         ? 'Replied, waiting on maintainer'
         : `${activity.actor.login} commented`
     case 'review':
-      return isSelf(activity.actor)
+      return isSelf(activity.actor, viewer)
         ? 'Replied, waiting on maintainer'
         : reviewReason(activity.actor.login, activity.reviewState ?? 'COMMENTED')
     case 'push':
-      return isSelf(activity.actor)
+      return isSelf(activity.actor, viewer)
         ? 'Pushed, waiting on maintainer'
         : `${activity.actor.login} pushed commits`
     default: {
@@ -347,14 +349,14 @@ function relevantActivities(activities: Activity[]): Activity[] {
   return activities.filter(activity => !isDroppedBot(activity))
 }
 
-function withoutPoliteTail(activities: Activity[]): Activity[] {
+function withoutPoliteTail(activities: Activity[], viewer: string): Activity[] {
   const copy = [...activities]
   while (copy.length > 0) {
     const last = copy.at(-1)
     if (
       last &&
       last.kind === 'comment' &&
-      isSelf(last.actor) &&
+      isSelf(last.actor, viewer) &&
       last.body &&
       isPoliteCloser(last.body)
     ) {
@@ -366,11 +368,11 @@ function withoutPoliteTail(activities: Activity[]): Activity[] {
   return copy
 }
 
-function selfActedAfter(activities: Activity[], at: string): boolean {
+function selfActedAfter(activities: Activity[], at: string, viewer: string): boolean {
   const moment = Date.parse(at)
   return activities.some(
     activity =>
-      isSelf(activity.actor) &&
+      isSelf(activity.actor, viewer) &&
       !isBot(activity.actor) &&
       Date.parse(activity.at) > moment &&
       (activity.kind === 'comment' || activity.kind === 'review' || activity.kind === 'push'),
@@ -378,10 +380,11 @@ function selfActedAfter(activities: Activity[], at: string): boolean {
 }
 
 function coreVerdict(item: Item, nowMs: number): CoreVerdict {
+  const viewer = viewerLoginOf(item)
   const activities = withCreation(item)
   const relevant = relevantActivities(activities)
   const lastRelevant = relevant.at(-1) ?? activities[0]!
-  const lastHuman = withoutPoliteTail(relevant).at(-1) ?? lastRelevant
+  const lastHuman = withoutPoliteTail(relevant, viewer).at(-1) ?? lastRelevant
   const waitingSince = lastRelevant.at
   const ageMs = Math.max(0, nowMs - Date.parse(waitingSince))
   const labels: BoardLabel[] = awaitingCi(item.checks) ? ['CI awaiting approval'] : []
@@ -454,12 +457,15 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
   }
 
   const claComment = [...relevant].reverse().find(isFailingClaComment)
-  if (claComment && !selfActedAfter(relevant, claComment.at)) {
+  if (claComment && !selfActedAfter(relevant, claComment.at, viewer)) {
     return { ...quiet, turn: 'mine', reason: 'CLA check failed', tone: 'none' }
   }
 
   const review = latestDecidedReview(activities)
-  if (review?.reviewState === 'CHANGES_REQUESTED' && !pushedBySelfAfter(activities, review.at)) {
+  if (
+    review?.reviewState === 'CHANGES_REQUESTED' &&
+    !pushedBySelfAfter(activities, review.at, viewer)
+  ) {
     return {
       ...quiet,
       turn: 'mine',
@@ -469,7 +475,7 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
   }
 
   const rabbit = [...relevant].reverse().find(isCoderabbitActionable)
-  if (rabbit && !selfActedAfter(relevant, rabbit.at)) {
+  if (rabbit && !selfActedAfter(relevant, rabbit.at, viewer)) {
     return { ...quiet, turn: 'mine', reason: 'CodeRabbit asked for changes', tone: 'none' }
   }
 
@@ -478,11 +484,11 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
       activity =>
         (activity.kind === 'comment' || activity.kind === 'review') &&
         Boolean(activity.body) &&
-        isMaintainerActivity(activity),
+        isMaintainerActivity(activity, viewer),
     )
     .at(-1)
-  if (lastMaintainer?.body && !selfActedAfter(relevant, lastMaintainer.at)) {
-    if (mentionsSelf(lastMaintainer.body)) {
+  if (lastMaintainer?.body && !selfActedAfter(relevant, lastMaintainer.at, viewer)) {
+    if (mentionsSelf(lastMaintainer.body, viewer)) {
       return {
         ...quiet,
         turn: 'mine',
@@ -500,7 +506,7 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
     }
   }
 
-  if (lastHuman.kind === 'comment' && lastHuman.body && isSelf(lastHuman.actor)) {
+  if (lastHuman.kind === 'comment' && lastHuman.body && isSelf(lastHuman.actor, viewer)) {
     if (isQuestionText(lastHuman.body)) {
       const turn: Turn = 'maintainer'
       return {
@@ -522,7 +528,7 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
       return {
         ...quiet,
         turn,
-        reason: humanReason(lastHuman),
+        reason: humanReason(lastHuman, viewer),
         tone: waitingTone(turn, ageMs),
         ambiguous: true,
         focusCommentId: lastHuman.commentId ?? lastHuman.url ?? null,
@@ -531,24 +537,24 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
     }
   }
 
-  if (!isSelf(lastHuman.actor)) {
-    if (isMaintainerActivity(lastHuman)) {
+  if (!isSelf(lastHuman.actor, viewer)) {
+    if (isMaintainerActivity(lastHuman, viewer)) {
       const turn: Turn = 'maintainer'
       return {
         ...quiet,
         turn,
-        reason: humanReason(lastHuman),
+        reason: humanReason(lastHuman, viewer),
         tone: waitingTone(turn, ageMs),
       }
     }
-    return { ...quiet, turn: 'other', reason: humanReason(lastHuman), tone: 'none' }
+    return { ...quiet, turn: 'other', reason: humanReason(lastHuman, viewer), tone: 'none' }
   }
 
   const turn: Turn = 'maintainer'
   return {
     ...quiet,
     turn,
-    reason: humanReason(lastHuman),
+    reason: humanReason(lastHuman, viewer),
     tone: waitingTone(turn, ageMs),
   }
 }
@@ -582,9 +588,11 @@ export function withResolvedTurn<T extends Verdict>(
 }
 
 export function firstReplyMs(item: Item): number | null {
+  const viewer = viewerLoginOf(item)
   const created = Date.parse(item.createdAt)
   const reply = withCreation(item).find(
-    activity => activity.kind !== 'create' && !isBot(activity.actor) && !isSelf(activity.actor),
+    activity =>
+      activity.kind !== 'create' && !isBot(activity.actor) && !isSelf(activity.actor, viewer),
   )
   if (!reply) return null
   return Date.parse(reply.at) - created

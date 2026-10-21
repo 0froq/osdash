@@ -8,7 +8,8 @@ import {
   shouldClassifyMaintainerComment,
 } from '../shared/claim-classifier'
 import type { CommentClassification } from '../shared/claim-types'
-import { isSelf } from '../shared/identity'
+import { isSelf, viewerLoginOf } from '../shared/identity'
+import { clefEnabledForUser, usesWorkersAiClef, type ByokSettings } from './byok'
 import { isMaintainerAssociation } from '../shared/claim-types'
 import type { Item } from '../shared/turn'
 
@@ -17,20 +18,27 @@ const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
 export type ClaimClassifierEnv = {
   AI?: AiBinding
   CACHE?: CacheStore
+  viewerLogin?: string
+  byok?: ByokSettings | null
 }
 
 export function createCachingClaimClassifier(
   env: ClaimClassifierEnv,
   nowMs: number,
 ): ClaimCommentClassifier {
-  const inner = createClefClaimClassifier(env.AI)
+  const viewerLogin = env.viewerLogin ?? '0froq'
+  const inner = createClefClaimClassifier(
+    clefEnabledForUser(viewerLogin, env.byok ?? null) && usesWorkersAiClef(viewerLogin)
+      ? env.AI
+      : undefined,
+  )
 
   return {
     async classify(context: ClaimClassifierContext): Promise<CommentClassification> {
       const commentId = context.comment.commentId
       const updatedAt = context.comment.updatedAt ?? context.comment.at
       if (commentId) {
-        const key = cacheKeyForComment(commentId, updatedAt)
+        const key = cacheKeyForComment(commentId, updatedAt, viewerLogin)
         const hit = await readCache(env.CACHE, key, nowMs)
         if (hit) {
           const parsed = JSON.parse(hit) as CommentClassification
@@ -51,10 +59,11 @@ export async function enrichIssueClassifications(
 ): Promise<void> {
   for (const item of items) {
     if (item.kind !== 'issue') continue
+    const viewer = viewerLoginOf(item)
     for (const activity of item.activities) {
       if (activity.kind !== 'comment' || !activity.body) continue
       let role: ClaimClassifierContext['role'] | null = null
-      if (isSelf(activity.actor)) role = 'self'
+      if (isSelf(activity.actor, viewer)) role = 'self'
       else if (
         isMaintainerAssociation(activity.authorAssociation) &&
         shouldClassifyMaintainerComment(item, activity)

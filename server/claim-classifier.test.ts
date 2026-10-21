@@ -193,7 +193,7 @@ it('reuses KV cache entries keyed by comment id and updated_at', async () => {
   await enrichIssueClassifications(items, classifier)
   await enrichIssueClassifications(items, classifier)
   assert.equal(calls, 1)
-  const key = cacheKeyForComment(comment.commentId!, comment.updatedAt!)
+  const key = cacheKeyForComment(comment.commentId!, comment.updatedAt!, '0froq')
   assert.equal(memory.has(key), true)
   assert.equal(items[0]!.activities[0]!.classification?.source, 'cache')
 })

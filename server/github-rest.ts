@@ -8,15 +8,17 @@ export const CHECKS_TTL_SECONDS = 10 * 60
 const POOL = 4
 
 export function timelineCacheKey(
+  viewerLogin: string,
   repo: string,
   number: number,
   updatedAt: string | undefined,
 ): string {
-  return updatedAt ? `timeline:v1:${repo}#${number}:${updatedAt}` : `timeline:v1:${repo}#${number}`
+  const base = `${viewerLogin}:${repo}#${number}`
+  return updatedAt ? `timeline:v2:${base}:${updatedAt}` : `timeline:v2:${base}`
 }
 
-export function checksCacheKey(repo: string, sha: string): string {
-  return `checks:v1:${repo}:${sha}`
+export function checksCacheKey(viewerLogin: string, repo: string, sha: string): string {
+  return `checks:v2:${viewerLogin}:${repo}:${sha}`
 }
 
 function githubHeaders(token: string): HeadersInit {
@@ -90,6 +92,7 @@ async function mapPool(items: Item[], run: (item: Item) => Promise<void>): Promi
 
 export async function enrichItemsFromRest(
   token: string,
+  viewerLogin: string,
   items: Item[],
   store: CacheStore | undefined,
   nowMs: number,
@@ -99,22 +102,24 @@ export async function enrichItemsFromRest(
   await mapPool(items, async item => {
     if (stop.stop) return
     try {
-      const timelineKey = timelineCacheKey(item.repo, item.number, item.updatedAt)
+      const timelineKey = timelineCacheKey(viewerLogin, item.repo, item.number, item.updatedAt)
       let links = item.timelineLinks ?? []
-      const timelineHit = fresh ? null : await readCache(store, timelineKey, nowMs)
-      if (timelineHit) {
-        links = JSON.parse(timelineHit) as typeof links
-      } else {
-        const events = await loadTimeline(token, item, stop)
-        if (events) {
-          links = linksFromTimeline(events)
-          await writeCache(store, timelineKey, JSON.stringify(links), TIMELINE_TTL_SECONDS, nowMs)
+      if (links.length === 0) {
+        const timelineHit = fresh ? null : await readCache(store, timelineKey, nowMs)
+        if (timelineHit) {
+          links = JSON.parse(timelineHit) as typeof links
+        } else {
+          const events = await loadTimeline(token, item, stop)
+          if (events) {
+            links = linksFromTimeline(events)
+            await writeCache(store, timelineKey, JSON.stringify(links), TIMELINE_TTL_SECONDS, nowMs)
+          }
         }
       }
       item.timelineLinks = links
 
       if (item.kind !== 'pr' || !item.headSha) return
-      const checksKey = checksCacheKey(item.repo, item.headSha)
+      const checksKey = checksCacheKey(viewerLogin, item.repo, item.headSha)
       const checksHit = fresh ? null : await readCache(store, checksKey, nowMs)
       if (checksHit) {
         item.checks = mergeCheckLists(item.checks, JSON.parse(checksHit) as Item['checks'])

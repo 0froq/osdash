@@ -39,7 +39,7 @@ export default defineNuxtConfig({
       meta: [
         { name: 'description', content: 'Read-only dashboard for froQ open-source contributions' },
         { name: 'color-scheme', content: 'light dark' },
-        { name: 'robots', content: 'noindex' },
+        { name: 'robots', content: 'index,follow' },
       ],
       script: [
         {

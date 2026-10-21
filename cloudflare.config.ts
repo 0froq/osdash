@@ -23,9 +23,13 @@ export default defineConfig({
     env: {
       CACHE: bindings.kv(),
       AI: bindings.ai(),
+      GITHUB_CLIENT_ID: bindings.secret(),
+      GITHUB_CLIENT_SECRET: bindings.secret(),
+      SESSION_SECRET: bindings.secret(),
       GITHUB_TOKEN: bindings.secret(),
       ACCESS_TEAM_DOMAIN: bindings.secret(),
       ACCESS_AUD: bindings.secret(),
+      OSDASH_ACCESS_ENFORCE: 'true',
     },
   },
 })
