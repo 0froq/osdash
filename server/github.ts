@@ -1,9 +1,10 @@
 import { enrichIssueClassificationsForEnv, type ClaimClassifierEnv } from './claim-classifier'
 import { enrichItemsFromRest } from './github-rest'
 import { maybeClassifyTurn } from './turn-classifier'
-import { hideIssueForLinkedPr, includeIssueOnBoard } from '../shared/claim'
 import { isSelf } from '../shared/identity'
-import { mergeLinkedItems } from '../shared/timeline'
+import { combineItems } from '../shared/timeline'
+import { buildUnitDrafts, toUnit, type UnitDraft } from '../shared/units'
+import type { Unit } from '../shared/unit'
 import type { TimelineLink } from '../shared/turn'
 import {
   type Activity,
@@ -16,8 +17,7 @@ import {
   type ItemState,
   type LinkedPullRequest,
   type ReviewState,
-  present,
-  type BoardItem,
+  judge,
 } from '../shared/turn'
 
 const PAGE_SIZE = 25
@@ -348,6 +348,76 @@ ${PULL_REQUEST_FIELDS}
   }
 `
 
+const ISSUE_FIELDS = `
+          number
+          title
+          url
+          state
+          closedAt
+          createdAt
+          updatedAt
+          body
+          repository { nameWithOwner }
+          author { __typename login }
+          assignees(first: 10) {
+            nodes { __typename login }
+          }
+          comments(last: 30) {
+            nodes {
+              id
+              url
+              createdAt
+              updatedAt
+              body
+              authorAssociation
+              author { __typename login }
+            }
+          }
+          timelineItems(last: 40, itemTypes: [CROSS_REFERENCED_EVENT, CONNECTED_EVENT]) {
+            nodes {
+              __typename
+              ... on CrossReferencedEvent {
+                source {
+                  __typename
+                  ... on PullRequest {
+                    number
+                    url
+                    state
+                    merged
+                    author { __typename login }
+                    repository { nameWithOwner }
+                  }
+                  ... on Issue {
+                    number
+                    url
+                    state
+                    repository { nameWithOwner }
+                  }
+                }
+              }
+              ... on ConnectedEvent {
+                subject {
+                  __typename
+                  ... on PullRequest {
+                    number
+                    url
+                    state
+                    merged
+                    author { __typename login }
+                    repository { nameWithOwner }
+                  }
+                  ... on Issue {
+                    number
+                    url
+                    state
+                    repository { nameWithOwner }
+                  }
+                }
+              }
+            }
+          }
+`
+
 const PULL_BY_NUMBER = `
   query LinkedPull($owner: String!, $name: String!, $number: Int!) {
     repository(owner: $owner, name: $name) {
@@ -359,12 +429,32 @@ ${PULL_REQUEST_FIELDS}
   }
 `
 
+const ISSUE_BY_NUMBER = `
+  query ClosingIssue($owner: String!, $name: String!, $number: Int!) {
+    repository(owner: $owner, name: $name) {
+      issue(number: $number) {
+        __typename
+${ISSUE_FIELDS}
+      }
+    }
+  }
+`
+
 type PullByNumberPayload = {
   data?: {
     repository?: { pullRequest?: RawNode | null } | null
   }
   errors?: Array<{ message?: string }>
 }
+
+type IssueByNumberPayload = {
+  data?: {
+    repository?: { issue?: RawNode | null } | null
+  }
+  errors?: Array<{ message?: string }>
+}
+
+const MAX_CLOSING_ISSUE_HYDRATIONS = 20
 
 function parseRepo(nameWithOwner: string): { owner: string; name: string } | null {
   const slash = nameWithOwner.indexOf('/')
@@ -418,6 +508,75 @@ function collectMissingSelfLinkedPulls(
     }
   }
   return links
+}
+
+async function fetchIssueByNumber(
+  token: string,
+  repo: string,
+  number: number,
+  viewerLogin: string,
+): Promise<Item | null> {
+  const parts = parseRepo(repo)
+  if (!parts) return null
+  const response = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'osdash',
+    },
+    body: JSON.stringify({
+      query: ISSUE_BY_NUMBER,
+      variables: { owner: parts.owner, name: parts.name, number },
+    }),
+    signal: AbortSignal.timeout(20_000),
+  })
+  if (!response.ok) return null
+  const payload = (await response.json()) as IssueByNumberPayload
+  if (payload.errors?.length) return null
+  const node = payload.data?.repository?.issue
+  if (!node) return null
+  return mapNode({ ...node, __typename: 'Issue' }, viewerLogin)
+}
+
+async function hydrateMissingClosingIssues(
+  token: string,
+  viewerLogin: string,
+  items: Item[],
+  seen: Set<string>,
+): Promise<void> {
+  const missing: Array<{ repo: string; number: number }> = []
+  const queued = new Set<string>()
+  for (const item of items) {
+    for (const issue of item.closingIssues ?? []) {
+      const key = `${issue.repo}#${issue.number}`
+      if (seen.has(key) || queued.has(key)) continue
+      queued.add(key)
+      missing.push({ repo: issue.repo, number: issue.number })
+      if (missing.length >= MAX_CLOSING_ISSUE_HYDRATIONS) break
+    }
+    if (missing.length >= MAX_CLOSING_ISSUE_HYDRATIONS) break
+  }
+  for (const issue of missing) {
+    const key = `${issue.repo}#${issue.number}`
+    const fetched = await fetchIssueByNumber(token, issue.repo, issue.number, viewerLogin)
+    if (!fetched || seen.has(key)) continue
+    seen.add(key)
+    items.push(fetched)
+  }
+}
+
+function itemForJudge(draft: UnitDraft): Item {
+  const combined = draft.members.length > 1 ? combineItems([...draft.members]) : draft.primary
+  return {
+    ...draft.primary,
+    activities: combined.activities,
+    checks: draft.primary.checks.length > 0 ? draft.primary.checks : combined.checks,
+    linkedPullRequests: combined.linkedPullRequests ?? draft.primary.linkedPullRequests,
+    timelineLinks: combined.timelineLinks ?? draft.primary.timelineLinks,
+    parts: combined.parts,
+    viewerLogin: draft.primary.viewerLogin ?? combined.viewerLogin,
+  }
 }
 
 async function hydrateMissingLinkedPullRequests(
@@ -719,13 +878,13 @@ async function graphql(
   return payload.data ?? {}
 }
 
-export async function loadBoard(
+export async function loadUnits(
   token: string,
   viewerLogin: string,
   now: Date,
   classifierEnv: ClaimClassifierEnv = {},
   options: { fresh?: boolean } = {},
-): Promise<{ items: BoardItem[]; truncated: boolean }> {
+): Promise<{ units: Unit[]; truncated: boolean }> {
   const since = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   const queries = boardSearchQueries(viewerLogin, since)
   const env = { ...classifierEnv, viewerLogin }
@@ -756,6 +915,7 @@ export async function loadBoard(
   }
 
   await hydrateMissingLinkedPullRequests(token, viewerLogin, raw, seen)
+  await hydrateMissingClosingIssues(token, viewerLogin, raw, seen)
   await enrichItemsFromRest(
     token,
     viewerLogin,
@@ -766,15 +926,18 @@ export async function loadBoard(
   )
   await enrichIssueClassificationsForEnv(raw, env, now.getTime())
 
-  const visible = mergeLinkedItems(raw)
-    .filter(item => includeIssueOnBoard(item))
-    .filter(item => !hideIssueForLinkedPr(item))
-
-  const items: BoardItem[] = []
-  for (const item of visible) {
-    const board = present(item, now.getTime())
-    items.push(await maybeClassifyTurn(item, board, env, now.getTime(), options.fresh === true))
+  const units: Unit[] = []
+  for (const draft of buildUnitDrafts(raw)) {
+    const judged = itemForJudge(draft)
+    const verdict = await maybeClassifyTurn(
+      judged,
+      judge(judged, now.getTime()),
+      env,
+      now.getTime(),
+      options.fresh === true,
+    )
+    units.push(toUnit(draft, verdict, now.getTime()))
   }
 
-  return { items, truncated }
+  return { units, truncated }
 }
