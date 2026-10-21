@@ -29,7 +29,7 @@ export default defineConfig({
       GITHUB_TOKEN: bindings.secret(),
       ACCESS_TEAM_DOMAIN: bindings.secret(),
       ACCESS_AUD: bindings.secret(),
-      OSDASH_ACCESS_ENFORCE: 'true',
+      OSDASH_ACCESS_ENFORCE: bindings.text('true'),
     },
   },
 })
