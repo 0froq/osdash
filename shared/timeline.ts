@@ -1,4 +1,13 @@
-import type { Activity, Check, Item, ItemPart, ItemState, TimelineLink } from './turn'
+import { isSelf } from './identity'
+import type {
+  Activity,
+  Check,
+  Item,
+  ItemPart,
+  ItemState,
+  LinkedPullRequest,
+  TimelineLink,
+} from './turn'
 
 export type RawTimelineSourceIssue = {
   number?: number
@@ -46,6 +55,64 @@ export function linksFromTimeline(events: readonly RawTimelineEvent[]): Timeline
 
 function itemKey(repo: string, number: number): string {
   return `${repo}#${number}`
+}
+
+export function itemFromLinkedPull(link: LinkedPullRequest): Item {
+  return {
+    kind: 'pr',
+    repo: link.repo,
+    number: link.number,
+    title: `Pull request #${link.number}`,
+    url: link.url,
+    state: link.state,
+    createdAt: '1970-01-01T00:00:00.000Z',
+    closedAt: link.state === 'open' ? null : '1970-01-01T00:00:00.000Z',
+    author: link.author,
+    activities: [],
+    checks: [],
+  }
+}
+
+function itemFromTimelinePull(link: TimelineLink): Item {
+  const url = link.url ?? `https://github.com/${link.repo}/pull/${link.number}`
+  return {
+    kind: 'pr',
+    repo: link.repo,
+    number: link.number,
+    title: `Pull request #${link.number}`,
+    url,
+    state: 'open',
+    createdAt: '1970-01-01T00:00:00.000Z',
+    closedAt: null,
+    author: { typename: 'User', login: 'ghost' },
+    activities: [],
+    checks: [],
+  }
+}
+
+/** Pull requests referenced by an issue but missing from the search result set. */
+export function expandMissingLinkedPulls(items: readonly Item[]): Item[] {
+  const byKey = new Map(items.map(item => [itemKey(item.repo, item.number), item]))
+  const extras: Item[] = []
+  for (const item of items) {
+    for (const link of item.linkedPullRequests ?? []) {
+      if (!isSelf(link.author)) continue
+      const key = itemKey(link.repo, link.number)
+      if (byKey.has(key)) continue
+      const stub = itemFromLinkedPull(link)
+      byKey.set(key, stub)
+      extras.push(stub)
+    }
+    for (const link of item.timelineLinks ?? []) {
+      if (link.kind !== 'pr') continue
+      const key = itemKey(link.repo, link.number)
+      if (byKey.has(key)) continue
+      const stub = itemFromTimelinePull(link)
+      byKey.set(key, stub)
+      extras.push(stub)
+    }
+  }
+  return extras.length > 0 ? [...items, ...extras] : [...items]
 }
 
 function linkEdges(item: Item): Array<{ repo: string; number: number }> {
@@ -185,7 +252,8 @@ function combine(cluster: Item[]): Item {
  * Comment text such as "Fixes #123" is not a link.
  */
 export function mergeLinkedItems(items: readonly Item[]): Item[] {
-  const byKey = new Map(items.map(item => [itemKey(item.repo, item.number), item]))
+  const expanded = expandMissingLinkedPulls(items)
+  const byKey = new Map(expanded.map(item => [itemKey(item.repo, item.number), item]))
   const parent = new Map<string, string>()
 
   function find(key: string): string {
@@ -203,13 +271,13 @@ export function mergeLinkedItems(items: readonly Item[]): Item[] {
     if (leftRoot !== rightRoot) parent.set(rightRoot, leftRoot)
   }
 
-  for (const item of items) {
+  for (const item of expanded) {
     const key = itemKey(item.repo, item.number)
     for (const edge of linkEdges(item)) union(key, itemKey(edge.repo, edge.number))
   }
 
   const groups = new Map<string, Item[]>()
-  for (const item of items) {
+  for (const item of expanded) {
     const root = find(itemKey(item.repo, item.number))
     const group = groups.get(root)
     if (group) group.push(item)

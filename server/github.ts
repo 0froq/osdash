@@ -2,6 +2,7 @@ import { enrichIssueClassificationsForEnv, type ClaimClassifierEnv } from './cla
 import { enrichItemsFromRest } from './github-rest'
 import { maybeClassifyTurn } from './turn-classifier'
 import { hideIssueForLinkedPr, includeIssueOnBoard } from '../shared/claim'
+import { isSelf } from '../shared/identity'
 import { mergeLinkedItems } from '../shared/timeline'
 import type { TimelineLink } from '../shared/turn'
 import {
@@ -136,13 +137,7 @@ type GraphPayload = {
   errors?: Array<{ message?: string }>
 }
 
-const QUERY = `
-  query Board($query: String!, $cursor: String) {
-    search(query: $query, type: ISSUE, first: ${PAGE_SIZE}, after: $cursor) {
-      pageInfo { hasNextPage endCursor }
-      nodes {
-        __typename
-        ... on PullRequest {
+const PULL_REQUEST_FIELDS = `
           number
           title
           url
@@ -245,6 +240,17 @@ const QUERY = `
               }
             }
           }
+`
+
+const QUERY = `
+  query Board($query: String!, $cursor: String) {
+    search(query: $query, type: ISSUE, first: ${PAGE_SIZE}, after: $cursor) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        __typename
+        ... on PullRequest {
+          __typename
+${PULL_REQUEST_FIELDS}
         }
         ... on Issue {
           number
@@ -319,6 +325,94 @@ const QUERY = `
     }
   }
 `
+
+const PULL_BY_NUMBER = `
+  query LinkedPull($owner: String!, $name: String!, $number: Int!) {
+    repository(owner: $owner, name: $name) {
+      pullRequest(number: $number) {
+        __typename
+${PULL_REQUEST_FIELDS}
+      }
+    }
+  }
+`
+
+type PullByNumberPayload = {
+  data?: {
+    repository?: { pullRequest?: RawNode | null } | null
+  }
+  errors?: Array<{ message?: string }>
+}
+
+function parseRepo(nameWithOwner: string): { owner: string; name: string } | null {
+  const slash = nameWithOwner.indexOf('/')
+  if (slash <= 0 || slash === nameWithOwner.length - 1) return null
+  return { owner: nameWithOwner.slice(0, slash), name: nameWithOwner.slice(slash + 1) }
+}
+
+async function fetchLinkedPullRequest(
+  token: string,
+  repo: string,
+  number: number,
+  viewerLogin?: string,
+): Promise<Item | null> {
+  const parts = parseRepo(repo)
+  if (!parts) return null
+  const response = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'osdash',
+    },
+    body: JSON.stringify({
+      query: PULL_BY_NUMBER,
+      variables: { owner: parts.owner, name: parts.name, number },
+    }),
+    signal: AbortSignal.timeout(20_000),
+  })
+  if (!response.ok) return null
+  const payload = (await response.json()) as PullByNumberPayload
+  if (payload.errors?.length) return null
+  const node = payload.data?.repository?.pullRequest
+  if (!node) return null
+  return mapNode(node, viewerLogin)
+}
+
+function collectMissingSelfLinkedPulls(
+  items: readonly Item[],
+  seen: ReadonlySet<string>,
+  viewerLogin: string,
+): LinkedPullRequest[] {
+  const links: LinkedPullRequest[] = []
+  const queued = new Set<string>()
+  for (const item of items) {
+    for (const link of item.linkedPullRequests ?? []) {
+      if (!isSelf(link.author, viewerLogin)) continue
+      const key = `${link.repo}#${link.number}`
+      if (seen.has(key) || queued.has(key)) continue
+      queued.add(key)
+      links.push(link)
+    }
+  }
+  return links
+}
+
+async function hydrateMissingLinkedPullRequests(
+  token: string,
+  viewerLogin: string,
+  items: Item[],
+  seen: Set<string>,
+): Promise<void> {
+  const missing = collectMissingSelfLinkedPulls(items, seen, viewerLogin)
+  for (const link of missing) {
+    const key = `${link.repo}#${link.number}`
+    const fetched = await fetchLinkedPullRequest(token, link.repo, link.number, viewerLogin)
+    if (!fetched || seen.has(key)) continue
+    seen.add(key)
+    items.push(fetched)
+  }
+}
 
 function actorOf(raw: RawActor | null | undefined, fallback = 'ghost'): Actor {
   return {
@@ -621,6 +715,7 @@ export async function loadBoard(
     }
   }
 
+  await hydrateMissingLinkedPullRequests(token, viewerLogin, raw, seen)
   await enrichItemsFromRest(
     token,
     viewerLogin,

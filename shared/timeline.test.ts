@@ -153,12 +153,47 @@ it('uses a GraphQL cross-reference the same way as a timeline event', () => {
   assert.equal(mergeLinkedItems([issue, pull]).length, 1)
 })
 
-it('leaves a link alone when the other side was not loaded', () => {
+it('merges a claimed issue with a linked pull request missing from search results', () => {
+  const issue = entry('issue', 466, {
+    repo: 'comarkdown/comark',
+    url: 'https://github.com/comarkdown/comark/issues/466',
+    author: { typename: 'User', login: 'adamdehaven' },
+    linkedPullRequests: [
+      {
+        repo: 'comarkdown/comark',
+        number: 501,
+        url: 'https://github.com/comarkdown/comark/pull/501',
+        state: 'open',
+        author: { typename: 'User', login: '0froq' },
+      },
+    ],
+    timelineLinks: [
+      {
+        event: 'cross-referenced',
+        repo: 'comarkdown/comark',
+        number: 501,
+        kind: 'pr',
+        url: 'https://github.com/comarkdown/comark/pull/501',
+      },
+    ],
+  })
+  const [combined] = mergeLinkedItems([issue])
+  assert.ok(combined)
+  assert.equal(combined.kind, 'pr')
+  assert.equal(combined.number, 501)
+  assert.deepEqual(
+    combined.parts?.map(part => part.number).sort((first, second) => first - second),
+    [466, 501],
+  )
+})
+
+it('merges a timeline pull link when the pull request was not loaded from search', () => {
   const issue = entry('issue', 4, {
     timelineLinks: [{ event: 'connected', repo: 'unjs/h3', number: 99, kind: 'pr' }],
   })
-  const merged = mergeLinkedItems([issue])
-  assert.equal(merged.length, 1)
-  assert.equal(merged[0]!.number, 4)
-  assert.equal(merged[0]!.kind, 'issue')
+  const [combined] = mergeLinkedItems([issue])
+  assert.ok(combined)
+  assert.equal(combined.parts?.length, 2)
+  assert.equal(combined.kind, 'pr')
+  assert.equal(combined.number, 99)
 })
