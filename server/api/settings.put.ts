@@ -1,6 +1,7 @@
 import { createError, readBody } from 'h3'
 import { readByok, writeByok, type ByokSettings } from '../byok'
 import { bindingString, workerEnv } from '../bindings'
+import { devMock } from '../mock-state'
 
 type SettingsBody = {
   baseUrl?: string
@@ -10,13 +11,15 @@ type SettingsBody = {
 }
 
 export default defineEventHandler(async event => {
+  const body = (await readBody(event)) as SettingsBody
+  if (devMock(event)) return { ok: true, configured: body.clear !== true }
+
   const user = event.context.osdashUser
   if (!user) throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
   const secret = bindingString(event, 'SESSION_SECRET')
   if (!secret)
     throw createError({ statusCode: 503, statusMessage: 'SESSION_SECRET is not configured' })
 
-  const body = (await readBody(event)) as SettingsBody
   const store = workerEnv(event).CACHE
 
   if (body.clear) {

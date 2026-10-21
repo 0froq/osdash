@@ -10,11 +10,17 @@ defineProps<{
 const emit = defineEmits<{
   refresh: []
   logout: []
+  settings: []
 }>()
 
 const open = ref(false)
 const root = ref<HTMLElement>()
 const { theme, ready, setTheme, onThemeKey } = useTheme()
+
+function openSettings(): void {
+  open.value = false
+  emit('settings')
+}
 
 function letter(name: string): string {
   const trimmed = name.trim()
@@ -101,6 +107,14 @@ onBeforeUnmount(() => {
           {{ copy.menu.dark }}
         </button>
       </div>
+      <button
+        class="menu-item"
+        type="button"
+        role="menuitem"
+        @click="openSettings"
+      >
+        {{ copy.settings.title }}
+      </button>
       <button
         class="menu-item"
         type="button"

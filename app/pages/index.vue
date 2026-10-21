@@ -14,6 +14,7 @@ const router = useRouter()
 const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'helped']
 const repo = ref('')
 const menu = ref<{ unit: UnitView; x: number; y: number } | null>(null)
+const settingsOpen = ref(false)
 
 const view = computed<InboxViewName>(() => {
   const value = route.query.view
@@ -282,6 +283,7 @@ onMounted(() => {
         :category-counts="categoryCounts"
         @refresh="inbox.load(true)"
         @logout="inbox.logout()"
+        @settings="settingsOpen = true"
         @view="selectView"
         @category="selectCategory"
       />
@@ -298,6 +300,7 @@ onMounted(() => {
         :category-counts="categoryCounts"
         @refresh="inbox.load(true)"
         @logout="inbox.logout()"
+        @settings="settingsOpen = true"
         @view="selectView"
         @category="selectCategory"
       />
@@ -478,5 +481,6 @@ onMounted(() => {
         @later="openUnit && applyLater(openUnit, $event)"
       />
     </template>
+    <SettingsSheet v-model:open="settingsOpen" />
   </InboxShell>
 </template>

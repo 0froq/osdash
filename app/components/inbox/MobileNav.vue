@@ -20,6 +20,7 @@ defineProps<{
 const emit = defineEmits<{
   refresh: []
   logout: []
+  settings: []
   view: [view: InboxViewName]
   category: [category: UnitCategory]
 }>()
@@ -37,6 +38,7 @@ const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'hel
         :pending="pending"
         @refresh="emit('refresh')"
         @logout="emit('logout')"
+        @settings="emit('settings')"
       />
     </div>
     <nav

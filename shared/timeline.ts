@@ -118,17 +118,6 @@ export function expandMissingLinkedPulls(items: readonly Item[]): Item[] {
   return extras.length > 0 ? [...items, ...extras] : [...items]
 }
 
-function linkEdges(item: Item): Array<{ repo: string; number: number }> {
-  const edges: Array<{ repo: string; number: number }> = []
-  for (const link of item.timelineLinks ?? []) {
-    edges.push({ repo: link.repo, number: link.number })
-  }
-  for (const pull of item.linkedPullRequests ?? []) {
-    edges.push({ repo: pull.repo, number: pull.number })
-  }
-  return edges
-}
-
 function toPart(item: Item): ItemPart {
   return {
     kind: item.kind,
@@ -247,45 +236,4 @@ export function combineItems(cluster: Item[]): Item {
     headSha: ordered.find(item => item.headSha)?.headSha ?? primary.headSha,
     updatedAt: ordered.find(item => item.updatedAt)?.updatedAt ?? primary.updatedAt,
   }
-}
-
-/**
- * Collapse an issue and a pull request into one item when a timeline
- * `cross-referenced` or `connected` event points at the other.
- * Comment text such as "Fixes #123" is not a link.
- */
-export function mergeLinkedItems(items: readonly Item[]): Item[] {
-  const expanded = expandMissingLinkedPulls(items)
-  const byKey = new Map(expanded.map(item => [itemKey(item.repo, item.number), item]))
-  const parent = new Map<string, string>()
-
-  function find(key: string): string {
-    const current = parent.get(key) ?? key
-    if (current === key) return key
-    const root = find(current)
-    parent.set(key, root)
-    return root
-  }
-
-  function union(left: string, right: string): void {
-    if (!byKey.has(left) || !byKey.has(right) || left === right) return
-    const leftRoot = find(left)
-    const rightRoot = find(right)
-    if (leftRoot !== rightRoot) parent.set(rightRoot, leftRoot)
-  }
-
-  for (const item of expanded) {
-    const key = itemKey(item.repo, item.number)
-    for (const edge of linkEdges(item)) union(key, itemKey(edge.repo, edge.number))
-  }
-
-  const groups = new Map<string, Item[]>()
-  for (const item of expanded) {
-    const root = find(itemKey(item.repo, item.number))
-    const group = groups.get(root)
-    if (group) group.push(item)
-    else groups.set(root, [item])
-  }
-
-  return [...groups.values()].map(cluster => combineItems(cluster))
 }

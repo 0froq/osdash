@@ -198,4 +198,26 @@ export const copy = {
   avatarLabel(name: string): string {
     return `${name} 的菜单`
   },
+  settings: {
+    title: '分类器',
+    intro:
+      '站点内置分类器只对部分账号开放。你可以填自己的 OpenAI 兼容接口，用来判断说不清楚的回合。',
+    enabled: '已启用站点分类器',
+    baseUrl: '接口地址',
+    model: '模型',
+    apiKey: '密钥',
+    save: '保存',
+    clear: '清除',
+    close: '关闭',
+    saved: '已保存',
+    cleared: '已清除',
+    loadFailed: '设置没读出来',
+    saveFailed: '没保存上',
+  },
+  login: {
+    tagline: '看你的 PR 和 issue 现在轮到谁',
+    action: '用 GitHub 登录',
+    scope: '只请求 read:user，只读公开数据，不会替你评论或合并',
+    readOnly: '只读',
+  },
 }

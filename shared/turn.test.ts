@@ -11,7 +11,6 @@ import {
   isBot,
   judge,
   summarize,
-  present,
   withResolvedTurn,
 } from './turn'
 
@@ -236,7 +235,11 @@ it('averages the first reply from someone other than 0froq', () => {
   })
   assert.equal(firstReplyMs(replied), DAY_MS)
   assert.equal(firstReplyMs(silent), null)
-  const stats = summarize([present(replied, NOW), present(silent, NOW), present(merged, NOW)])
+  const stats = summarize([
+    { state: replied.state, firstReplyMs: firstReplyMs(replied) },
+    { state: silent.state, firstReplyMs: firstReplyMs(silent) },
+    { state: merged.state, firstReplyMs: firstReplyMs(merged) },
+  ])
   assert.equal(stats.open, 2)
   assert.equal(stats.merged, 1)
   assert.equal(stats.averageFirstReplyMs, DAY_MS)

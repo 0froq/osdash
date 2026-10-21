@@ -177,18 +177,6 @@ export type Verdict = {
   focusUpdatedAt: string | null
 }
 
-export type BoardItem = Verdict & {
-  id: string
-  kind: ItemKind
-  repo: string
-  number: number
-  title: string
-  state: ItemState
-  closedAt: string | null
-  firstReplyMs: number | null
-  parts: ItemPart[]
-}
-
 export type BoardStats = {
   merged: number
   open: number
@@ -677,32 +665,6 @@ export function firstReplyMs(item: Item): number | null {
   return Date.parse(reply.at) - created
 }
 
-export function present(item: Item, nowMs: number): BoardItem {
-  const parts = item.parts ?? [
-    {
-      kind: item.kind,
-      repo: item.repo,
-      number: item.number,
-      url: item.url,
-      title: item.title,
-      authorLogin: item.author.login,
-      body: item.body,
-    },
-  ]
-  return {
-    id: `${item.repo}#${item.number}`,
-    kind: item.kind,
-    repo: item.repo,
-    number: item.number,
-    title: item.title,
-    state: item.state,
-    closedAt: item.closedAt,
-    firstReplyMs: firstReplyMs(item),
-    parts,
-    ...judge(item, nowMs),
-  }
-}
-
 export function summarize(
   items: readonly { state: ItemState; firstReplyMs: number | null }[],
 ): BoardStats {
@@ -712,23 +674,6 @@ export function summarize(
     open: items.filter(item => item.state === 'open').length,
     averageFirstReplyMs:
       replies.length === 0 ? null : replies.reduce((sum, ms) => sum + ms, 0) / replies.length,
-  }
-}
-
-export function turnLabel(turn: Turn): string {
-  switch (turn) {
-    case 'mine':
-      return 'Mine'
-    case 'maintainer':
-      return 'Maintainer'
-    case 'other':
-      return 'Other'
-    case 'none':
-      return 'None'
-    default: {
-      const exhaustive: never = turn
-      return exhaustive
-    }
   }
 }
 
