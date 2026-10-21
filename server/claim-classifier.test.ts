@@ -33,6 +33,7 @@ function issue(activities: Activity[]): Item {
     checks: [],
     assignees: [],
     linkedPullRequests: [],
+    viewerLogin: '0froq',
   }
 }
 

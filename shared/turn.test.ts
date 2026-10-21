@@ -37,6 +37,7 @@ function item(overrides: Partial<Item> = {}): Item {
     author: user('0froq'),
     activities: [],
     checks: [],
+    viewerLogin: '0froq',
     ...overrides,
   }
 }

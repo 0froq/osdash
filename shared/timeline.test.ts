@@ -15,6 +15,7 @@ function entry(kind: ItemKind, number: number, overrides: Partial<Item> = {}): I
     createdAt: '2026-10-01T00:00:00.000Z',
     closedAt: null,
     author: { typename: 'User', login: '0froq' },
+    viewerLogin: '0froq',
     activities: [
       {
         kind: 'comment',
@@ -196,4 +197,25 @@ it('merges a timeline pull link when the pull request was not loaded from search
   assert.equal(combined.parts?.length, 2)
   assert.equal(combined.kind, 'pr')
   assert.equal(combined.number, 99)
+})
+
+it('does not expand a linked pull authored by someone else when the viewer is octo-dev', () => {
+  const issue = entry('issue', 4, {
+    viewerLogin: 'octo-dev',
+    author: { typename: 'User', login: 'octo-dev' },
+    linkedPullRequests: [
+      {
+        repo: 'unjs/h3',
+        number: 12,
+        url: 'https://github.com/unjs/h3/pull/12',
+        state: 'open',
+        author: { typename: 'User', login: '0froq' },
+      },
+    ],
+  })
+  const merged = mergeLinkedItems([issue])
+  assert.equal(merged.length, 1)
+  assert.equal(merged[0]?.kind, 'issue')
+  assert.equal(merged[0]?.number, 4)
+  assert.equal(merged[0]?.parts?.length ?? 1, 1)
 })

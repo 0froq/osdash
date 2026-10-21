@@ -30,7 +30,7 @@ export function isStatementText(body: string): boolean {
   return true
 }
 
-export function mentionsSelf(body: string, viewer = '0froq'): boolean {
+export function mentionsSelf(body: string, viewer: string): boolean {
   const escaped = viewer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return new RegExp(`(^|\\s)@${escaped}\\b`, 'i').test(body)
 }
@@ -74,7 +74,7 @@ export function isDroppedBot(activity: Activity): boolean {
   return !isFailingClaComment(activity) && !isCoderabbitActionable(activity)
 }
 
-export function isMaintainerActivity(activity: Activity, viewer = '0froq'): boolean {
+export function isMaintainerActivity(activity: Activity, viewer: string): boolean {
   return isMaintainerAssociation(activity.authorAssociation) && !isSelf(activity.actor, viewer)
 }
 

@@ -264,5 +264,5 @@ export function mockItems(nowMs: number): BoardItem[] {
       checks: [],
     },
   ]
-  return items.map(entry => present(entry, nowMs))
+  return items.map(entry => present({ ...entry, viewerLogin: entry.viewerLogin ?? '0froq' }, nowMs))
 }

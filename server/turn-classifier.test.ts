@@ -29,6 +29,7 @@ function statementItem(): Item {
       },
     ],
     checks: [{ name: 'lint', status: 'COMPLETED', conclusion: 'SUCCESS' }],
+    viewerLogin: '0froq',
   }
 }
 

@@ -23,7 +23,7 @@ import {
   mentionsSelf,
 } from './turn-rules'
 
-export { BOT_LOGINS, isBot, isSelf, SELF } from './identity'
+export { BOT_LOGINS, isBot, isSelf } from './identity'
 
 export const DAY_MS = 24 * 60 * 60 * 1000
 export const RECENT_MS = 14 * DAY_MS

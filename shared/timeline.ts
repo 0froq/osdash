@@ -1,4 +1,4 @@
-import { isSelf } from './identity'
+import { isSelf, viewerLoginOf } from './identity'
 import type {
   Activity,
   Check,
@@ -57,7 +57,7 @@ function itemKey(repo: string, number: number): string {
   return `${repo}#${number}`
 }
 
-export function itemFromLinkedPull(link: LinkedPullRequest): Item {
+export function itemFromLinkedPull(link: LinkedPullRequest, viewerLogin: string): Item {
   return {
     kind: 'pr',
     repo: link.repo,
@@ -70,10 +70,11 @@ export function itemFromLinkedPull(link: LinkedPullRequest): Item {
     author: link.author,
     activities: [],
     checks: [],
+    viewerLogin,
   }
 }
 
-function itemFromTimelinePull(link: TimelineLink): Item {
+function itemFromTimelinePull(link: TimelineLink, viewerLogin: string): Item {
   const url = link.url ?? `https://github.com/${link.repo}/pull/${link.number}`
   return {
     kind: 'pr',
@@ -87,6 +88,7 @@ function itemFromTimelinePull(link: TimelineLink): Item {
     author: { typename: 'User', login: 'ghost' },
     activities: [],
     checks: [],
+    viewerLogin,
   }
 }
 
@@ -95,11 +97,12 @@ export function expandMissingLinkedPulls(items: readonly Item[]): Item[] {
   const byKey = new Map(items.map(item => [itemKey(item.repo, item.number), item]))
   const extras: Item[] = []
   for (const item of items) {
+    const viewer = viewerLoginOf(item)
     for (const link of item.linkedPullRequests ?? []) {
-      if (!isSelf(link.author)) continue
+      if (!isSelf(link.author, viewer)) continue
       const key = itemKey(link.repo, link.number)
       if (byKey.has(key)) continue
-      const stub = itemFromLinkedPull(link)
+      const stub = itemFromLinkedPull(link, viewer)
       byKey.set(key, stub)
       extras.push(stub)
     }
@@ -107,7 +110,7 @@ export function expandMissingLinkedPulls(items: readonly Item[]): Item[] {
       if (link.kind !== 'pr') continue
       const key = itemKey(link.repo, link.number)
       if (byKey.has(key)) continue
-      const stub = itemFromTimelinePull(link)
+      const stub = itemFromTimelinePull(link, viewer)
       byKey.set(key, stub)
       extras.push(stub)
     }
