@@ -6,6 +6,8 @@ export default defineNuxtConfig({
 
   devtools: { enabled: false },
 
+  components: [{ path: '~/components', pathPrefix: false }],
+
   css: [
     '@fontsource-variable/geist/index.css',
     '@fontsource-variable/geist-mono/index.css',
@@ -37,11 +39,11 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'osdash',
-      htmlAttrs: { lang: 'en' },
+      htmlAttrs: { lang: 'zh-CN' },
       meta: [
-        { name: 'description', content: 'Read-only dashboard for froQ open-source contributions' },
+        { name: 'description', content: '用 GitHub 登录，看你自己的开源贡献进展。只读。' },
         { name: 'color-scheme', content: 'light dark' },
-        { name: 'robots', content: 'index,follow' },
+        { name: 'robots', content: 'noindex' },
       ],
       script: [
         {
