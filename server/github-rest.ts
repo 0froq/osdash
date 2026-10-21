@@ -1,6 +1,10 @@
 import { readCache, writeCache, type CacheStore } from './cache'
 import { checksFromRest, mergeCheckLists, type RawRestCheckRun } from '../shared/checks'
-import { normalizeRestTimeline, type RawRestTimelineEvent } from '../shared/events'
+import {
+  normalizeRestTimeline,
+  type RawRestTimelineEvent,
+  type RawReviewComment,
+} from '../shared/events'
 import { linksFromTimeline } from '../shared/timeline'
 import type { Item } from '../shared/turn'
 
@@ -62,17 +66,32 @@ export async function loadTimeline(
   token: string,
   item: Item,
   stop: StopFlag,
-): Promise<RawRestTimelineEvent[] | null> {
+): Promise<{ events: RawRestTimelineEvent[]; truncated: boolean } | null> {
   const events: RawRestTimelineEvent[] = []
+  let truncated = false
   for (let page = 1; page <= 3; page++) {
     const url = `https://api.github.com/repos/${item.repo}/issues/${item.number}/timeline?per_page=100&page=${page}`
     const batch = await githubJson<RawRestTimelineEvent[]>(token, url, stop)
-    if (!batch) return events.length > 0 ? events : null
+    if (!batch) {
+      if (stop.stop) truncated = true
+      return events.length > 0 ? { events, truncated } : null
+    }
     if (!Array.isArray(batch) || batch.length === 0) break
     events.push(...batch)
     if (batch.length < 100) break
+    if (page === 3) truncated = true
   }
-  return events
+  return { events, truncated }
+}
+
+export async function loadReviewComments(
+  token: string,
+  item: Item,
+  stop: StopFlag,
+): Promise<RawReviewComment[] | null> {
+  if (item.kind !== 'pr') return []
+  const url = `https://api.github.com/repos/${item.repo}/pulls/${item.number}/comments?per_page=100`
+  return githubJson(token, url, stop)
 }
 
 export async function loadCheckRuns(
@@ -120,8 +139,9 @@ export async function enrichItemsFromRest(
         if (timelineHit) {
           links = JSON.parse(timelineHit) as typeof links
         } else {
-          const events = await loadTimeline(token, item, stop)
-          if (events) {
+          const loaded = await loadTimeline(token, item, stop)
+          if (loaded) {
+            const events = loaded.events
             links = linksFromTimeline(
               events.map(event => ({ ...event, source: event.source ?? undefined })),
             )

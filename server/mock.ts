@@ -1,3 +1,5 @@
+import { foldEntries, normalizeRestTimeline } from '../shared/events'
+import type { TimelinePayload } from './timeline-response'
 import { buildUnitDrafts, toUnit } from '../shared/units'
 import type { Unit } from '../shared/unit'
 import type { SeenState } from './user-state'
@@ -473,6 +475,44 @@ export function mockUnits(nowMs: number): Unit[] {
     closedIssue,
   ]
   return buildUnitDrafts(items).map(draft => toUnit(draft, judge(itemFor(draft), nowMs), nowMs))
+}
+
+export function mockTimeline(unitId: string, nowMs: number): TimelinePayload | null {
+  const unit = mockUnits(nowMs).find(entry => entry.id === unitId)
+  if (!unit) return null
+  const source = {
+    repo: unit.repo,
+    number: unit.number,
+    kind: unit.kind === 'issue-only' ? ('issue' as const) : ('pr' as const),
+  }
+  const at = (hours: number) => new Date(nowMs - hours * 60 * 60 * 1000).toISOString()
+  const events = normalizeRestTimeline(
+    [
+      {
+        id: `${unitId}:open`,
+        event: 'commented',
+        created_at: at(48),
+        actor: { login: MOCK_VIEWER, type: 'User' },
+        body: 'Opened the thread.',
+      },
+      {
+        id: `${unitId}:reply`,
+        event: 'commented',
+        created_at: at(5),
+        actor: { login: 'patak', type: 'User' },
+        body: 'Thanks, looking.',
+        html_url: unit.url,
+      },
+    ],
+    source,
+  )
+  return {
+    id: unit.id,
+    generatedAt: new Date(nowMs).toISOString(),
+    cached: false,
+    entries: foldEntries(events),
+    truncated: false,
+  }
 }
 
 function itemFor(draft: { primary: Item; members: Item[] }): Item {
