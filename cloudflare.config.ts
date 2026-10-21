@@ -21,6 +21,8 @@ export default defineConfig({
       runWorkerFirst: true,
     },
     env: {
+      // nitro cloudflare-module serves /_nuxt/* via env.ASSETS when run_worker_first is on.
+      ASSETS: bindings.assets(),
       CACHE: bindings.kv(),
       AI: bindings.ai(),
       GITHUB_CLIENT_ID: bindings.secret(),
