@@ -1,7 +1,7 @@
 import { createError, getQuery } from 'h3'
 import { BOARD_STALE_MS, buildBoardPayload, persistBoard, readBoardCache } from '../board-response'
 import { workerEnv } from '../bindings'
-import { mockItems } from '../mock'
+import { MOCK_VIEWER, mockItems } from '../mock'
 import { createNotionSource } from '../notion'
 import { summarize } from '../../shared/turn'
 
@@ -20,7 +20,7 @@ export default defineEventHandler(async event => {
       notion: { connected: createNotionSource().connected },
       stats: summarize(items),
       items,
-      viewerLogin: 'octo-dev',
+      viewerLogin: MOCK_VIEWER,
     }
   }
 

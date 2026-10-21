@@ -1,5 +1,7 @@
 import { type Actor, type Check, type Item, DAY_MS, present, type BoardItem } from '../shared/turn'
 
+export const MOCK_VIEWER = 'octo-dev'
+
 function user(login: string, typename = 'User'): Actor {
   return { typename, login }
 }
@@ -25,7 +27,7 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'open',
       createdAt: at(2 * DAY_MS),
       closedAt: null,
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       activities: [],
       checks: [
         success('test'),
@@ -46,7 +48,7 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'open',
       createdAt: at(5 * DAY_MS),
       closedAt: null,
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       activities: [
         {
           kind: 'review',
@@ -67,7 +69,7 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'open',
       createdAt: at(4 * DAY_MS),
       closedAt: null,
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       body: 'Root cause: event.context is reused across requests. Repro: fire two parallel fetches and read the previous context.',
       activities: [
         {
@@ -90,7 +92,7 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'open',
       createdAt: at(30 * 60 * 60 * 1000),
       closedAt: null,
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       activities: [
         {
           kind: 'comment',
@@ -101,7 +103,7 @@ export function mockItems(nowMs: number): BoardItem[] {
         {
           kind: 'comment',
           at: at(3 * 60 * 60 * 1000),
-          actor: user('0froq'),
+          actor: user(MOCK_VIEWER),
           url: 'https://github.com/nuxt/nuxt/pull/31902#issuecomment-2',
         },
       ],
@@ -116,7 +118,7 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'open',
       createdAt: at(3 * 60 * 60 * 1000),
       closedAt: null,
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       activities: [],
       checks: [success('lint'), success('unit')],
     },
@@ -129,7 +131,7 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'open',
       createdAt: at(9 * 60 * 60 * 1000),
       closedAt: null,
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       activities: [
         {
           kind: 'comment',
@@ -163,7 +165,7 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'open',
       createdAt: at(9 * DAY_MS),
       closedAt: null,
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       activities: [
         {
           kind: 'comment',
@@ -174,7 +176,7 @@ export function mockItems(nowMs: number): BoardItem[] {
         {
           kind: 'comment',
           at: at(8 * DAY_MS - 60 * 60 * 1000),
-          actor: user('0froq'),
+          actor: user(MOCK_VIEWER),
           url: 'https://github.com/nitrojs/nitro/pull/2771#issuecomment-2',
         },
       ],
@@ -189,12 +191,12 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'open',
       createdAt: at(20 * DAY_MS),
       closedAt: null,
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       activities: [
         {
           kind: 'comment',
           at: at(16 * DAY_MS),
-          actor: user('0froq'),
+          actor: user(MOCK_VIEWER),
           url: 'https://github.com/vuejs/core/pull/9901#issuecomment-1',
         },
       ],
@@ -209,7 +211,7 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'merged',
       createdAt: at(12 * DAY_MS),
       closedAt: at(2 * DAY_MS),
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       activities: [
         {
           kind: 'review',
@@ -230,7 +232,7 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'closed',
       createdAt: at(11 * DAY_MS),
       closedAt: at(4 * DAY_MS),
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       activities: [
         {
           kind: 'comment',
@@ -250,13 +252,13 @@ export function mockItems(nowMs: number): BoardItem[] {
       state: 'open',
       createdAt: at(3 * DAY_MS),
       closedAt: null,
-      author: user('0froq'),
+      author: user(MOCK_VIEWER),
       body: 'Can I take the icon namespace? I would like a directory listing next to the theme files.',
       activities: [
         {
           kind: 'comment',
           at: at(2 * DAY_MS),
-          actor: user('0froq'),
+          actor: user(MOCK_VIEWER),
           body: "I'll open a PR",
           url: 'https://github.com/withastro/starlight/issues/2204#issuecomment-1',
         },
@@ -264,5 +266,7 @@ export function mockItems(nowMs: number): BoardItem[] {
       checks: [],
     },
   ]
-  return items.map(entry => present({ ...entry, viewerLogin: entry.viewerLogin ?? '0froq' }, nowMs))
+  return items.map(entry =>
+    present({ ...entry, viewerLogin: entry.viewerLogin ?? MOCK_VIEWER }, nowMs),
+  )
 }

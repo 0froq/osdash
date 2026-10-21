@@ -388,8 +388,8 @@ function replyLabel(ms: number | null): string {
       >
         <h2>Classifier (BYOK)</h2>
         <p class="quiet">
-          Optional OpenAI-compatible API for ambiguous turn classification. Workers AI clef stays on
-          for 0froq only.
+          Optional OpenAI-compatible API for ambiguous turn classification. The built-in classifier
+          is limited to accounts on the site allow list.
         </p>
         <label>
           <span class="quiet">Base URL</span>
