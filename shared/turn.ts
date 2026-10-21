@@ -703,7 +703,9 @@ export function present(item: Item, nowMs: number): BoardItem {
   }
 }
 
-export function summarize(items: readonly BoardItem[]): BoardStats {
+export function summarize(
+  items: readonly { state: ItemState; firstReplyMs: number | null }[],
+): BoardStats {
   const replies = items.flatMap(item => (item.firstReplyMs === null ? [] : [item.firstReplyMs]))
   return {
     merged: items.filter(item => item.state === 'merged').length,

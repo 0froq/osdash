@@ -19,6 +19,26 @@ export async function readCache(
   return hit.value
 }
 
+export async function readStored(
+  store: CacheStore | undefined,
+  key: string,
+  nowMs: number,
+): Promise<string | null> {
+  return readCache(store, key, nowMs)
+}
+
+export async function writeStored(
+  store: CacheStore | undefined,
+  key: string,
+  value: string,
+): Promise<void> {
+  if (store) {
+    await store.put(key, value)
+    return
+  }
+  memory.set(key, { value, expiresAt: Number.POSITIVE_INFINITY })
+}
+
 export async function writeCache(
   store: CacheStore | undefined,
   key: string,
