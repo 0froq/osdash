@@ -85,18 +85,18 @@ Nitro 不会读 `void.config.ts` 或 `wrangler.config.ts` 来判断要不要开 
 
 ## Cloudflare Access
 
-生产构建（`import.meta.dev === false`）里，`server/middleware/access.ts` 要求每个请求带 `Cf-Access-Jwt-Assertion`。`nuxt dev` 跳过，不校验。缺头、缺 `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD`、签名或声明校验失败，都只回 403，不把失败原因写进响应。
+生产构建（`import.meta.dev === false`）里，`server/middleware/access.ts` 要求每个请求带 `Cf-Access-Jwt-Assertion`。`nuxt dev` 跳过，不校验。缺头、缺 `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD`、`ACCESS_AUD` 拆完是空列表、签名或声明校验失败，都只回 403，不把失败原因写进响应。
 
-校验用 `jose` 的 `jwtVerify`，算法只接受 `RS256`。`ACCESS_TEAM_DOMAIN` 可以是 team 名（`froq`）或团队域名（`https://froq.cloudflareaccess.com`）。JWKS 固定是 `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`，`iss` 必须是 `https://<team>.cloudflareaccess.com`，`aud` 必须等于 `ACCESS_AUD`。依据是 Cloudflare 的 [Validate JWTs](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)：Workers 示例用 `createRemoteJWKSet` 和 `jwtVerify({ issuer, audience })`。
+校验用 `jose` 的 `jwtVerify`，算法只接受 `RS256`。`ACCESS_TEAM_DOMAIN` 可以是 team 名（`froq`）或团队域名（`https://froq.cloudflareaccess.com`）。JWKS 固定是 `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`，`iss` 必须是 `https://<team>.cloudflareaccess.com`。`ACCESS_AUD` 可以是一个 aud，也可以是逗号分隔的多个。`server/middleware/access.ts` 和 `server/access.ts` 按逗号拆开、去掉两端空白、丢掉空段，把这个数组交给 `jwtVerify` 的 `audience`。token 的 `aud` 命中其中任意一个即可。空列表仍是 403。依据是 Cloudflare 的 [Validate JWTs](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)：Workers 示例用 `createRemoteJWKSet` 和 `jwtVerify({ issuer, audience })`。
 
 Access 应用这样配：
 
 1. Cloudflare Zero Trust → Access controls → Applications，新建 Self-hosted application，目标域名 `osdash.froq.me`。
 2. 加上允许的身份源和 policy。
-3. 在应用的 Additional settings 里复制 Application Audience (AUD) Tag，这就是 `ACCESS_AUD`。删掉重建应用之前它不变。
+3. 在应用的 Additional settings 里复制 Application Audience (AUD) Tag，这就是 `ACCESS_AUD` 里的一项。删掉重建应用之前它不变。生产和分支预览各有一个 aud 时，用逗号写在同一个 `ACCESS_AUD` 里。
 4. `ACCESS_TEAM_DOMAIN` 用团队域名 `https://<team>.cloudflareaccess.com`。
 5. 用 `void secret put` 写入这两个值。预览适配器里也声明了同名 secret，分支预览若要过这层 middleware，部署环境里同样要有这两个值。
 
 预览地址另外用 Worker 设置里的 Access 开关保护，不要靠把 `osdash.froq.me` 配到预览上。文档路径（[Preview URLs](https://developers.cloudflare.com/workers/configuration/previews/)、[Cloudflare Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)，2026-10-19 读到）：Workers & Pages → 选中 `osdash` → Settings → Domains & Routes，在 Preview URLs 上点 Enable Cloudflare Access。只保护这一个 Worker 的预览时，也可以走该 Worker 的 Access 页，选 Previews only。开关打开后，Access 会挡在预览 URL 前面。这次没有登录 dashboard 点过这个开关。
 
-这层 middleware 在所有非 dev 构建里都会跑，包括分支预览。预览 Access 应用如果发了另一个 `aud`，请求仍会被 403，直到 `ACCESS_AUD` 和那张 token 的 audience 一致。预览文档还写了：打开 Access 之后，要在 Worker 里用它给出的 `aud` 和 JWKS 再验一次 token。
+这层 middleware 在所有非 dev 构建里都会跑，包括分支预览。预览 Access 应用会发另一个 `aud`。把那个 aud 和生产的 aud 用逗号写进同一个 `ACCESS_AUD`，token 命中其中任意一个就过这层校验。预览文档还写了：打开 Access 之后，要在 Worker 里用它给出的 `aud` 和 JWKS 再验一次 token。
