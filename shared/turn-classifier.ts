@@ -18,7 +18,8 @@ export function isTurnName(value: string): value is Turn {
   return (TURNS as readonly string[]).includes(value)
 }
 
-export function turnCacheKey(commentId: string, updatedAt: string): string {
+export function turnCacheKey(commentId: string, updatedAt: string, viewerLogin?: string): string {
+  if (viewerLogin) return `turn-clf:v1:${viewerLogin}:${commentId}:${updatedAt}`
   return `turn-clf:v1:${commentId}:${updatedAt}`
 }
 

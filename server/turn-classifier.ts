@@ -1,4 +1,6 @@
 import { readCache, writeCache, type CacheStore } from './cache'
+import { clefEnabledForUser, usesWorkersAiClef, type ByokSettings } from './byok'
+import { classifyTurnWithByok } from './clef-openai'
 import type { AiBinding } from './claim-classifier-clef'
 import { CLEF_MODEL } from '../shared/claim-types'
 import {
@@ -16,6 +18,8 @@ const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
 export type TurnClassifierEnv = {
   AI?: AiBinding
   CACHE?: CacheStore
+  viewerLogin?: string
+  byok?: ByokSettings | null
 }
 
 type ChoiceAnswer = {
@@ -59,10 +63,11 @@ function quoteFromChoice(choice: string, sentences: readonly string[]): string |
   return sentences.find(sentence => sentence === choice) ?? null
 }
 
-async function askClef(
+async function askClefWorkers(
   ai: AiBinding,
   item: Item,
   verdict: Verdict,
+  viewerLogin: string,
 ): Promise<TurnModelResult | null> {
   const { state, sentences } = buildTurnState(item, item.activities, verdict.ageMs)
   if (sentences.length === 0) return null
@@ -76,12 +81,11 @@ async function askClef(
     questions: {
       turn: {
         type: 'choice',
-        instructions:
-          'Whose turn is it for 0froq? Answer exactly one of mine, maintainer, other, or none. A polite closer such as "Thanks!" does not move the turn by itself.',
+        instructions: `Whose turn is it for ${viewerLogin}? Answer exactly one of mine, maintainer, other, or none. A polite closer such as "Thanks!" does not move the turn by itself.`,
         criteria: {
-          mine: '0froq should act next',
+          mine: `${viewerLogin} should act next`,
           maintainer: 'A maintainer (OWNER, MEMBER, or COLLABORATOR) should act next',
-          other: 'Someone who is not 0froq and not a maintainer should act next',
+          other: `Someone who is not ${viewerLogin} and not a maintainer should act next`,
           none: 'Nothing is left to do',
         },
       },
@@ -111,10 +115,13 @@ export async function maybeClassifyTurn<T extends Verdict>(
   nowMs: number,
   fresh = false,
 ): Promise<T> {
-  if (!verdict.ambiguous || !env.AI) return verdict
+  const viewerLogin = env.viewerLogin ?? item.viewerLogin ?? '0froq'
+  const byok = env.byok ?? null
+  if (!verdict.ambiguous || !clefEnabledForUser(viewerLogin, byok)) return verdict
+
   const commentId = verdict.focusCommentId
   const updatedAt = verdict.focusUpdatedAt
-  const key = commentId && updatedAt ? turnCacheKey(commentId, updatedAt) : null
+  const key = commentId && updatedAt ? turnCacheKey(commentId, updatedAt, viewerLogin) : null
 
   const apply = (result: TurnModelResult): T => {
     const decision = applyModelTurn(verdict.turn, result)
@@ -128,7 +135,12 @@ export async function maybeClassifyTurn<T extends Verdict>(
   }
 
   try {
-    const result = await askClef(env.AI, item, verdict)
+    let result: TurnModelResult | null = null
+    if (usesWorkersAiClef(viewerLogin) && env.AI) {
+      result = await askClefWorkers(env.AI, item, verdict, viewerLogin)
+    } else if (byok) {
+      result = await classifyTurnWithByok(byok, item, verdict, viewerLogin)
+    }
     if (!result) return verdict
     if (key) await writeCache(env.CACHE, key, JSON.stringify(result), CACHE_TTL_SECONDS, nowMs)
     return apply(result)

@@ -21,11 +21,18 @@ export default defineConfig({
       runWorkerFirst: true,
     },
     env: {
-      CACHE: bindings.kv(),
+      // nitro cloudflare-module serves /_nuxt/* via env.ASSETS when run_worker_first is on.
+      ASSETS: bindings.assets(),
+      // Preview-only KV (osdash-preview-cache); production uses its own namespace via void.config.ts.
+      CACHE: bindings.kv({ id: '8f2f255a41e143e386864dfae8b188ff' }),
       AI: bindings.ai(),
+      GITHUB_CLIENT_ID: bindings.secret(),
+      GITHUB_CLIENT_SECRET: bindings.secret(),
+      SESSION_SECRET: bindings.secret(),
       GITHUB_TOKEN: bindings.secret(),
-      ACCESS_TEAM_DOMAIN: bindings.secret(),
-      ACCESS_AUD: bindings.secret(),
+      ACCESS_TEAM_DOMAIN: bindings.text('frosty-snow-6058.cloudflareaccess.com'),
+      ACCESS_AUD: bindings.text('09f51afadabd2d971712f33c83c3c74912b0ddb49d8c20925c1111640a4283e7'),
+      OSDASH_ACCESS_ENFORCE: bindings.text('true'),
     },
   },
 })

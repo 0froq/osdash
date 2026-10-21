@@ -1,12 +1,9 @@
 import { createError, getQuery } from 'h3'
-import { readCache, writeCache } from '../cache'
-import { loadBoard } from '../github'
+import { BOARD_STALE_MS, buildBoardPayload, persistBoard, readBoardCache } from '../board-response'
+import { workerEnv } from '../bindings'
 import { mockItems } from '../mock'
 import { createNotionSource } from '../notion'
 import { summarize } from '../../shared/turn'
-
-const KEY = 'board:v2'
-const TTL_SECONDS = 10 * 60
 
 export default defineEventHandler(async event => {
   const query = getQuery(event)
@@ -17,49 +14,52 @@ export default defineEventHandler(async event => {
     return {
       generatedAt: now.toISOString(),
       cached: false,
+      revalidating: false,
       truncated: false,
       mock: true,
       notion: { connected: createNotionSource().connected },
       stats: summarize(items),
       items,
+      viewerLogin: '0froq',
     }
+  }
+
+  const user = event.context.osdashUser
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
   }
 
   const refresh = query.refresh === '1'
-  const store = event.context.cloudflare?.env?.CACHE
-  if (!refresh) {
-    const hit = await readCache(store, KEY, now.getTime())
-    if (hit) {
-      const cached = JSON.parse(hit) as Record<string, unknown>
-      return { ...cached, cached: true }
-    }
-  }
+  const store = workerEnv(event).CACHE
+  const nowMs = now.getTime()
 
-  const token = event.context.cloudflare?.env?.GITHUB_TOKEN || process.env.GITHUB_TOKEN
-  if (!token) {
-    throw createError({ statusCode: 503, statusMessage: 'GITHUB_TOKEN is not configured' })
+  if (!refresh) {
+    const cached = await readBoardCache(store, user.login, nowMs)
+    if (cached) {
+      const ageMs = nowMs - Date.parse(cached.generatedAt)
+      const stale = ageMs >= BOARD_STALE_MS
+      const waitUntil = event.context.cloudflare?.context?.waitUntil
+      if (stale && waitUntil) {
+        waitUntil(
+          buildBoardPayload(event, user, new Date(), true)
+            .then(body => persistBoard(store, user.login, body, Date.now()))
+            .catch(error => {
+              const message = error instanceof Error ? error.message : 'board refresh failed'
+              console.warn(`board revalidate ${user.login}: ${message}`)
+            }),
+        )
+      }
+      return {
+        ...cached,
+        cached: true,
+        revalidating: stale,
+      }
+    }
   }
 
   try {
-    const loaded = await loadBoard(
-      token,
-      now,
-      {
-        AI: event.context.cloudflare?.env?.AI,
-        CACHE: store,
-      },
-      { fresh: refresh },
-    )
-    const body = {
-      generatedAt: now.toISOString(),
-      cached: false,
-      truncated: loaded.truncated,
-      mock: false,
-      notion: { connected: createNotionSource().connected },
-      stats: summarize(loaded.items),
-      items: loaded.items,
-    }
-    await writeCache(store, KEY, JSON.stringify(body), TTL_SECONDS, now.getTime())
+    const body = await buildBoardPayload(event, user, now, refresh)
+    await persistBoard(store, user.login, body, nowMs)
     return body
   } catch (error) {
     const message = error instanceof Error ? error.message : 'GitHub search failed'

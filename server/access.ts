@@ -78,7 +78,14 @@ export async function evaluateAccess(input: {
 }): Promise<'ok' | 'forbidden'> {
   if (input.dev) return 'ok'
   const audience = accessAudiences(input.audience)
-  if (!input.assertion || !input.teamDomain || audience.length === 0) return 'forbidden'
+  if (!input.assertion || !input.teamDomain || audience.length === 0) {
+    console.warn('osdash access: forbidden', {
+      assertion: Boolean(input.assertion),
+      teamDomain: Boolean(input.teamDomain),
+      audiences: audience.length,
+    })
+    return 'forbidden'
+  }
   try {
     await verifyAccessJwt(input.assertion, {
       teamDomain: input.teamDomain,
@@ -86,7 +93,11 @@ export async function evaluateAccess(input: {
       keys: input.keys,
     })
     return 'ok'
-  } catch {
+  } catch (error) {
+    console.warn(
+      'osdash access: jwt rejected',
+      error instanceof Error ? error.message : String(error),
+    )
     return 'forbidden'
   }
 }

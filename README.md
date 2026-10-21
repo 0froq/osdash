@@ -1,27 +1,77 @@
 # osdash
 
-froQ 的开源贡献看板。只读。生产域名是 `osdash.froq.me`。
+Multi-user, read-only open-source contribution board. Each visitor signs in with GitHub OAuth and sees their own PRs and issues (open items plus those closed in the last 14 days). Production: `osdash.froq.me`.
 
-它列出 `author:0froq -user:0froq` 的 PR 和 issue：所有还开着的，加上最近 14 天内关闭的。timeline 把关联的 issue 和 PR 收成一条，再标贡献类型和回合（mine / maintainer / other / none）。缓存在 Cloudflare KV。
+## Architecture
 
-## 本地
+- **Nuxt 4** on **Cloudflare Workers** (Nitro `cloudflare-module`). Production deploys with **Void** (`void.config.ts`); branch previews use `cloudflare.config.ts`.
+- **GitHub OAuth** (`read:user`): callback exchanges the code for a user access token, encrypts it with **AES-GCM** (`SESSION_SECRET`), stores it in **KV** under `session:v1:*`, and sets an **httpOnly** session cookie. The browser never sees the GitHub token.
+- **Board data**: GraphQL search per logged-in user, enriched timeline links via GraphQL (`CROSS_REFERENCED` / `CONNECTED`) with REST fallback only when links are missing; PR check runs still use REST when needed. Responses are cached in **KV** per user (`board:v3:{login}`) with **stale-while-revalidate** (serve cache, refresh in the background via `waitUntil`).
+- **Turn classification**: existing rules unchanged. **Workers AI clef** runs only for `0froq`. Other users can opt into the same prompts via **BYOK** (OpenAI-compatible base URL, API key, model) stored encrypted per user in KV.
+- **Cloudflare Access**: JWT middleware runs only when `OSDASH_ACCESS_ENFORCE=true` (branch previews). Production sets `OSDASH_ACCESS_ENFORCE=false`.
 
-需要 Node 24.21.0。开发服务器默认用样例数据，不访问 GitHub：
+## Secrets and KV
+
+| Name                   | Where              | Purpose                                                          |
+| ---------------------- | ------------------ | ---------------------------------------------------------------- |
+| `GITHUB_CLIENT_ID`     | Worker secret      | OAuth app client ID                                              |
+| `GITHUB_CLIENT_SECRET` | Worker secret      | OAuth app client secret                                          |
+| `SESSION_SECRET`       | Worker secret      | AES-GCM key for session + BYOK blobs                             |
+| `CACHE`                | KV binding         | Sessions, board cache, classifier cache, OAuth state             |
+| `AI`                   | Workers AI binding | Clef for `0froq` only                                            |
+| `ACCESS_TEAM_DOMAIN`   | Worker secret      | Preview only (when Access enforced)                              |
+| `ACCESS_AUD`           | Worker secret      | Preview only                                                     |
+| `GITHUB_TOKEN`         | Optional legacy    | Not used for per-user board loads; keep empty in new deployments |
+
+Production (Void):
+
+```sh
+void secret put GITHUB_CLIENT_ID
+void secret put GITHUB_CLIENT_SECRET
+void secret put SESSION_SECRET
+```
+
+Preview (`cloudflare.config.ts`) needs the same secrets plus Access values; set build/env `OSDASH_ACCESS_ENFORCE=true`.
+
+### GitHub OAuth app
+
+1. GitHub → Settings → Developer settings → OAuth Apps → New.
+2. Homepage URL: your deployment origin (e.g. `https://osdash.froq.me`).
+3. Callback URL: `https://<origin>/api/auth/callback` (add preview callback URLs for branch previews).
+4. No extra scopes beyond `read:user` (requested in code).
+
+## Local development
+
+Node **24.21.0**. Create `.env` (not committed):
+
+```env
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+SESSION_SECRET=long-random-string
+GITHUB_TOKEN=unused-for-oauth
+ACCESS_TEAM_DOMAIN=
+ACCESS_AUD=
+OSDASH_ACCESS_ENFORCE=false
+```
+
+**Sample board (no GitHub):**
 
 ```sh
 pnpm install
 pnpm exec vp run dev
 ```
 
-打开 <http://localhost:3000>。要打到 GitHub，准备 `GITHUB_TOKEN`，然后去掉页面请求里的 `mock=1`，或者设 `OSDASH_MOCK=0` 并且不要带 `mock=1`。样例只在 `nuxt dev` 生效。
+Open http://localhost:3000 — dev mode uses `mock=1` sample data.
 
-## 检查
+**Real GitHub locally:** set the OAuth secrets, register callback `http://localhost:3000/api/auth/callback`, unset mock by building for production preview or patch dev to skip `mock=1` and sign in via `/login`.
+
+## Checks
 
 ```sh
 pnpm exec vp run check
 pnpm exec vp run test
 ```
 
-## 部署
+## Deploy
 
-生产用 Void，分支预览用 `cf previews deploy`。不要跑 wrangler 命令。配置怎么来的写在 `AGENTS.md`。Workers Builds 发布：`main` 跑 `pnpm exec void deploy --platform cloudflare`，其它分支跑 `pnpm preview:deploy`。
+Production: `pnpm exec void deploy --platform cloudflare` on `main`. Branch previews: `pnpm preview:deploy`. See `AGENTS.md` for Workers Builds details.

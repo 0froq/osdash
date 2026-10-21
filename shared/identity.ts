@@ -18,6 +18,10 @@ export function isBot(actor: Actor): boolean {
   return BOT_LOGINS.some(name => name === login)
 }
 
-export function isSelf(actor: Actor): boolean {
-  return actor.login.toLowerCase() === SELF
+export function viewerLoginOf(item?: { viewerLogin?: string }): string {
+  return item?.viewerLogin?.toLowerCase() ?? SELF
+}
+
+export function isSelf(actor: Actor, viewer: string = SELF): boolean {
+  return actor.login.toLowerCase() === viewer.toLowerCase()
 }
