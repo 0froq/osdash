@@ -1,0 +1,152 @@
+/* LiG site skin. Tokens and type stacks are the ones in lig app/assets/css/kit.css. */
+:root {
+  --bg: #f4f2ec;
+  --fg: #1a1917;
+  --muted: #85837c;
+  --faint: #cfccc3;
+  --line: rgba(26, 25, 23, 0.12);
+  --accent: #e8431f;
+  --font-display:
+    'Instrument Serif', 'Iowan Old Style', Georgia, 'Songti SC', 'Noto Serif SC',
+    'Source Han Serif SC', serif;
+  --font-text:
+    'Geist Variable', 'Geist', ui-sans-serif, system-ui, -apple-system, 'PingFang SC',
+    'Hiragino Sans GB', 'Noto Sans SC', sans-serif;
+  --font-meta: 'Geist Mono Variable', 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --pad: clamp(20px, 4vw, 56px);
+  --gap: 24px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --radius: 2px;
+  --radius-card: 12px;
+  --card: #fbfaf6;
+  --lig-light_paper-diag-error: #cb4d50;
+  --lig-light_paper-diag-warn: #dbb800;
+  --lig-light_paper-diag-info: #009392;
+  --lig-dark_paper-diag-error: #f28885;
+  --lig-dark_paper-diag-warn: #dbb800;
+  --lig-dark_paper-diag-info: #26c2c1;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #111113;
+  --fg: #f2f0ea;
+  --muted: #918f88;
+  --faint: #32312d;
+  --line: rgba(242, 240, 234, 0.1);
+  --accent: #ff6242;
+  --card: #18181a;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #111113;
+    --fg: #f2f0ea;
+    --muted: #918f88;
+    --faint: #32312d;
+    --line: rgba(242, 240, 234, 0.1);
+    --accent: #ff6242;
+    --card: #18181a;
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--fg) 30%, transparent) transparent;
+}
+
+html,
+body,
+#__nuxt,
+.ui-paper,
+.ui-paper-body {
+  min-height: 100%;
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-text);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  transition:
+    background-color 0.6s var(--ease),
+    color 0.6s var(--ease);
+}
+
+body {
+  margin: 0;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
+button,
+select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+  font-weight: 400;
+}
+
+.ui-paper {
+  position: relative;
+}
+
+.ui-paper-grain {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.ui-paper-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    transition: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

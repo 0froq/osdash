@@ -10,6 +10,7 @@ import {
 
 export { contributionLabel } from './contribution'
 import { isBot, isSelf, viewerLoginOf } from './identity'
+import type { ReasonCode } from './reason'
 import {
   asksForPrOrRebase,
   isCoderabbitActionable,
@@ -23,7 +24,7 @@ import {
   mentionsSelf,
 } from './turn-rules'
 
-export { BOT_LOGINS, isBot, isSelf, SELF } from './identity'
+export { BOT_LOGINS, isBot, isSelf } from './identity'
 
 export const DAY_MS = 24 * 60 * 60 * 1000
 export const RECENT_MS = 14 * DAY_MS
@@ -88,6 +89,15 @@ export type LinkedPullRequest = {
   author: Actor
 }
 
+export type ClosingIssue = {
+  repo: string
+  number: number
+  url: string
+  state: ItemState
+  title: string
+  authorLogin: string
+}
+
 export type TimelineLink = {
   event: 'cross-referenced' | 'connected'
   repo: string
@@ -120,6 +130,8 @@ export type Item = {
   checks: Check[]
   assignees?: Actor[]
   linkedPullRequests?: LinkedPullRequest[]
+  /** Issues this pull request closes, from GitHub's closingIssuesReferences. */
+  closingIssues?: ClosingIssue[]
   /** Issue or pull request body. Opening text, not a comment. */
   body?: string
   updatedAt?: string
@@ -145,6 +157,8 @@ export type BoardLabel = 'CI awaiting approval' | 'Self-claimed'
 export type Verdict = {
   turn: Turn
   reason: string
+  reasonCode: ReasonCode
+  reasonActor: string | null
   labels: BoardLabel[]
   waitingSince: string
   ageMs: number
@@ -161,18 +175,6 @@ export type Verdict = {
   quote: string | null
   focusCommentId: string | null
   focusUpdatedAt: string | null
-}
-
-export type BoardItem = Verdict & {
-  id: string
-  kind: ItemKind
-  repo: string
-  number: number
-  title: string
-  state: ItemState
-  closedAt: string | null
-  firstReplyMs: number | null
-  parts: ItemPart[]
 }
 
 export type BoardStats = {
@@ -258,18 +260,24 @@ function pushedBySelfAfter(activities: Activity[], at: string, viewer: string): 
   )
 }
 
-function reviewReason(login: string, state: ReviewState): string {
+type ReasonParts = {
+  text: string
+  code: ReasonCode
+  actor: string | null
+}
+
+function reviewReason(login: string, state: ReviewState): ReasonParts {
   switch (state) {
     case 'CHANGES_REQUESTED':
-      return `${login} requested changes`
+      return { text: `${login} requested changes`, code: 'changes-requested', actor: login }
     case 'APPROVED':
-      return `${login} approved`
+      return { text: `${login} approved`, code: 'approved', actor: login }
     case 'COMMENTED':
-      return `${login} commented`
+      return { text: `${login} commented`, code: 'commented', actor: login }
     case 'DISMISSED':
-      return `${login} dismissed review`
+      return { text: `${login} dismissed review`, code: 'review-dismissed', actor: login }
     case 'PENDING':
-      return `${login} has a pending review`
+      return { text: `${login} has a pending review`, code: 'commented', actor: login }
     default: {
       const exhaustive: never = state
       return exhaustive
@@ -277,22 +285,30 @@ function reviewReason(login: string, state: ReviewState): string {
   }
 }
 
-function humanReason(activity: Activity, viewer: string): string {
+function humanReason(activity: Activity, viewer: string): ReasonParts {
   switch (activity.kind) {
     case 'create':
-      return 'Opened, waiting on maintainer'
+      return { text: 'Opened, waiting on maintainer', code: 'opened-waiting', actor: null }
     case 'comment':
       return isSelf(activity.actor, viewer)
-        ? 'Replied, waiting on maintainer'
-        : `${activity.actor.login} commented`
+        ? { text: 'Replied, waiting on maintainer', code: 'replied-waiting', actor: null }
+        : {
+            text: `${activity.actor.login} commented`,
+            code: 'commented',
+            actor: activity.actor.login,
+          }
     case 'review':
       return isSelf(activity.actor, viewer)
-        ? 'Replied, waiting on maintainer'
+        ? { text: 'Replied, waiting on maintainer', code: 'replied-waiting', actor: null }
         : reviewReason(activity.actor.login, activity.reviewState ?? 'COMMENTED')
     case 'push':
       return isSelf(activity.actor, viewer)
-        ? 'Pushed, waiting on maintainer'
-        : `${activity.actor.login} pushed commits`
+        ? { text: 'Pushed, waiting on maintainer', code: 'pushed-waiting', actor: null }
+        : {
+            text: `${activity.actor.login} pushed commits`,
+            code: 'pushed',
+            actor: activity.actor.login,
+          }
     default: {
       const exhaustive: never = activity.kind
       return exhaustive
@@ -300,8 +316,19 @@ function humanReason(activity: Activity, viewer: string): string {
   }
 }
 
-function failureReason(check: Check): string {
-  return /lint/i.test(check.name) ? 'CI lint failed' : `CI ${check.name} failed`
+function failureReason(check: Check): ReasonParts {
+  if (/lint/i.test(check.name)) {
+    return { text: 'CI lint failed', code: 'ci-lint-failed', actor: null }
+  }
+  return { text: `CI ${check.name} failed`, code: 'ci-failed', actor: null }
+}
+
+function withReason(parts: ReasonParts): {
+  reason: string
+  reasonCode: ReasonCode
+  reasonActor: string | null
+} {
+  return { reason: parts.text, reasonCode: parts.code, reasonActor: parts.actor }
 }
 
 function commentUrl(activities: Activity[]): string | null {
@@ -411,7 +438,7 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
       return {
         ...quiet,
         turn,
-        reason: 'Claim pending approval',
+        ...withReason({ text: 'Claim pending approval', code: 'claim-pending', actor: null }),
         waitingSince: claimSince,
         ageMs: claimAge,
         tone: waitingTone(turn, claimAge),
@@ -423,7 +450,7 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
     return {
       ...quiet,
       turn: 'mine',
-      reason: 'Claimed, open a PR',
+      ...withReason({ text: 'Claimed, open a PR', code: 'claimed-open-pr', actor: null }),
       labels: claimLabels,
       waitingSince: claimSince,
       ageMs: claimAge,
@@ -435,7 +462,11 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
     return {
       ...quiet,
       turn: 'none',
-      reason: item.state === 'merged' ? 'Merged' : 'Closed',
+      ...withReason(
+        item.state === 'merged'
+          ? { text: 'Merged', code: 'merged', actor: null }
+          : { text: 'Closed', code: 'closed', actor: null },
+      ),
       tone: 'none',
     }
   }
@@ -446,19 +477,29 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
     return {
       ...quiet,
       turn: 'mine',
-      reason: failureReason(lint ?? failed[0]!),
+      ...withReason(failureReason(lint ?? failed[0]!)),
       tone: 'none',
     }
   }
 
   const claCheck = item.checks.find(isFailingClaCheck)
   if (claCheck?.conclusion === 'ACTION_REQUIRED') {
-    return { ...quiet, turn: 'mine', reason: 'CLA check failed', tone: 'none' }
+    return {
+      ...quiet,
+      turn: 'mine',
+      ...withReason({ text: 'CLA check failed', code: 'cla-failed', actor: null }),
+      tone: 'none',
+    }
   }
 
   const claComment = [...relevant].reverse().find(isFailingClaComment)
   if (claComment && !selfActedAfter(relevant, claComment.at, viewer)) {
-    return { ...quiet, turn: 'mine', reason: 'CLA check failed', tone: 'none' }
+    return {
+      ...quiet,
+      turn: 'mine',
+      ...withReason({ text: 'CLA check failed', code: 'cla-failed', actor: null }),
+      tone: 'none',
+    }
   }
 
   const review = latestDecidedReview(activities)
@@ -469,14 +510,19 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
     return {
       ...quiet,
       turn: 'mine',
-      reason: reviewReason(review.actor.login, 'CHANGES_REQUESTED'),
+      ...withReason(reviewReason(review.actor.login, 'CHANGES_REQUESTED')),
       tone: 'none',
     }
   }
 
   const rabbit = [...relevant].reverse().find(isCoderabbitActionable)
   if (rabbit && !selfActedAfter(relevant, rabbit.at, viewer)) {
-    return { ...quiet, turn: 'mine', reason: 'CodeRabbit asked for changes', tone: 'none' }
+    return {
+      ...quiet,
+      turn: 'mine',
+      ...withReason({ text: 'CodeRabbit asked for changes', code: 'coderabbit', actor: null }),
+      tone: 'none',
+    }
   }
 
   const lastMaintainer = relevant
@@ -492,7 +538,11 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
       return {
         ...quiet,
         turn: 'mine',
-        reason: `${lastMaintainer.actor.login} mentioned you`,
+        ...withReason({
+          text: `${lastMaintainer.actor.login} mentioned you`,
+          code: 'mentioned',
+          actor: lastMaintainer.actor.login,
+        }),
         tone: 'none',
       }
     }
@@ -500,7 +550,11 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
       return {
         ...quiet,
         turn: 'mine',
-        reason: `${lastMaintainer.actor.login} asked for a PR or rebase`,
+        ...withReason({
+          text: `${lastMaintainer.actor.login} asked for a PR or rebase`,
+          code: 'asked-pr-or-rebase',
+          actor: lastMaintainer.actor.login,
+        }),
         tone: 'none',
       }
     }
@@ -512,23 +566,30 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
       return {
         ...quiet,
         turn,
-        reason: 'Asked, waiting on maintainer',
+        ...withReason({ text: 'Asked, waiting on maintainer', code: 'asked-waiting', actor: null }),
         tone: waitingTone(turn, ageMs),
       }
     }
     if (isClearHelpClosure(lastHuman.body)) {
       const turn: Turn = 'maintainer'
-      const reason = /\balready fixed\b/i.test(lastHuman.body)
-        ? 'Already fixed, waiting on maintainer'
-        : 'Workaround noted, waiting on maintainer'
-      return { ...quiet, turn, reason, tone: waitingTone(turn, ageMs) }
+      const fixed = /\balready fixed\b/i.test(lastHuman.body)
+      return {
+        ...quiet,
+        turn,
+        ...withReason(
+          fixed
+            ? { text: 'Already fixed, waiting on maintainer', code: 'already-fixed', actor: null }
+            : { text: 'Workaround noted, waiting on maintainer', code: 'workaround', actor: null },
+        ),
+        tone: waitingTone(turn, ageMs),
+      }
     }
     if (isStatementText(lastHuman.body) || isUnclearHelp(lastHuman.body)) {
       const turn: Turn = 'maintainer'
       return {
         ...quiet,
         turn,
-        reason: humanReason(lastHuman, viewer),
+        ...withReason(humanReason(lastHuman, viewer)),
         tone: waitingTone(turn, ageMs),
         ambiguous: true,
         focusCommentId: lastHuman.commentId ?? lastHuman.url ?? null,
@@ -543,18 +604,23 @@ function coreVerdict(item: Item, nowMs: number): CoreVerdict {
       return {
         ...quiet,
         turn,
-        reason: humanReason(lastHuman, viewer),
+        ...withReason(humanReason(lastHuman, viewer)),
         tone: waitingTone(turn, ageMs),
       }
     }
-    return { ...quiet, turn: 'other', reason: humanReason(lastHuman, viewer), tone: 'none' }
+    return {
+      ...quiet,
+      turn: 'other',
+      ...withReason(humanReason(lastHuman, viewer)),
+      tone: 'none',
+    }
   }
 
   const turn: Turn = 'maintainer'
   return {
     ...quiet,
     turn,
-    reason: humanReason(lastHuman, viewer),
+    ...withReason(humanReason(lastHuman, viewer)),
     tone: waitingTone(turn, ageMs),
   }
 }
@@ -582,6 +648,7 @@ export function withResolvedTurn<T extends Verdict>(
     quote,
     ambiguous: false,
     reason: quote ?? verdict.reason,
+    reasonCode: 'clef',
     tone: waitingTone(turn, verdict.ageMs),
     marks: derivedMarks(turn, verdict.ageMs, verdict.contributions, item),
   }
@@ -598,56 +665,15 @@ export function firstReplyMs(item: Item): number | null {
   return Date.parse(reply.at) - created
 }
 
-export function present(item: Item, nowMs: number): BoardItem {
-  const parts = item.parts ?? [
-    {
-      kind: item.kind,
-      repo: item.repo,
-      number: item.number,
-      url: item.url,
-      title: item.title,
-      authorLogin: item.author.login,
-      body: item.body,
-    },
-  ]
-  return {
-    id: `${item.repo}#${item.number}`,
-    kind: item.kind,
-    repo: item.repo,
-    number: item.number,
-    title: item.title,
-    state: item.state,
-    closedAt: item.closedAt,
-    firstReplyMs: firstReplyMs(item),
-    parts,
-    ...judge(item, nowMs),
-  }
-}
-
-export function summarize(items: readonly BoardItem[]): BoardStats {
+export function summarize(
+  items: readonly { state: ItemState; firstReplyMs: number | null }[],
+): BoardStats {
   const replies = items.flatMap(item => (item.firstReplyMs === null ? [] : [item.firstReplyMs]))
   return {
     merged: items.filter(item => item.state === 'merged').length,
     open: items.filter(item => item.state === 'open').length,
     averageFirstReplyMs:
       replies.length === 0 ? null : replies.reduce((sum, ms) => sum + ms, 0) / replies.length,
-  }
-}
-
-export function turnLabel(turn: Turn): string {
-  switch (turn) {
-    case 'mine':
-      return 'Mine'
-    case 'maintainer':
-      return 'Maintainer'
-    case 'other':
-      return 'Other'
-    case 'none':
-      return 'None'
-    default: {
-      const exhaustive: never = turn
-      return exhaustive
-    }
   }
 }
 

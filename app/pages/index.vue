@@ -1,583 +1,486 @@
 <script setup lang="ts">
-import {
-  contributionLabel,
-  formatDuration,
-  formatTimer,
-  RECENT_MS,
-  summarize,
-  turnLabel,
-  type BoardItem,
-  type Turn,
-} from '#shared/turn'
-import { THEME_KEY } from '~/theme'
+import type { UnitCategory, UnitView } from '#shared/unit'
+import { copy } from '~/copy/zh-CN'
+import { placeUnit, type InboxSection } from '~/composables/useInbox'
+import type { InboxViewName } from '~/components/inbox/Sidebar.vue'
+import { nextMondayMorning, threeDaysLater, tomorrowMorning } from '~/utils/later'
 
-type ThemeName = 'light' | 'dark'
+const inbox = useInbox()
+const media = useMedia()
+const prefs = usePrefs(inbox.updateUnit)
+const route = useRoute()
+const router = useRouter()
 
-type BoardResponse = {
-  generatedAt: string
-  cached: boolean
-  revalidating?: boolean
-  truncated: boolean
-  mock: boolean
-  stats: ReturnType<typeof summarize>
-  items: BoardItem[]
-  viewerLogin?: string
-}
-
-type MeResponse = { authenticated: false } | { authenticated: true; login: string }
-
-type SettingsResponse =
-  | { configured: false; baseUrl: string; model: string }
-  | { configured: true; baseUrl: string; model: string }
-
-const items = ref<BoardItem[]>([])
-const generatedAt = ref<string | null>(null)
-const cached = ref(false)
-const revalidating = ref(false)
-const truncated = ref(false)
-const mock = ref(false)
-const pending = ref(true)
-const error = ref('')
-const viewerLogin = ref('')
-const settingsOpen = ref(false)
-const settingsBaseUrl = ref('')
-const settingsModel = ref('')
-const settingsApiKey = ref('')
-const settingsSaving = ref(false)
-const settingsMessage = ref('')
-let revalidateTimer: ReturnType<typeof setTimeout> | null = null
+const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'helped']
 const repo = ref('')
-const selectedId = ref('')
-const theme = ref<ThemeName>('light')
-const themeReady = ref(false)
-const themes = ['light', 'dark'] as const
+const menu = ref<{ unit: UnitView; x: number; y: number } | null>(null)
+const settingsOpen = ref(false)
 
-const repos = computed(() => [...new Set(items.value.map(item => item.repo))].sort())
-
-const visible = computed(() => {
-  const filtered = repo.value ? items.value.filter(item => item.repo === repo.value) : items.value
-  return filtered
+const view = computed<InboxViewName>(() => {
+  const value = route.query.view
+  if (value === 'later' || value === 'starred' || value === 'ended') return value
+  return 'home'
 })
 
-const stats = computed(() => summarize(visible.value))
+const category = computed<UnitCategory | null>(() => {
+  const value = route.query.cat
+  if (
+    value === 'claimed-fix' ||
+    value === 'direct-pr' ||
+    value === 'reported' ||
+    value === 'helped'
+  )
+    return value
+  return null
+})
 
-const generatedMs = computed(() => (generatedAt.value ? Date.parse(generatedAt.value) : Date.now()))
+function placed(unit: UnitView): InboxSection | 'hidden' {
+  return placeUnit(unit, inbox.nowMs.value)
+}
 
-function column(turn: Turn): BoardItem[] {
-  const rows = visible.value.filter(item => item.turn === turn)
-  if (turn === 'none') {
-    return rows
-      .filter(item => {
-        if (item.state === 'open') return true
-        return item.closedAt !== null && generatedMs.value - Date.parse(item.closedAt) <= RECENT_MS
-      })
-      .sort((first, second) => Date.parse(second.closedAt ?? '') - Date.parse(first.closedAt ?? ''))
+function onHome(unit: UnitView): boolean {
+  const section = placed(unit)
+  return (
+    section === 'mine' || section === 'activity' || section === 'waiting' || section === 'ended'
+  )
+}
+
+const categoryCounts = computed(() => {
+  const totals: Record<UnitCategory, number> = {
+    'claimed-fix': 0,
+    'direct-pr': 0,
+    'reported': 0,
+    'helped': 0,
+  }
+  for (const unit of inbox.units.value) {
+    if (!onHome(unit)) continue
+    totals[unit.category] += 1
+  }
+  return totals
+})
+
+const homeCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'mine').length)
+const laterCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'later').length)
+const endedCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'ended').length)
+const starredCount = computed(() => inbox.units.value.filter(unit => unit.starred).length)
+
+function inView(unit: UnitView): boolean {
+  if (view.value === 'later') return placed(unit) === 'later'
+  if (view.value === 'starred') return unit.starred
+  if (view.value === 'ended') return placed(unit) === 'ended'
+  return onHome(unit)
+}
+
+const pool = computed(() =>
+  inbox.units.value.filter(
+    unit => inView(unit) && (!category.value || unit.category === category.value),
+  ),
+)
+
+const repoChips = computed(() => {
+  const totals = new Map<string, number>()
+  for (const unit of pool.value) totals.set(unit.repo, (totals.get(unit.repo) ?? 0) + 1)
+  return [...totals.entries()]
+    .sort((first, second) => first[0].localeCompare(second[0]))
+    .map(([name, count]) => ({ name, count }))
+})
+
+const visible = computed(() => {
+  const rows = pool.value.filter(unit => (repo.value ? unit.repo === repo.value : true))
+  rows.sort((first, second) => second.ageMs - first.ageMs)
+  return rows
+})
+
+function sectionRows(section: InboxSection): UnitView[] {
+  const rows = visible.value.filter(unit => placed(unit) === section)
+  if (section === 'ended') {
+    return rows.sort(
+      (first, second) => Date.parse(second.closedAt ?? '') - Date.parse(first.closedAt ?? ''),
+    )
   }
   return [...rows].sort((first, second) => second.ageMs - first.ageMs)
 }
 
-const columns = computed(() => [
-  { turn: 'mine' as const, title: 'Mine', rows: column('mine') },
-  { turn: 'maintainer' as const, title: 'Maintainer', rows: column('maintainer') },
-  { turn: 'other' as const, title: 'Other', rows: column('other') },
-  { turn: 'none' as const, title: 'None', rows: column('none') },
-])
+const showHome = computed(() => view.value === 'home')
+const filtering = computed(() => category.value !== null || repo.value.length > 0)
 
-const flat = computed(() => columns.value.flatMap(entry => entry.rows))
-
-watch(flat, rows => {
-  if (!rows.some(row => row.id === selectedId.value)) selectedId.value = rows[0]?.id ?? ''
-})
-
-function reveal(id: string) {
-  selectedId.value = id
-  document.getElementById(id)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+function showSection(rows: UnitView[]): boolean {
+  return !filtering.value || rows.length > 0
 }
 
-function move(step: number) {
-  const rows = flat.value
-  if (rows.length === 0) return
-  const index = Math.max(
-    0,
-    rows.findIndex(row => row.id === selectedId.value),
-  )
-  const next = Math.min(rows.length - 1, Math.max(0, index + step))
-  reveal(rows[next]!.id)
-}
-
-function moveGroup(step: number) {
-  const groups = columns.value.filter(entry => entry.rows.length > 0)
-  if (groups.length === 0) return
-  const current = groups.findIndex(entry => entry.rows.some(row => row.id === selectedId.value))
-  const next = Math.min(groups.length - 1, Math.max(0, current + step))
-  const row = groups[next]?.rows[0]
-  if (!row) return
-  reveal(row.id)
-}
-
-function openSelected() {
-  const row = flat.value.find(item => item.id === selectedId.value)
-  if (!row) return
-  window.open(row.links.item, '_blank', 'noopener')
-}
-
-function setTheme(next: ThemeName): void {
-  theme.value = next
-  document.documentElement.dataset.theme = next
-  try {
-    localStorage.setItem(THEME_KEY, next)
-  } catch {
-    /* Storage may be unavailable; the current theme still applies. */
+function writeQuery(patch: Record<string, string | undefined>): void {
+  const next: Record<string, string> = {}
+  for (const [key, value] of Object.entries(route.query)) {
+    if (typeof value === 'string' && value.length > 0) next[key] = value
   }
+  for (const [key, value] of Object.entries(patch)) {
+    if (!value) delete next[key]
+    else next[key] = value
+  }
+  void router.replace({ query: next })
 }
 
-function onThemeKey(event: KeyboardEvent): void {
-  const step =
-    event.key === 'ArrowRight' || event.key === 'ArrowDown'
-      ? 1
-      : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-        ? -1
-        : 0
-  if (step === 0) return
+function selectView(next: InboxViewName): void {
+  repo.value = ''
+  menu.value = null
+  writeQuery({ view: next === 'home' ? undefined : next, cat: undefined })
+}
+
+function selectCategory(next: UnitCategory): void {
+  repo.value = ''
+  menu.value = null
+  writeQuery({
+    view: undefined,
+    cat: category.value === next ? undefined : next,
+  })
+}
+
+function selectRepo(name: string): void {
+  repo.value = name
+}
+
+function openMenu(unit: UnitView, event: MouseEvent): void {
   event.preventDefault()
-  const index = Math.max(0, themes.indexOf(theme.value))
-  const next = themes[(index + step + themes.length) % themes.length]
-  if (!next) return
-  setTheme(next)
-  const group = event.currentTarget
-  if (group instanceof HTMLElement)
-    group.querySelectorAll<HTMLElement>('[role="radio"]')[themes.indexOf(next)]?.focus()
+  menu.value = { unit, x: event.clientX, y: event.clientY }
 }
 
-function onKey(event: KeyboardEvent) {
-  const target = event.target
-  if (target instanceof HTMLElement && target.closest('input, textarea, select')) return
-  if (event.key === 'j') {
-    event.preventDefault()
-    move(1)
-  } else if (event.key === 'k') {
-    event.preventDefault()
-    move(-1)
-  } else if (event.key === 'h') {
-    event.preventDefault()
-    moveGroup(-1)
-  } else if (event.key === 'l') {
-    event.preventDefault()
-    moveGroup(1)
-  } else if (event.key === 'o') {
-    event.preventDefault()
-    openSelected()
+function markRead(unit: UnitView): void {
+  menu.value = null
+  seen.mark(unit)
+}
+
+function queryRecord(): Record<string, string> {
+  const next: Record<string, string> = {}
+  for (const [key, value] of Object.entries(route.query)) {
+    if (typeof value === 'string' && value.length > 0) next[key] = value
   }
+  return next
 }
 
-function applyBoard(body: BoardResponse): void {
-  items.value = body.items
-  generatedAt.value = body.generatedAt
-  cached.value = body.cached
-  revalidating.value = body.revalidating === true
-  truncated.value = body.truncated
-  mock.value = body.mock
-  if (body.viewerLogin) viewerLogin.value = body.viewerLogin
-}
+const selectedId = ref('')
+let pushedOpen = false
+const seen = useSeen(inbox.updateUnit)
+const openId = computed(() => (typeof route.query.open === 'string' ? route.query.open : ''))
+const openUnit = computed(() => inbox.units.value.find(unit => unit.id === openId.value) ?? null)
 
-function scheduleRevalidatePoll(): void {
-  if (revalidateTimer) clearTimeout(revalidateTimer)
-  if (!revalidating.value) return
-  revalidateTimer = setTimeout(() => {
-    void load(false, true)
-  }, 4000)
-}
-
-async function load(refresh = false, quiet = false): Promise<void> {
-  if (!quiet) pending.value = true
-  error.value = ''
-  const params = new URLSearchParams()
-  if (import.meta.dev) params.set('mock', '1')
-  if (refresh) params.set('refresh', '1')
-  const query = params.size > 0 ? `?${params.toString()}` : ''
-  try {
-    const body = await $fetch<BoardResponse>(`/api/board${query}`)
-    applyBoard(body)
-    scheduleRevalidatePoll()
-  } catch (caught) {
-    const status =
-      caught && typeof caught === 'object' && 'statusCode' in caught
-        ? (caught as { statusCode?: number }).statusCode
-        : undefined
-    if (status === 401 && !import.meta.dev) {
-      await navigateTo('/login')
-      return
-    }
-    error.value = caught instanceof Error ? caught.message : 'Could not load board'
-  } finally {
-    if (!quiet) pending.value = false
-  }
-}
-
-async function logout(): Promise<void> {
-  await $fetch('/api/auth/logout', { method: 'POST' })
-  await navigateTo('/login')
-}
-
-async function openSettings(): Promise<void> {
-  settingsMessage.value = ''
-  settingsApiKey.value = ''
-  try {
-    const body = await $fetch<SettingsResponse>('/api/settings')
-    settingsBaseUrl.value = body.baseUrl
-    settingsModel.value = body.model
-    settingsOpen.value = true
-  } catch {
-    settingsMessage.value = 'Could not load settings'
-    settingsOpen.value = true
-  }
-}
-
-async function saveSettings(clear = false): Promise<void> {
-  settingsSaving.value = true
-  settingsMessage.value = ''
-  try {
-    await $fetch('/api/settings', {
-      method: 'PUT',
-      body: clear
-        ? { clear: true }
-        : {
-            baseUrl: settingsBaseUrl.value,
-            model: settingsModel.value,
-            apiKey: settingsApiKey.value,
-          },
-    })
-    settingsMessage.value = clear ? 'BYOK cleared' : 'Settings saved'
-    settingsApiKey.value = ''
-  } catch (caught) {
-    settingsMessage.value = caught instanceof Error ? caught.message : 'Could not save settings'
-  } finally {
-    settingsSaving.value = false
-  }
-}
-
-onMounted(async () => {
-  theme.value = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
-  themeReady.value = true
-  window.addEventListener('keydown', onKey)
-  if (!import.meta.dev) {
-    try {
-      const me = await $fetch<MeResponse>('/api/auth/me')
-      if (!me.authenticated) {
-        await navigateTo('/login')
-        return
-      }
-      viewerLogin.value = me.login
-    } catch {
-      await navigateTo('/login')
-      return
-    }
-  }
-  void load(false)
+const flat = computed(() => {
+  if (!showHome.value) return visible.value
+  return (['mine', 'activity', 'waiting', 'ended'] as const).flatMap(section =>
+    showSection(sectionRows(section)) ? sectionRows(section) : [],
+  )
 })
 
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKey)
-  if (revalidateTimer) clearTimeout(revalidateTimer)
+function selectUnit(unit: UnitView): void {
+  selectedId.value = unit.id
+  if (openId.value === unit.id) {
+    seen.mark(unit)
+    return
+  }
+  pushedOpen = true
+  void router.push({ query: { ...queryRecord(), open: unit.id } })
+}
+
+function closePreview(): void {
+  if (menu.value) {
+    menu.value = null
+    return
+  }
+  if (!openId.value) return
+  if (pushedOpen) {
+    pushedOpen = false
+    void router.back()
+    return
+  }
+  writeQuery({ open: undefined })
+}
+
+function moveTo(id: string): void {
+  selectedId.value = id
+  document.querySelector(`[data-unit="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' })
+}
+
+function selectedUnit(): UnitView | undefined {
+  return inbox.units.value.find(unit => unit.id === selectedId.value)
+}
+
+watch([openId, () => inbox.units.value], () => {
+  const id = openId.value
+  if (!id) return
+  selectedId.value = id
+  const unit = inbox.units.value.find(item => item.id === id)
+  if (unit) seen.mark(unit)
 })
 
-function replyLabel(ms: number | null): string {
-  if (ms === null) return '—'
-  return formatDuration(ms)
+useShortcuts({
+  flat,
+  selectedId,
+  move: moveTo,
+  open() {
+    const unit = flat.value.find(item => item.id === selectedId.value) ?? flat.value[0]
+    if (unit) selectUnit(unit)
+  },
+  close: closePreview,
+  star() {
+    const unit = selectedUnit()
+    if (unit) void prefs.setStar(unit, !unit.starred)
+  },
+  later() {
+    const unit = selectedUnit()
+    if (unit) void prefs.setLater(unit, tomorrowMorning())
+  },
+  read() {
+    const unit = selectedUnit()
+    if (unit) seen.mark(unit)
+  },
+  home() {
+    selectView('home')
+  },
+})
+
+function applyLater(unit: UnitView, preset: string | null): void {
+  menu.value = null
+  if (preset === null) {
+    void prefs.setLater(unit, null)
+    return
+  }
+  if (preset === 'tomorrow') {
+    void prefs.setLater(unit, tomorrowMorning())
+    return
+  }
+  if (preset === 'three-days') {
+    void prefs.setLater(unit, threeDaysLater())
+    return
+  }
+  if (preset === 'monday') {
+    void prefs.setLater(unit, nextMondayMorning())
+    return
+  }
 }
+
+function toggleStar(unit: UnitView): void {
+  menu.value = null
+  void prefs.setStar(unit, !unit.starred)
+}
+
+onMounted(() => {
+  void inbox.load(false)
+})
 </script>
 
 <template>
-  <main class="board">
-    <header class="top">
-      <div class="brand">
-        <h1>osdash</h1>
-        <p class="quiet">
-          <template v-if="viewerLogin">{{ viewerLogin }} · read-only</template>
-          <template v-else>open-source contributions, read-only</template>
-        </p>
-      </div>
-      <p class="hint">
-        h / l groups · j / k move · o open
-        <template v-if="mock"> · local sample</template>
-        <template v-else-if="revalidating"> · updating…</template>
-        <template v-else-if="cached"> · cached</template>
-        <template v-if="truncated"> · capped at 100</template>
-      </p>
-      <p class="stats">
-        Merged {{ stats.merged }} · Open {{ stats.open }} · avg first reply
-        {{ replyLabel(stats.averageFirstReplyMs) }}
-      </p>
-      <div class="controls">
-        <label>
-          <span class="quiet">Repo</span>
-          <select v-model="repo">
-            <option value="">All</option>
-            <option
-              v-for="name in repos"
-              :key="name"
-              :value="name"
-            >
-              {{ name }}
-            </option>
-          </select>
-        </label>
-        <button
-          v-if="!mock"
-          class="refresh"
-          type="button"
-          @click="openSettings"
-        >
-          Settings
-        </button>
-        <button
-          v-if="!mock"
-          class="refresh"
-          type="button"
-          @click="logout"
-        >
-          Sign out
-        </button>
-        <button
-          class="refresh"
-          type="button"
-          :disabled="pending"
-          @click="load(true)"
-        >
-          {{ pending ? 'Refreshing…' : 'Refresh' }}
-        </button>
-        <div
-          class="theme"
-          role="radiogroup"
-          aria-label="Theme"
-          @keydown="onThemeKey"
-        >
-          <button
-            type="button"
-            role="radio"
-            data-choice="light"
-            :aria-checked="themeReady ? theme === 'light' : undefined"
-            :tabindex="theme === 'dark' ? -1 : 0"
-            @click="setTheme('light')"
-          >
-            Light
-          </button>
-          <button
-            type="button"
-            role="radio"
-            data-choice="dark"
-            :aria-checked="themeReady ? theme === 'dark' : undefined"
-            :tabindex="theme === 'light' ? -1 : 0"
-            @click="setTheme('dark')"
-          >
-            Dark
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <dialog
-      v-if="settingsOpen"
-      open
-      class="settings-dialog"
-    >
-      <form
-        method="dialog"
-        class="settings-panel"
-        @submit.prevent
-      >
-        <h2>Classifier (BYOK)</h2>
-        <p class="quiet">
-          Optional OpenAI-compatible API for ambiguous turn classification. Workers AI clef stays on
-          for 0froq only.
-        </p>
-        <label>
-          <span class="quiet">Base URL</span>
-          <input
-            v-model="settingsBaseUrl"
-            type="url"
-            placeholder="https://api.openai.com/v1"
-          />
-        </label>
-        <label>
-          <span class="quiet">Model</span>
-          <input
-            v-model="settingsModel"
-            type="text"
-            placeholder="gpt-4o-mini"
-          />
-        </label>
-        <label>
-          <span class="quiet">API key</span>
-          <input
-            v-model="settingsApiKey"
-            type="password"
-            autocomplete="off"
-          />
-        </label>
-        <p
-          v-if="settingsMessage"
-          class="quiet"
-          >{{ settingsMessage }}</p
-        >
-        <p class="actions">
-          <button
-            class="button"
-            type="button"
-            :disabled="settingsSaving"
-            @click="saveSettings(false)"
-          >
-            Save
-          </button>
-          <button
-            class="button"
-            type="button"
-            :disabled="settingsSaving"
-            @click="saveSettings(true)"
-          >
-            Clear
-          </button>
-          <button
-            class="button"
-            type="button"
-            @click="settingsOpen = false"
-            >Close</button
-          >
-        </p>
-      </form>
-    </dialog>
-
+  <InboxShell :mobile="media.isMobile.value">
+    <template #sidebar>
+      <Sidebar
+        v-if="inbox.viewer.value"
+        :viewer="inbox.viewer.value"
+        :pending="inbox.pending.value"
+        :view="view"
+        :category="category"
+        :home-count="homeCount"
+        :later-count="laterCount"
+        :starred-count="starredCount"
+        :ended-count="endedCount"
+        :category-counts="categoryCounts"
+        @refresh="inbox.load(true)"
+        @logout="inbox.logout()"
+        @settings="settingsOpen = true"
+        @view="selectView"
+        @category="selectCategory"
+      />
+      <MobileNav
+        v-if="inbox.viewer.value"
+        :viewer="inbox.viewer.value"
+        :pending="inbox.pending.value"
+        :view="view"
+        :category="category"
+        :home-count="homeCount"
+        :later-count="laterCount"
+        :starred-count="starredCount"
+        :ended-count="endedCount"
+        :category-counts="categoryCounts"
+        @refresh="inbox.load(true)"
+        @logout="inbox.logout()"
+        @settings="settingsOpen = true"
+        @view="selectView"
+        @category="selectCategory"
+      />
+    </template>
     <p
-      v-if="error"
-      class="error"
+      v-if="inbox.pending.value && !inbox.viewer.value"
+      class="inbox-status"
+      >{{ copy.loading }}</p
     >
-      {{ error }}
-    </p>
-
-    <div class="columns">
-      <section
-        v-for="entry in columns"
-        :key="entry.turn"
-        class="column"
-        :class="[entry.turn, { active: entry.rows.some(row => row.id === selectedId) }]"
+    <p
+      v-if="inbox.error.value"
+      class="inbox-status error"
+      role="alert"
+      >{{ inbox.error.value }}</p
+    >
+    <template v-if="inbox.stats.value && inbox.viewer.value">
+      <Greeting
+        :name="inbox.displayName.value"
+        :mine="homeCount"
+        :merged="inbox.stats.value.merged"
+        :open="inbox.stats.value.open"
+        :average-first-reply-ms="inbox.stats.value.averageFirstReplyMs"
+      />
+      <p
+        v-if="inbox.revalidating.value"
+        class="inbox-status"
+        >{{ copy.updating }}</p
       >
-        <h2>
-          {{ entry.title }}
-          <span class="count">{{ entry.rows.length }}</span>
-        </h2>
-        <p
-          v-if="entry.rows.length === 0"
-          class="empty"
+      <p
+        v-if="inbox.truncated.value"
+        class="inbox-status"
+        >{{ copy.truncated }}</p
+      >
+      <FilterChips
+        :repos="repoChips"
+        :active="repo"
+        @select="selectRepo"
+      />
+      <EmptyState
+        v-if="!inbox.pending.value && inbox.units.value.length === 0"
+        :text="copy.emptyInbox"
+      />
+      <template v-else-if="showHome">
+        <Section
+          v-if="showSection(sectionRows('mine'))"
+          :title="copy.sections.mine"
+          :count="sectionRows('mine').length"
+          layout="mine"
         >
-          None
-        </p>
-        <article
-          v-for="row in entry.rows"
-          :id="row.id"
-          :key="row.id"
-          class="row"
-          :class="{ selected: row.id === selectedId }"
-          @click="selectedId = row.id"
+          <UnitCard
+            v-for="unit in sectionRows('mine')"
+            :key="unit.id"
+            :unit="unit"
+            size="large"
+            :selected="unit.id === selectedId"
+            @select="selectUnit(unit)"
+            @menu="openMenu(unit, $event)"
+          />
+        </Section>
+        <Section
+          v-if="showSection(sectionRows('activity'))"
+          :title="copy.sections.activity"
+          :count="sectionRows('activity').length"
+          layout="activity"
         >
-          <div class="head">
-            <p class="repo">{{ row.repo }} #{{ row.number }}</p>
-            <p
-              class="age"
-              :class="row.tone"
-            >
-              {{ formatTimer(row.ageMs) }}
-            </p>
-          </div>
-          <h3 class="title">{{ row.title }}</h3>
-          <p class="chips">
-            <span
-              v-for="type in row.contributions"
-              :key="type"
-              class="chip"
-            >
-              {{ contributionLabel(type) }}
-            </span>
-            <span
-              class="chip turn"
-              :class="row.turn"
-            >
-              {{ turnLabel(row.turn) }}
-            </span>
-            <span
-              v-for="mark in row.marks"
-              :key="mark"
-              class="chip mark"
-            >
-              {{ mark }}
-            </span>
-          </p>
-          <p class="detail">
-            <span>{{ row.quote ?? row.reason }}</span>
-            <span
-              v-for="label in row.labels"
-              :key="label"
-              class="label"
-            >
-              {{ label }}
-            </span>
-          </p>
-          <p
-            v-if="row.parts.length > 1"
-            class="parts"
-          >
-            <a
-              v-for="part in row.parts"
-              :key="part.url"
-              class="button"
-              :href="part.url"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {{ part.kind === 'pr' ? 'PR' : 'Issue' }} #{{ part.number }}
-            </a>
-          </p>
-          <p class="actions">
-            <a
-              class="button"
-              :href="row.links.item"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open {{ row.kind === 'pr' ? 'PR' : 'issue' }}
-            </a>
-            <a
-              v-if="row.links.comment"
-              class="button"
-              :href="row.links.comment"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open latest comment
-            </a>
-            <span
-              v-else
-              class="button disabled"
-            >
-              Open latest comment
-            </span>
-            <a
-              v-if="row.links.ci"
-              class="button"
-              :href="row.links.ci"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open CI log
-            </a>
-            <span
-              v-else
-              class="button disabled"
-            >
-              Open CI log
-            </span>
-          </p>
-        </article>
-      </section>
-    </div>
-  </main>
+          <UnitCard
+            v-for="unit in sectionRows('activity')"
+            :key="unit.id"
+            :unit="unit"
+            size="row"
+            :selected="unit.id === selectedId"
+            @select="selectUnit(unit)"
+            @menu="openMenu(unit, $event)"
+          />
+        </Section>
+        <Section
+          v-if="showSection(sectionRows('waiting'))"
+          :title="copy.sections.waiting"
+          :count="sectionRows('waiting').length"
+          layout="waiting"
+        >
+          <UnitCard
+            v-for="unit in sectionRows('waiting')"
+            :key="unit.id"
+            :unit="unit"
+            size="small"
+            :selected="unit.id === selectedId"
+            @select="selectUnit(unit)"
+            @menu="openMenu(unit, $event)"
+          />
+        </Section>
+        <Section
+          v-if="showSection(sectionRows('ended'))"
+          :title="copy.sections.ended"
+          :count="sectionRows('ended').length"
+          layout="ended"
+          collapsible
+        >
+          <UnitCard
+            v-for="unit in sectionRows('ended')"
+            :key="unit.id"
+            :unit="unit"
+            size="small"
+            :selected="unit.id === selectedId"
+            @select="selectUnit(unit)"
+            @menu="openMenu(unit, $event)"
+          />
+        </Section>
+      </template>
+      <Section
+        v-else-if="view === 'later'"
+        :title="copy.nav.later"
+        :count="visible.length"
+        layout="mine"
+        :empty="copy.emptyLater"
+      >
+        <UnitCard
+          v-for="unit in visible"
+          :key="unit.id"
+          :unit="unit"
+          size="large"
+          :selected="unit.id === selectedId"
+          @select="selectUnit(unit)"
+          @menu="openMenu(unit, $event)"
+        />
+      </Section>
+      <Section
+        v-else-if="view === 'starred'"
+        :title="copy.nav.starred"
+        :count="visible.length"
+        layout="mine"
+        :empty="copy.emptyStarred"
+      >
+        <UnitCard
+          v-for="unit in visible"
+          :key="unit.id"
+          :unit="unit"
+          size="large"
+          :selected="unit.id === selectedId"
+          @select="selectUnit(unit)"
+          @menu="openMenu(unit, $event)"
+        />
+      </Section>
+      <Section
+        v-else
+        :title="copy.sections.ended"
+        :count="visible.length"
+        layout="ended"
+      >
+        <UnitCard
+          v-for="unit in visible"
+          :key="unit.id"
+          :unit="unit"
+          size="small"
+          :selected="unit.id === selectedId"
+          @select="selectUnit(unit)"
+          @menu="openMenu(unit, $event)"
+        />
+      </Section>
+    </template>
+    <CardMenu
+      v-if="menu"
+      :unit="menu.unit"
+      :x="menu.x"
+      :y="menu.y"
+      @close="menu = null"
+      @read="markRead(menu.unit)"
+      @star="toggleStar(menu.unit)"
+      @later="applyLater(menu.unit, $event)"
+    />
+    <template #preview>
+      <PreviewPanel
+        :unit="openUnit"
+        :viewer="inbox.viewer.value?.login ?? ''"
+        :mobile="media.isMobile.value"
+        @close="closePreview"
+        @star="openUnit && toggleStar(openUnit)"
+        @later="openUnit && applyLater(openUnit, $event)"
+      />
+    </template>
+    <SettingsSheet v-model:open="settingsOpen" />
+  </InboxShell>
 </template>

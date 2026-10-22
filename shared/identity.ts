@@ -1,7 +1,5 @@
 import type { Actor } from './turn'
 
-export const SELF = '0froq'
-
 export const BOT_LOGINS = [
   'coderabbitai',
   'codecov',
@@ -19,9 +17,11 @@ export function isBot(actor: Actor): boolean {
 }
 
 export function viewerLoginOf(item?: { viewerLogin?: string }): string {
-  return item?.viewerLogin?.toLowerCase() ?? SELF
+  const login = item?.viewerLogin?.trim()
+  if (!login) throw new Error('viewerLogin missing')
+  return login.toLowerCase()
 }
 
-export function isSelf(actor: Actor, viewer: string = SELF): boolean {
+export function isSelf(actor: Actor, viewer: string): boolean {
   return actor.login.toLowerCase() === viewer.toLowerCase()
 }

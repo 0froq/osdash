@@ -12,6 +12,7 @@
     "public/**",
     ".agents/**",
     "AGENTS.md",
+    "docs/**",
     "pnpm-lock.yaml",
     "void.lock.json"
   ]

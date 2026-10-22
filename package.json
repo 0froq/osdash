@@ -2,7 +2,7 @@
   "name": "osdash",
   "version": "0.1.0",
   "private": true,
-  "description": "froQ's read-only open-source contribution board.",
+  "description": "Read-only dashboard of your open-source contributions.",
   "license": "MIT",
   "type": "module",
   "scripts": {

@@ -8,11 +8,15 @@ export type SessionRecord = {
   login: string
   token: string
   createdAt: string
+  name?: string
+  avatarUrl?: string
 }
 
 export type SessionUser = {
   login: string
   token: string
+  name?: string
+  avatarUrl?: string
 }
 
 function sessionKey(id: string): string {
@@ -37,6 +41,8 @@ export async function createSession(
     token: user.token,
     createdAt: new Date().toISOString(),
   }
+  if (user.name) record.name = user.name
+  if (user.avatarUrl) record.avatarUrl = user.avatarUrl
   const encrypted = await encryptString(secret, JSON.stringify(record))
   await store?.put(sessionKey(id), encrypted, { expirationTtl: SESSION_TTL_SECONDS })
   return id
@@ -55,7 +61,10 @@ export async function readSession(
   try {
     const record = JSON.parse(plain) as SessionRecord
     if (!record.login || !record.token) return null
-    return { login: record.login, token: record.token }
+    const user: SessionUser = { login: record.login, token: record.token }
+    if (record.name) user.name = record.name
+    if (record.avatarUrl) user.avatarUrl = record.avatarUrl
+    return user
   } catch {
     return null
   }

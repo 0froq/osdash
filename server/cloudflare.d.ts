@@ -20,6 +20,7 @@ declare module 'h3' {
         ACCESS_TEAM_DOMAIN?: string
         ACCESS_AUD?: string
         OSDASH_ACCESS_ENFORCE?: string
+        OAUTH_CALLBACK_ORIGIN?: string
       }
       context?: {
         waitUntil?: (promise: Promise<unknown>) => void
@@ -28,6 +29,8 @@ declare module 'h3' {
     osdashUser?: {
       login: string
       token: string
+      name?: string
+      avatarUrl?: string
     }
   }
 }

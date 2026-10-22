@@ -48,11 +48,24 @@ export async function writeByok(
   await store.put(byokKey(login), encrypted, { expirationTtl: BYOK_TTL_SECONDS })
 }
 
-export function clefEnabledForUser(login: string, byok: ByokSettings | null): boolean {
-  if (login.toLowerCase() === '0froq') return true
+export function parseClefLogins(raw: string | undefined | null): string[] {
+  if (!raw) return []
+  return raw
+    .split(',')
+    .map(entry => entry.trim().toLowerCase())
+    .filter(entry => entry.length > 0)
+}
+
+export function clefEnabledForUser(
+  login: string,
+  byok: ByokSettings | null,
+  allowList: readonly string[],
+): boolean {
+  if (usesWorkersAiClef(login, allowList)) return true
   return byok !== null
 }
 
-export function usesWorkersAiClef(login: string): boolean {
-  return login.toLowerCase() === '0froq'
+export function usesWorkersAiClef(login: string, allowList: readonly string[]): boolean {
+  const needle = login.trim().toLowerCase()
+  return allowList.some(entry => entry.trim().toLowerCase() === needle)
 }

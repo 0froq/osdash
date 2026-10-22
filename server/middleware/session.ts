@@ -6,6 +6,8 @@ declare module 'h3' {
     osdashUser?: {
       login: string
       token: string
+      name?: string
+      avatarUrl?: string
     }
   }
 }

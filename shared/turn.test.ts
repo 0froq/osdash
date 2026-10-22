@@ -11,7 +11,7 @@ import {
   isBot,
   judge,
   summarize,
-  present,
+  withResolvedTurn,
 } from './turn'
 
 const NOW = Date.parse('2026-10-19T12:00:00.000Z')
@@ -37,6 +37,7 @@ function item(overrides: Partial<Item> = {}): Item {
     author: user('0froq'),
     activities: [],
     checks: [],
+    viewerLogin: '0froq',
     ...overrides,
   }
 }
@@ -234,7 +235,11 @@ it('averages the first reply from someone other than 0froq', () => {
   })
   assert.equal(firstReplyMs(replied), DAY_MS)
   assert.equal(firstReplyMs(silent), null)
-  const stats = summarize([present(replied, NOW), present(silent, NOW), present(merged, NOW)])
+  const stats = summarize([
+    { state: replied.state, firstReplyMs: firstReplyMs(replied) },
+    { state: silent.state, firstReplyMs: firstReplyMs(silent) },
+    { state: merged.state, firstReplyMs: firstReplyMs(merged) },
+  ])
   assert.equal(stats.open, 2)
   assert.equal(stats.merged, 1)
   assert.equal(stats.averageFirstReplyMs, DAY_MS)
@@ -541,4 +546,72 @@ it('treats a CLA action_required check as mine and a workflow action_required ch
   )
   assert.equal(workflow.turn, 'maintainer')
   assert.deepEqual(workflow.labels, ['CI awaiting approval'])
+})
+
+it('assigns a reason code for CI, review, mention, claim, and merge', () => {
+  const ci = judge(item({ checks: [check({ name: 'test', conclusion: 'FAILURE' })] }), NOW)
+  assert.equal(ci.reason, 'CI test failed')
+  assert.equal(ci.reasonCode, 'ci-failed')
+  assert.equal(ci.reasonActor, null)
+
+  const changes = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'review',
+          actor: user('fengmk2'),
+          at: ago(60 * 60 * 1000),
+          reviewState: 'CHANGES_REQUESTED',
+        }),
+      ],
+      checks: [check()],
+    }),
+    NOW,
+  )
+  assert.equal(changes.reasonCode, 'changes-requested')
+  assert.equal(changes.reasonActor, 'fengmk2')
+
+  const mention = judge(
+    item({
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('fengmk2'),
+          at: ago(2 * 60 * 60 * 1000),
+          body: '@0froq can you take another look?',
+          authorAssociation: 'OWNER',
+        }),
+      ],
+      checks: [check()],
+    }),
+    NOW,
+  )
+  assert.equal(mention.reasonCode, 'mentioned')
+  assert.equal(mention.reasonActor, 'fengmk2')
+
+  const claimed = judge(
+    item({
+      kind: 'issue',
+      author: user('pi0'),
+      activities: [
+        activity({
+          kind: 'comment',
+          actor: user('0froq'),
+          at: ago(DAY_MS),
+          body: "I'll open a PR",
+        }),
+      ],
+    }),
+    NOW,
+  )
+  assert.equal(claimed.reason, 'Claimed, open a PR')
+  assert.equal(claimed.reasonCode, 'claimed-open-pr')
+
+  const merged = judge(item({ state: 'merged', closedAt: ago(DAY_MS) }), NOW)
+  assert.equal(merged.reason, 'Merged')
+  assert.equal(merged.reasonCode, 'merged')
+
+  const resolved = withResolvedTurn(item(), changes, 'maintainer', 'Please split the commit.')
+  assert.equal(resolved.reasonCode, 'clef')
+  assert.equal(resolved.reason, 'Please split the commit.')
 })

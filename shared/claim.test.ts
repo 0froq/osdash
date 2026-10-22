@@ -39,6 +39,7 @@ function issue(overrides: Partial<Item> = {}): Item {
     checks: [],
     assignees: [],
     linkedPullRequests: [],
+    viewerLogin: '0froq',
     ...overrides,
   }
 }
