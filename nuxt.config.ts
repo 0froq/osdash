@@ -38,9 +38,12 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'osdash',
-      htmlAttrs: { lang: 'zh-CN' },
+      htmlAttrs: { lang: 'en' },
       meta: [
-        { name: 'description', content: '用 GitHub 登录，看你自己的开源贡献进展。只读。' },
+        {
+          name: 'description',
+          content: 'Sign in with GitHub and follow your own open-source contributions. Read-only.',
+        },
         { name: 'color-scheme', content: 'light dark' },
         { name: 'robots', content: 'noindex' },
       ],

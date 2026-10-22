@@ -1,4 +1,4 @@
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 import { replyDuration } from '~/utils/time'
 
 export function greetingTitle(name: string, now = new Date()): string {

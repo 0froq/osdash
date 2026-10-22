@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { UnitCategory, UnitView } from '#shared/unit'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 import { placeUnit, type InboxSection } from '~/composables/useInbox'
 import type { InboxViewName } from '~/components/inbox/Sidebar.vue'
 import { nextMondayMorning, threeDaysLater, tomorrowMorning } from '~/utils/later'
@@ -476,6 +476,7 @@ onMounted(() => {
         :unit="openUnit"
         :viewer="inbox.viewer.value?.login ?? ''"
         :mobile="media.isMobile.value"
+        :backdrop="media.isMobile.value || media.isOverlay.value"
         @close="closePreview"
         @star="openUnit && toggleStar(openUnit)"
         @later="openUnit && applyLater(openUnit, $event)"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 
 const open = defineModel<boolean>('open', { required: true })
 

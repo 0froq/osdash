@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { UnitView } from '#shared/unit'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 
 const props = defineProps<{
   unit: UnitView

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TimelineEntry as Entry } from '#shared/events'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
+import type { TimelineSubject } from '~/utils/event'
 import { absoluteDay } from '~/utils/time'
 
 const props = defineProps<{
@@ -8,6 +9,7 @@ const props = defineProps<{
   viewer: string
   truncated: boolean
   originalUrl: string
+  subject: TimelineSubject
 }>()
 
 function atOf(entry: Entry): string {
@@ -15,17 +17,6 @@ function atOf(entry: Entry): string {
   if (entry.kind === 'ci-group') return entry.at
   return entry.at
 }
-
-const showSource = computed(() => {
-  const keys = new Set(
-    props.entries.flatMap(entry => {
-      if (entry.kind === 'bot-group' || entry.kind === 'ci-group')
-        return entry.events.map(event => `${event.source.kind}:${event.source.number}`)
-      return [`${entry.source.kind}:${entry.source.number}`]
-    }),
-  )
-  return keys.size > 1
-})
 
 const days = computed(() => {
   const groups: Array<{ label: string; entries: Entry[] }> = []
@@ -55,13 +46,13 @@ const days = computed(() => {
             v-if="entry.kind === 'bot-group' || entry.kind === 'ci-group'"
             :group="entry"
             :viewer="viewer"
-            :show-source="showSource"
+            :subject="subject"
           />
           <TimelineEntry
             v-else
             :event="entry"
             :viewer="viewer"
-            :show-source="showSource"
+            :subject="subject"
           />
         </template>
       </ul>

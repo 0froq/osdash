@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { BotGroup, CiGroup } from '#shared/events'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
+import type { TimelineSubject } from '~/utils/event'
 import { relativeAge } from '~/utils/time'
 
 const props = defineProps<{
   group: BotGroup | CiGroup
   viewer: string
-  showSource: boolean
+  subject: TimelineSubject
 }>()
 
 const open = ref(false)
@@ -23,11 +24,15 @@ const label = computed(() =>
     <button
       class="tl-group-toggle"
       type="button"
+      :aria-expanded="open"
       @click="open = !open"
     >
       <span
         class="tl-dot"
-        :class="group.kind === 'ci-group' && group.failed > 0 ? 'accent' : 'muted'"
+        :class="[
+          group.kind === 'ci-group' && group.failed > 0 ? 'accent' : 'muted',
+          { hollow: !open },
+        ]"
       />
       <span>{{ label }}</span>
       <time class="tl-time">{{ relativeAge(Date.now() - Date.parse(at)) }}</time>
@@ -38,7 +43,7 @@ const label = computed(() =>
         :key="event.id"
         :event="event"
         :viewer="viewer"
-        :show-source="showSource"
+        :subject="subject"
       />
     </ul>
   </li>

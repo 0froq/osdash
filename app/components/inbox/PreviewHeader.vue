@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { UnitView } from '#shared/unit'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 import { stateLabel } from '~/utils/category'
 import { reasonText } from '~/utils/reason'
 import { relativeAge } from '~/utils/time'

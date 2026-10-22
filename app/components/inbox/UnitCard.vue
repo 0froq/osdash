@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { UnitView } from '#shared/unit'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 import { boardLabel, markLabel, stateLabel, tagLabel } from '~/utils/category'
-import { reasonText, waitingOn } from '~/utils/reason'
+import { issueStatus, reasonText } from '~/utils/reason'
 import { absoluteDay, relativeAge, waitingAge } from '~/utils/time'
 
 const props = defineProps<{
@@ -72,7 +72,7 @@ const endedWhen = computed(() =>
     <p
       v-else-if="size === 'small'"
       class="card-summary"
-      >{{ waitingOn(unit.reasonCode, unit.kind) }}</p
+      >{{ unit.kind === 'issue-only' ? issueStatus(unit.reasonCode) : line }}</p
     >
     <div
       v-if="size === 'large'"

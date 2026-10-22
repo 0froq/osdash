@@ -213,52 +213,70 @@ export function mockTimeline(unitId: string, nowMs: number): TimelinePayload | n
     kind: unit.kind === 'issue-only' ? ('issue' as const) : ('pr' as const),
   }
   const at = (hours: number) => new Date(nowMs - hours * 60 * 60 * 1000).toISOString()
-  const events = normalizeRestTimeline(
-    [
-      {
-        id: `${unitId}:open`,
-        event: 'commented',
-        created_at: at(48),
-        actor: { login: MOCK_VIEWER, type: 'User' },
-        body: 'Opened the thread.',
-      },
-      {
-        id: `${unitId}:reply`,
-        event: 'commented',
-        created_at: at(5),
-        actor: { login: 'patak', type: 'User' },
-        body: 'Thanks, looking.',
-        html_url: unit.url,
-      },
-      ...(unitId === 'pr:vitejs/vite#18820'
-        ? [
-            {
-              id: `${unitId}:bot-a`,
-              event: 'commented',
-              created_at: at(4),
-              actor: { login: 'vercel[bot]', type: 'Bot' },
-              body: 'Preview deployed.',
-            },
-            {
-              id: `${unitId}:bot-b`,
-              event: 'commented',
-              created_at: at(3),
-              actor: { login: 'vercel[bot]', type: 'Bot' },
-              body: 'Preview updated.',
-            },
-            {
-              id: `${unitId}:cla`,
-              event: 'commented',
-              created_at: at(2),
-              actor: { login: 'cla-assistant[bot]', type: 'Bot' },
-              body: 'CLA not signed. Please sign the CLA.',
-              html_url: unit.url,
-            },
-          ]
-        : []),
-    ],
-    source,
+  const issueEvents = unit.issues.slice(0, 1).flatMap(issue =>
+    normalizeRestTimeline(
+      [
+        {
+          id: `${unitId}:issue`,
+          event: 'commented',
+          created_at: at(6),
+          actor: { login: issue.authorLogin, type: 'User' },
+          body: 'Still happens on the issue.',
+          html_url: issue.url,
+        },
+      ],
+      { repo: issue.repo, number: issue.number, kind: 'issue' },
+    ),
   )
+  const events = [
+    ...normalizeRestTimeline(
+      [
+        {
+          id: `${unitId}:open`,
+          event: 'commented',
+          created_at: at(48),
+          actor: { login: MOCK_VIEWER, type: 'User' },
+          body: 'Opened the thread.',
+        },
+        {
+          id: `${unitId}:reply`,
+          event: 'commented',
+          created_at: at(5),
+          actor: { login: 'patak', type: 'User' },
+          body: 'Thanks, looking.',
+          html_url: unit.url,
+        },
+        ...(unitId === 'pr:vitejs/vite#18820'
+          ? [
+              {
+                id: `${unitId}:bot-a`,
+                event: 'commented',
+                created_at: at(4),
+                actor: { login: 'vercel[bot]', type: 'Bot' },
+                body: 'Preview deployed.',
+              },
+              {
+                id: `${unitId}:bot-b`,
+                event: 'commented',
+                created_at: at(3),
+                actor: { login: 'vercel[bot]', type: 'Bot' },
+                body: 'Preview updated.',
+              },
+              {
+                id: `${unitId}:cla`,
+                event: 'commented',
+                created_at: at(2),
+                actor: { login: 'cla-assistant[bot]', type: 'Bot' },
+                body: 'CLA not signed. Please sign the CLA.',
+                html_url: unit.url,
+              },
+            ]
+          : []),
+      ],
+      source,
+    ),
+    ...issueEvents,
+  ]
   return {
     id: unit.id,
     generatedAt: new Date(nowMs).toISOString(),

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { UnitCategory } from '#shared/unit'
 import type { InboxViewer } from '~/composables/useInbox'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 import { categoryLabel } from '~/utils/category'
 
 export type InboxViewName = 'home' | 'later' | 'starred' | 'ended'

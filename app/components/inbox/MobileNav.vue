@@ -2,7 +2,7 @@
 import type { UnitCategory } from '#shared/unit'
 import type { InboxViewer } from '~/composables/useInbox'
 import type { InboxViewName } from '~/components/inbox/Sidebar.vue'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 import { categoryLabel } from '~/utils/category'
 
 defineProps<{
