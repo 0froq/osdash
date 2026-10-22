@@ -11,6 +11,7 @@ export type WorkerBindings = {
   ACCESS_AUD?: string
   OSDASH_ACCESS_ENFORCE?: string
   OSDASH_CLEF_LOGINS?: string
+  OAUTH_CALLBACK_ORIGIN?: string
 }
 
 export function workerEnv(event: H3Event): WorkerBindings {

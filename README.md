@@ -39,7 +39,8 @@ Preview (`cloudflare.config.ts`) needs the same secrets plus Access values; set 
 
 1. GitHub → Settings → Developer settings → OAuth Apps → New.
 2. Homepage URL: your deployment origin (e.g. `https://osdash.froq.me`).
-3. Callback URL: `https://<origin>/api/auth/callback` (add preview callback URLs for branch previews).
+3. Callback URL: `https://main-osdash.sayhola.workers.dev/api/auth/callback`.
+   GitHub allows one callback. Branch previews set `OAUTH_CALLBACK_ORIGIN=https://main-osdash.sayhola.workers.dev` and send that redirect URI. The preview at that origin checks the signed state and redirects the code back to the branch that started login. Production and local leave the variable unset and keep using their own `/api/auth/callback`.
 4. No extra scopes beyond `read:user` (requested in code).
 
 ## Local development
