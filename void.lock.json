@@ -10,9 +10,6 @@
     ],
     "workers_dev": false,
     "preview_urls": true,
-    "vars": {
-      "OSDASH_ACCESS_ENFORCE": "false"
-    },
     "compatibility_date": "2026-10-19",
     "compatibility_flags": [
       "nodejs_compat",
@@ -52,10 +49,7 @@
         "binding": "CACHE",
         "id": "370a971225924c648b29ccb32e7ae57f"
       }
-    ],
-    "vars": {
-      "OSDASH_ACCESS_ENFORCE": "false"
-    }
+    ]
   },
-  "text": "{\n  \"name\": \"osdash\",\n  \"routes\": [\n    {\n      \"pattern\": \"osdash.froq.me\",\n      \"custom_domain\": true\n    }\n  ],\n  \"workers_dev\": false,\n  \"preview_urls\": true,\n  \"compatibility_date\": \"2026-10-19\",\n  \"compatibility_flags\": [\n    \"nodejs_compat\",\n    \"nodejs_als\"\n  ],\n  \"observability\": {\n    \"enabled\": true,\n    \"traces\": {\n      \"enabled\": true\n    }\n  },\n  \"account_id\": \"9780854572847b5ed0aa040c4d511043\",\n  \"kv_namespaces\": [\n    {\n      \"binding\": \"CACHE\",\n      \"id\": \"370a971225924c648b29ccb32e7ae57f\"\n    }\n  ],\n  \"vars\": {\n    \"OSDASH_ACCESS_ENFORCE\": \"false\"\n  }\n}\n"
+  "text": "{\n  \"name\": \"osdash\",\n  \"routes\": [\n    {\n      \"pattern\": \"osdash.froq.me\",\n      \"custom_domain\": true\n    }\n  ],\n  \"workers_dev\": false,\n  \"preview_urls\": true,\n  \"compatibility_date\": \"2026-10-19\",\n  \"compatibility_flags\": [\n    \"nodejs_compat\",\n    \"nodejs_als\"\n  ],\n  \"observability\": {\n    \"enabled\": true,\n    \"traces\": {\n      \"enabled\": true\n    }\n  },\n  \"account_id\": \"9780854572847b5ed0aa040c4d511043\",\n  \"kv_namespaces\": [\n    {\n      \"binding\": \"CACHE\",\n      \"id\": \"370a971225924c648b29ccb32e7ae57f\"\n    }\n  ]\n}\n"
 }
