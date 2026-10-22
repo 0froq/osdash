@@ -2,6 +2,7 @@ import { readCache, writeCache, type CacheStore } from './cache'
 import {
   CHECKS_TTL_SECONDS,
   TIMELINE_TTL_SECONDS,
+  cacheViewerLogin,
   eventsCacheKey,
   loadCheckRuns,
   loadReviewComments,
@@ -33,13 +34,13 @@ function responseKey(login: string, unitId: string, hash: string): string {
   return `tlresp:v1:${login.toLowerCase()}:${unitId}:${hash}`
 }
 
-function reviewKey(
+export function reviewCommentsCacheKey(
   login: string,
   repo: string,
   number: number,
   updatedAt: string | undefined,
 ): string {
-  const base = `${login.toLowerCase()}:${repo}#${number}`
+  const base = `${cacheViewerLogin(login)}:${repo}#${number}`
   return updatedAt ? `revcomments:v1:${base}:${updatedAt}` : `revcomments:v1:${base}`
 }
 
@@ -156,7 +157,7 @@ export async function assembleTimeline(input: {
 
     if (member.kind !== 'pr') continue
 
-    const commentsKey = reviewKey(login, member.repo, member.number, member.updatedAt)
+    const commentsKey = reviewCommentsCacheKey(login, member.repo, member.number, member.updatedAt)
     let comments = await readJson<UnitEvent[]>(store, commentsKey, nowMs, fresh)
     if (!comments) {
       const raw = await loadReviewComments(token, item, stop)

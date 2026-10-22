@@ -26,13 +26,19 @@ export function checksCacheKey(viewerLogin: string, repo: string, sha: string): 
   return `checks:v2:${viewerLogin}:${repo}:${sha}`
 }
 
+export function cacheViewerLogin(viewerLogin: string): string {
+  const login = viewerLogin.trim().toLowerCase()
+  if (!login) throw new Error('viewerLogin missing')
+  return login
+}
+
 export function eventsCacheKey(
   viewerLogin: string,
   repo: string,
   number: number,
   updatedAt: string | undefined,
 ): string {
-  const base = `${viewerLogin}:${repo}#${number}`
+  const base = `${cacheViewerLogin(viewerLogin)}:${repo}#${number}`
   return updatedAt ? `events:v1:${base}:${updatedAt}` : `events:v1:${base}`
 }
 
