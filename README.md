@@ -9,7 +9,7 @@ Multi-user, read-only inbox of your open-source contributions. Each visitor sign
 - **Inbox data**: GraphQL search per logged-in user. A contribution card groups the viewer's PR with its closing or mentioned issues. Responses are cached in **KV** per user (`inbox:v1:{login}`) with **stale-while-revalidate**. Per-user read state, stars, and snooze live in the same KV under `seen:v1:{login}` and `prefs:v1:{login}` (no TTL). Timeline responses are cached as `tlresp:v1:{login}:{unitId}:{membersHash}`.
 - **HTTP**: `GET /api/inbox`, `GET /api/timeline?id=`, `POST /api/seen`, `PUT /api/prefs`. `?refresh=1` skips the KV read.
 - **Turn classification**: existing rules unchanged. **Workers AI clef** runs for logins listed in `OSDASH_CLEF_LOGINS` (comma-separated, case-insensitive). Other users can opt into the same prompts via **BYOK** (OpenAI-compatible base URL, API key, model) stored encrypted per user in KV.
-- **Cloudflare Access**: JWT middleware runs only when `OSDASH_ACCESS_ENFORCE=true` (branch previews). Production sets `OSDASH_ACCESS_ENFORCE=false`.
+- **Cloudflare Access**: JWT middleware runs only when `OSDASH_ACCESS_ENFORCE=true` (branch previews). Production leaves it unset (unset means off).
 
 ## Secrets and KV
 

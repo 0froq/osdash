@@ -7,6 +7,5 @@ export default defineEnv({
   GITHUB_TOKEN: string(),
   ACCESS_TEAM_DOMAIN: string(),
   ACCESS_AUD: string(),
-  OSDASH_ACCESS_ENFORCE: string(),
   OSDASH_CLEF_LOGINS: string(),
 })

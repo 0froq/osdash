@@ -17,9 +17,6 @@ export default defineConfig({
     routes: [{ pattern: 'osdash.froq.me', custom_domain: true }],
     workers_dev: false,
     preview_urls: true,
-    vars: {
-      OSDASH_ACCESS_ENFORCE: 'false',
-    },
     compatibility_date: '2026-10-19',
     compatibility_flags: ['nodejs_compat', 'nodejs_als'],
     observability: {
