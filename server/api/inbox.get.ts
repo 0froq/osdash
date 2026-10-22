@@ -43,16 +43,26 @@ export default defineEventHandler(async event => {
     const cached = await readInboxCache(store, user.login, nowMs)
     if (cached) {
       const stale = nowMs - Date.parse(cached.generatedAt) >= INBOX_STALE_MS
-      const waitUntil = event.context.cloudflare?.context?.waitUntil
-      if (stale && waitUntil) {
-        waitUntil(
-          loadInboxUnits(event, user, new Date(), true)
-            .then(body => persistInbox(store, user.login, body, Date.now()))
-            .catch(error => {
-              const message = error instanceof Error ? error.message : 'inbox refresh failed'
-              console.warn(`inbox revalidate ${user.login}: ${message}`)
-            }),
-        )
+      if (stale) {
+        const revalidate = loadInboxUnits(event, user, new Date(), true)
+          .then(body => persistInbox(store, user.login, body, Date.now()))
+          .catch(error => {
+            const message = error instanceof Error ? error.message : 'inbox refresh failed'
+            console.warn(`inbox revalidate ${user.login}: ${message}`)
+          })
+        try {
+          const ctx = event.context as typeof event.context & {
+            waitUntil?: (promise: Promise<unknown>) => void
+          }
+          if (typeof ctx.waitUntil === 'function') {
+            ctx.waitUntil(revalidate)
+          } else {
+            event.context.cloudflare?.context?.waitUntil?.(revalidate)
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'waitUntil failed'
+          console.warn(`inbox revalidate schedule ${user.login}: ${message}`)
+        }
       }
       return presentInbox(store, user, cached, nowMs, {
         cached: true,
