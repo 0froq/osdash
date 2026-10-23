@@ -1,6 +1,6 @@
 import type { BoardLabel, ContributionType, DerivedMark, ItemState } from '#shared/turn'
 import type { UnitCategory } from '#shared/unit'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 
 export function categoryLabel(category: UnitCategory): string {
   switch (category) {

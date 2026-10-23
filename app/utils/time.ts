@@ -1,5 +1,5 @@
 import { formatDuration } from '#shared/turn'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -8,7 +8,7 @@ const DAY = 24 * HOUR
 /** Relative time from an age in milliseconds, via Intl. */
 export function relativeAge(ageMs: number): string {
   if (ageMs < MINUTE) return copy.justNow
-  const format = new Intl.RelativeTimeFormat('zh-CN', { numeric: 'always' })
+  const format = new Intl.RelativeTimeFormat('en', { numeric: 'always' })
   if (ageMs < HOUR) return format.format(-Math.floor(ageMs / MINUTE), 'minute')
   if (ageMs < DAY) return format.format(-Math.floor(ageMs / HOUR), 'hour')
   return format.format(-Math.floor(ageMs / DAY), 'day')
@@ -23,8 +23,8 @@ export function waitingAge(ageMs: number): string {
 export function absoluteTime(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  const day = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric' }).format(date)
-  const clock = new Intl.DateTimeFormat('zh-CN', {
+  const day = new Intl.DateTimeFormat('en', { month: 'long', day: 'numeric' }).format(date)
+  const clock = new Intl.DateTimeFormat('en', {
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
@@ -35,8 +35,8 @@ export function absoluteTime(iso: string): string {
 export function absoluteDay(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  const day = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric' }).format(date)
-  const weekday = new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(date)
+  const day = new Intl.DateTimeFormat('en', { month: 'long', day: 'numeric' }).format(date)
+  const weekday = new Intl.DateTimeFormat('en', { weekday: 'short' }).format(date)
   return `${day} ${weekday}`
 }
 

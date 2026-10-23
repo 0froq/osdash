@@ -1,6 +1,6 @@
 import { RECENT_MS } from '#shared/turn'
 import type { UnitCategory, UnitView } from '#shared/unit'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 
 export type InboxViewer = {
   login: string

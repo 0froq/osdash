@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { UnitView } from '#shared/unit'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 
 const props = defineProps<{
   unit: UnitView | null
   viewer: string
   mobile: boolean
+  /** True when the preview covers the list (phone sheet or tablet overlay). */
+  backdrop: boolean
 }>()
 
 const emit = defineEmits<{
@@ -68,6 +70,13 @@ function onUp(): void {
     class="preview-root"
     :class="{ open: unit !== null, sheet: mobile }"
   >
+    <button
+      v-if="unit && backdrop"
+      class="preview-mask"
+      type="button"
+      :aria-label="copy.preview.close"
+      @click="emit('close')"
+    />
     <aside
       class="preview"
       :style="drag ? { transform: `translateY(${drag}px)` } : undefined"
@@ -87,12 +96,6 @@ function onUp(): void {
           @pointercancel="onUp"
         >
           <span class="grabber" />
-          <button
-            class="preview-close"
-            type="button"
-            @click="emit('close')"
-            >{{ copy.preview.close }}</button
-          >
         </div>
         <div class="preview-scroll">
           <PreviewHeader
@@ -124,6 +127,11 @@ function onUp(): void {
             :viewer="viewer"
             :truncated="timeline.payload.value.truncated"
             :original-url="unit.url"
+            :subject="{
+              repo: unit.repo,
+              number: unit.number,
+              kind: unit.kind === 'issue-only' ? 'issue' : 'pr',
+            }"
           />
         </div>
         <div class="preview-bar">
@@ -146,12 +154,5 @@ function onUp(): void {
         </div>
       </template>
     </aside>
-    <button
-      v-if="unit && mobile"
-      class="preview-mask"
-      type="button"
-      :aria-label="copy.preview.close"
-      @click="emit('close')"
-    />
   </div>
 </template>

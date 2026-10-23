@@ -5,6 +5,7 @@ import {
   normalizeCheckRuns,
   normalizeRestTimeline,
   normalizeReviewComments,
+  timelineSourceKind,
   type RawRestTimelineEvent,
 } from './events'
 
@@ -175,4 +176,14 @@ it('normalizes review comments and completed check runs', () => {
     assert.equal(folded[0].failed, 1)
     assert.equal(folded[0].sha, 'abc')
   }
+})
+
+it('omits the card PR number and keeps issue numbers', () => {
+  const subject = { repo: 'acme/app', number: 12, kind: 'pr' as const }
+  assert.equal(timelineSourceKind(subject, subject), null)
+  assert.equal(
+    timelineSourceKind({ repo: 'acme/app', number: 100, kind: 'issue' }, subject),
+    'issue',
+  )
+  assert.equal(timelineSourceKind({ repo: 'acme/app', number: 9, kind: 'pr' }, subject), 'pr')
 })

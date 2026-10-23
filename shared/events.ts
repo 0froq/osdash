@@ -2,6 +2,20 @@ import { isBot } from './identity'
 import { isCoderabbitActionable, isFailingClaComment } from './turn-rules'
 import type { Actor, CheckConclusion, CheckStatus, ItemKind, ReviewState } from './turn'
 
+export type EventSource = { repo: string; number: number; kind: ItemKind }
+
+/** Drop the card's own number. Another PR or an issue still names itself. */
+export function timelineSourceKind(source: EventSource, subject: EventSource): ItemKind | null {
+  if (
+    source.repo === subject.repo &&
+    source.number === subject.number &&
+    source.kind === subject.kind
+  ) {
+    return null
+  }
+  return source.kind
+}
+
 export type EventKind =
   | 'opened'
   | 'comment'

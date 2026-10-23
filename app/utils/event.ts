@@ -1,6 +1,29 @@
-import type { CheckConclusion, ReviewState } from '#shared/turn'
-import type { EventKind, UnitEvent } from '#shared/events'
-import { copy } from '~/copy/zh-CN'
+import type { ItemKind, CheckConclusion, ReviewState } from '#shared/turn'
+import { timelineSourceKind, type EventKind, type UnitEvent } from '#shared/events'
+import { copy } from '~/copy/en'
+
+export type TimelineSubject = {
+  repo: string
+  number: number
+  kind: ItemKind
+}
+
+/** Omit the card's own number. Issue numbers, and a different PR, stay. */
+export function eventSourceLabel(event: UnitEvent, subject: TimelineSubject): string | null {
+  const kind = timelineSourceKind(event.source, subject)
+  switch (kind) {
+    case null:
+      return null
+    case 'pr':
+      return copy.sourcePr(event.source.number)
+    case 'issue':
+      return copy.sourceIssue(event.source.number)
+    default: {
+      const exhaustive: never = kind
+      return exhaustive
+    }
+  }
+}
 
 function reviewAction(state: ReviewState | undefined): string {
   switch (state) {

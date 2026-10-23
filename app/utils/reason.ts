@@ -1,12 +1,11 @@
 import type { ReasonCode } from '#shared/reason'
-import type { UnitKind } from '#shared/unit'
-import { copy } from '~/copy/zh-CN'
+import { copy } from '~/copy/en'
 
 function actorName(actor: string | null): string {
   return actor && actor.length > 0 ? actor : copy.someone
 }
 
-/** Chinese reason line for a card. Clef quotes are shown by the caller when present. */
+/** Reason line for a card. Clef quotes are shown by the caller when present. */
 export function reasonText(code: ReasonCode, actor: string | null): string {
   const name = actorName(actor)
   switch (code) {
@@ -61,20 +60,11 @@ export function reasonText(code: ReasonCode, actor: string | null): string {
   }
 }
 
-const MAINTAINER_WAIT: ReadonlySet<ReasonCode> = new Set([
-  'opened-waiting',
-  'replied-waiting',
-  'pushed-waiting',
-  'asked-waiting',
-  'already-fixed',
-  'workaround',
-  'approved',
-  'review-dismissed',
-])
-
-/** One line under a waiting card. */
-export function waitingOn(code: ReasonCode, kind: UnitKind): string {
-  if (MAINTAINER_WAIT.has(code)) return copy.waiting.maintainer
-  if (kind === 'issue-only' && code === 'commented') return copy.waiting.author
-  return copy.waiting.other
+/**
+ * Short status under an issue card in "Not my turn".
+ * Does not assign the next actor: an issue may be a question or a self-proposed PR.
+ */
+export function issueStatus(code: ReasonCode): string {
+  if (code === 'opened-waiting') return copy.status.justOpened
+  return copy.status.open
 }
