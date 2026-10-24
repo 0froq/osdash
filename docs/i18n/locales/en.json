@@ -1,0 +1,82 @@
+{
+  "site": {
+    "skip": "Skip to content",
+    "noticeLabel": "Site notice",
+    "wip": "Work in progress. This site and its AI-generated components are awaiting manual design review.",
+    "noticeAction": "Explore the drafts"
+  },
+  "theme": {
+    "dark": "Dark",
+    "light": "Light"
+  },
+  "nav": {
+    "docs": "Docs",
+    "components": "Components",
+    "changelog": "Changelog",
+    "github": "GitHub"
+  },
+  "hero": {
+    "tagline": "An interface library, in progress.",
+    "lede": "Small controls, shared behavior, one visual language. Built for froq’s projects, with the details still open to refinement.",
+    "cta": "Read the docs",
+    "browse": "Explore components",
+    "specimen": "Interactive specimen",
+    "tone": "Tone",
+    "quiet": "Quiet",
+    "clear": "Clear",
+    "loud": "Loud",
+    "switchLabel": "Preview switch",
+    "switchBefore": "A little interaction,",
+    "on": "on",
+    "off": "off",
+    "selected": "Selected",
+    "index": "Inside the library",
+    "indexDescription": "Browse by concept. Try the controls, inspect their APIs, and make them your own.",
+    "contract": "Under the surface",
+    "contractDescription": "Framework-free logic in core. Unstyled behavior in vue. Components sharing twelve tokens.",
+    "contractLink": "Read the token contract"
+  },
+  "docs": {
+    "label": "Docs",
+    "prev": "Previous",
+    "next": "Next",
+    "groups": {
+      "start": "Start",
+      "contract": "Contract"
+    }
+  },
+  "changelog": {
+    "label": "Changelog",
+    "title": "Changelog",
+    "lede": "What changed in the library.",
+    "count": "{n} releases",
+    "latest": "latest"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Back to home"
+  },
+  "components": {
+    "title": "Components",
+    "draft": "AI Draft · Unreviewed",
+    "draftDescription": "AI-generated drafts. Not yet manually designed or approved by the maintainer.",
+    "lede": "A folder is a concept page. Each component in it has its own page.",
+    "concepts": "{n} concepts",
+    "count": "{n} components",
+    "noDemo": "No demo file yet.",
+    "details": "Details",
+    "demo": "Demo",
+    "usage": "Usage",
+    "api": "API",
+    "props": "Props",
+    "model": "v-model",
+    "slots": "Slots",
+    "events": "Events",
+    "required": "Required.",
+    "default": "Default",
+    "sections": {
+      "form": "Form",
+      "prose": "Prose"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+.ui-toggle-group-field {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.ui-toggle-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  font-family: var(--ui-font-text);
+  font-size: 14px;
+}
+
+.ui-toggle-group[data-orientation='vertical'] {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.ui-toggle-group-item {
+  position: relative;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--ui-radius);
+  background: none;
+  color: var(--ui-muted);
+  font: inherit;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.ui-toggle-group-item[data-state='on'] {
+  background: var(--ui-faint);
+  color: var(--ui-fg);
+}
+
+.ui-toggle-group-item[data-state='on']::after {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 2px;
+  background: var(--ui-accent);
+  content: '';
+}
+
+.ui-toggle-group-item:hover:not(:disabled) {
+  color: var(--ui-fg);
+}
+
+.ui-toggle-group-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ui-toggle-group-item:focus-visible {
+  outline: 1px solid var(--ui-accent);
+  outline-offset: 1px;
+}

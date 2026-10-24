@@ -1,0 +1,35 @@
+{
+  "name": "docs",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "lint": "nuxt prepare && eslint . --cache",
+    "lint:fix": "nuxt prepare && eslint . --cache --fix",
+    "typecheck": "nuxt typecheck"
+  },
+  "peerDependencies": {
+    "nuxt": "catalog:prod"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "catalog:prod",
+    "@fontsource-variable/geist-mono": "catalog:prod",
+    "@fontsource/instrument-serif": "catalog:prod",
+    "@froq/og-covers-layer": "catalog:",
+    "@froq/ui": "workspace:*",
+    "@nuxt/content": "catalog:prod",
+    "@nuxtjs/i18n": "catalog:prod",
+    "vue": "catalog:prod"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "catalog:dev",
+    "@nuxt/eslint": "catalog:dev",
+    "eslint": "catalog:dev",
+    "eslint-plugin-format": "catalog:dev",
+    "nuxtseo-devtools-host": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vue-tsc": "catalog:dev"
+  }
+}

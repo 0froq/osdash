@@ -1,0 +1,216 @@
+.ui-code-block {
+  --scrollbar-thumb: color-mix(in oklab, var(--ui-fg) 35%, transparent);
+  position: relative;
+  min-width: 0;
+  padding: 16px 18px;
+  color: var(--ui-fg);
+  border: 1px solid var(--ui-line);
+}
+
+.ui-code-block-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  color: var(--ui-muted);
+  font-family: var(--ui-font-meta);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* A titled frame sets its title off from the source with a rule. */
+.ui-code-block.is-titled > .ui-code-block-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.ui-code-block-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: color var(--ui-dur) var(--ui-ease);
+}
+
+.ui-code-block-toggle:hover,
+.ui-code-block.is-open .ui-code-block-toggle {
+  color: var(--ui-fg);
+}
+
+.ui-code-block-toggle:focus-visible {
+  outline: 1px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+
+.ui-code-block-chevron {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-inline-end: 1px solid currentColor;
+  border-block-end: 1px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.32s var(--ui-ease);
+}
+
+.ui-code-block-toggle[aria-expanded='true'] .ui-code-block-chevron {
+  transform: rotate(45deg);
+}
+
+/* Closed is one title row. The title's offset from the top never changes, so it stays put;
+   only the space below grows to the frame's usual padding as the source comes in.
+   The title carries its own top space so that, pinned, it does not touch the screen edge.
+   The rule stays in both states, so a closed folder reads like a titled block that never folds. */
+.ui-code-block.is-collapsible {
+  padding-block: 8px 20px;
+  transition: padding-block-end 320ms var(--ui-ease);
+}
+
+.ui-code-block.is-collapsible > .ui-code-block-header {
+  position: relative;
+  padding-top: 12px;
+  background-color: transparent;
+  box-shadow: 0 0 20px 10px transparent;
+  transition:
+    background-color 320ms var(--ui-ease),
+    box-shadow 320ms var(--ui-ease);
+}
+
+.ui-code-block.is-collapsible.is-open {
+  padding-block-end: 24px;
+}
+
+/* Open, the title pins to the top while its block is on screen, and the source fades out beneath it.
+   Unpinned, the fade rests on the gap between title and source. A host with a fixed bar overrides `top`. */
+.ui-code-block.is-collapsible.is-open > .ui-code-block-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--ui-bg);
+  box-shadow: 0 0 20px 10px var(--ui-bg);
+}
+
+/* The fade is always laid out and only its opacity changes, so closing it does not snap. */
+.ui-code-block.is-collapsible > .ui-code-block-header::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  height: 14px;
+  background: linear-gradient(var(--ui-bg), transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 320ms var(--ui-ease);
+}
+
+.ui-code-block.is-collapsible.is-open > .ui-code-block-header::after {
+  opacity: 1;
+}
+
+.ui-code-block.is-collapsible .ui-code-block-panel,
+.ui-code-block.is-collapsible .ui-code-block-panel[hidden] {
+  display: grid !important;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 320ms var(--ui-ease),
+    opacity 180ms var(--ui-ease);
+}
+
+.ui-code-block.is-collapsible.is-open .ui-code-block-panel {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.ui-code-block.is-collapsible .ui-code-block-clip {
+  overflow: hidden;
+}
+
+.ui-code-block.is-titled .ui-code-block-pre {
+  margin-top: 14px;
+}
+
+.ui-code-block-action {
+  margin-inline-start: auto;
+}
+
+/* Without a title, the action floats over the top corner of the source. */
+.ui-code-block-action.is-corner {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+  margin-inline-start: 0;
+}
+
+.ui-code-block-action :where(a) {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--ui-dur) var(--ui-ease);
+}
+
+.ui-code-block-action :where(a):hover {
+  color: var(--ui-fg);
+}
+
+/* Boxed copy button, same type and metrics as the docs code block copy button */
+.ui-code-block-action .ui-copy-button {
+  padding: 2px 8px;
+  border: 1px solid var(--ui-line);
+  color: var(--ui-muted);
+  font-family: var(--ui-font-text);
+  font-size: 12px;
+  line-height: 1.7;
+  transition: color 0.3s;
+}
+
+.ui-code-block-action .ui-copy-button:hover:not(:disabled) {
+  color: var(--ui-fg);
+}
+
+.ui-code-block-clip,
+.ui-code-block-body {
+  min-width: 0;
+  min-height: 0;
+}
+
+.ui-code-block-pre {
+  margin: 0;
+  overflow-x: auto;
+  color: inherit;
+  font-family: var(--ui-font-meta);
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre;
+  tab-size: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-code-block-action :where(a),
+  .ui-code-block-action .ui-copy-button,
+  .ui-code-block-toggle,
+  .ui-code-block-chevron,
+  .ui-code-block.is-collapsible,
+  .ui-code-block.is-collapsible > .ui-code-block-header,
+  .ui-code-block.is-collapsible > .ui-code-block-header::after,
+  .ui-code-block.is-collapsible .ui-code-block-panel,
+  .ui-code-block.is-collapsible .ui-code-block-panel[hidden] {
+    transition: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .ui-code-block.is-collapsible {
+    padding-block: 4px 16px;
+  }
+
+  .ui-code-block.is-collapsible.is-open {
+    padding-block-end: 16px;
+  }
+}

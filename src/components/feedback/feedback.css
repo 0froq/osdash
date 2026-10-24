@@ -1,0 +1,131 @@
+.ui-progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--ui-radius);
+  appearance: none;
+  background: var(--ui-line);
+  color: var(--ui-accent);
+  accent-color: var(--ui-accent);
+}
+
+.ui-progress::-webkit-progress-bar {
+  background: var(--ui-line);
+}
+
+.ui-progress::-webkit-progress-value {
+  background: var(--ui-accent);
+}
+
+.ui-progress::-moz-progress-bar {
+  background: var(--ui-accent);
+}
+
+.ui-progress:indeterminate {
+  background: linear-gradient(90deg, var(--ui-line) 25%, var(--ui-accent) 50%, var(--ui-line) 75%);
+  background-size: 200% 100%;
+  animation: ui-progress-pulse 1.8s linear infinite;
+}
+
+.ui-progress:indeterminate::-webkit-progress-bar {
+  background: transparent;
+}
+
+.ui-progress:indeterminate::-moz-progress-bar {
+  background: transparent;
+}
+
+.ui-spinner {
+  display: inline-flex;
+  width: 1em;
+  height: 1em;
+  color: var(--ui-accent);
+  vertical-align: middle;
+}
+
+.ui-spinner-ring {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: 1.5px solid var(--ui-line);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: ui-spinner-turn 0.9s linear infinite;
+}
+
+.ui-alert {
+  display: flex;
+  align-items: start;
+  gap: 20px;
+  padding: 16px 20px;
+  border: 1px solid var(--ui-line);
+  border-inline-start: 3px solid var(--ui-accent);
+  border-radius: var(--ui-radius);
+  background: color-mix(in srgb, var(--ui-fg) 3%, transparent);
+  color: var(--ui-fg);
+  font-family: var(--ui-font-text);
+}
+
+.ui-alert-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-alert-title {
+  margin: 0 0 6px;
+  font: inherit;
+}
+
+.ui-alert-description {
+  color: var(--ui-muted);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+.ui-alert-description > :first-child {
+  margin-top: 0;
+}
+
+.ui-alert-description > :last-child {
+  margin-bottom: 0;
+}
+
+.ui-alert-dismiss {
+  flex: none;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--ui-muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.ui-alert-dismiss:hover {
+  color: var(--ui-fg);
+}
+
+.ui-alert-dismiss:focus-visible {
+  outline: 1px solid var(--ui-accent);
+  outline-offset: 4px;
+}
+
+@keyframes ui-spinner-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ui-progress-pulse {
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-spinner-ring,
+  .ui-progress:indeterminate {
+    animation: none;
+  }
+}
