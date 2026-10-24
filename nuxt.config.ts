@@ -16,7 +16,7 @@ export default defineNuxtConfig({
     '@fontsource-variable/geist-mono/index.css',
     '@fontsource/instrument-serif/400.css',
     '@fontsource/instrument-serif/400-italic.css',
-    // Scoped to `.ui`; osdash skin stays on :root in tokens.css + inbox.css.
+    // Scoped to `.ui`: bridges the library tokens to the osdash skin in tokens.css.
     '~/assets/css/ui.css',
     '~/assets/css/tokens.css',
   ],

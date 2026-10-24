@@ -4,6 +4,14 @@
 - 这是只读看板。不要加写 GitHub、合并、发评论的功能。
 - 不对 UI 写测试。验收用 `vp run check`、`vp run test`，以及手动看页面。
 
+## 样式
+
+- 组件样式写在组件自己的 `<style scoped>` 里。不用 UnoCSS，不加 utility class，不用 CSS Modules。
+- `app/assets/css/` 只留全局：`tokens.css`（`:root` 变量、reset、reduced-motion 兜底）和 `ui.css`（把 `--ui-*` 桥到 osdash 皮肤）。别的新 CSS 文件都不加。
+- 目标元素在组件 scope 之外时才写非 scoped `<style>`，并在注释里写清为什么。当前只有两处：`Timeline.vue` 的 fold hover（按钮在本组件、点在 `TimelineGutter` 里），以及 `@froq/ui` 组件的皮肤桥接。
+- 要穿透子组件用 `:deep()`。`:deep()` 只给最后一段选择器加 scope，祖先选择器照常生效。
+- 共享样式优先抽组件（`PopMenu`、`UnreadDot`、`EmptyState`），不要抽公共 CSS 文件。十几行的重复规则留在各自组件里，副本比跨文件跳转好读。
+
 ## 工具链
 
 照 lig 当前 main 的做法：
