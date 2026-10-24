@@ -95,3 +95,84 @@ const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'hel
     />
   </aside>
 </template>
+
+<style scoped>
+.side-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 32px;
+  overflow: auto;
+}
+
+.side-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-row);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-text);
+  font-size: 13.5px;
+  text-align: left;
+  transition:
+    background-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+.side-link:hover {
+  background: var(--soft);
+  color: var(--fg);
+}
+
+.side-link.current {
+  background: var(--soft-2);
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.side-count {
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+
+.side-link.current .side-count {
+  color: var(--fg);
+}
+
+.side-label {
+  padding: 22px 10px 6px;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 28px 12px 16px;
+  border-right: 1px solid var(--line);
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.sidebar .logo {
+  padding: 0 10px;
+}
+</style>

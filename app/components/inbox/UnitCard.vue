@@ -131,3 +131,198 @@ const hasNotes = computed(
     </template>
   </article>
 </template>
+
+<style scoped>
+.unit-card {
+  position: relative;
+  min-width: 0;
+  padding: 14px 12px;
+  border-radius: var(--radius-row);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease);
+}
+
+.unit-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 12px;
+  left: 12px;
+  height: 1px;
+  background: var(--line);
+  transition: opacity var(--dur-1) var(--ease);
+}
+
+.unit-card:first-of-type::before {
+  display: none;
+}
+
+.unit-card:hover::before,
+.unit-card:hover + .unit-card::before,
+.unit-card.selected::before,
+.unit-card.selected + .unit-card::before {
+  opacity: 0;
+}
+
+.unit-card:hover {
+  background: var(--soft);
+}
+
+.unit-card.selected,
+.unit-card.selected:hover {
+  background: var(--soft-2);
+  box-shadow: inset 2px 0 0 var(--fg);
+}
+
+[data-intro] .unit-card {
+  animation: row-in var(--dur-3) var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 24ms);
+}
+
+.card-title {
+  display: -webkit-box;
+  margin-top: 6px;
+  overflow: hidden;
+  font-size: 15.5px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.card-reason {
+  margin-top: 4px;
+  color: color-mix(in oklab, var(--fg) 80%, transparent);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.card-reason.mine {
+  color: var(--accent);
+}
+
+.card-notes {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.card-notes > * + *::before {
+  content: '·';
+  margin: 0 6px;
+}
+
+.card-fixed:hover {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.unit-card.small {
+  display: grid;
+  grid-template-areas: 'id title status age';
+  grid-template-columns: 180px minmax(0, 1fr) auto 3.5em;
+  column-gap: 14px;
+  align-items: center;
+  padding: 11px 12px;
+}
+
+.unit-id {
+  display: flex;
+  grid-area: id;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 11.5px;
+}
+
+.unit-repo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unit-number {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.unit-title {
+  grid-area: title;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unit-status {
+  grid-area: status;
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unit-age {
+  grid-area: age;
+  font-family: var(--font-meta);
+  color: var(--muted);
+  font-size: 11.5px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.unit-age.yellow {
+  color: var(--warn);
+}
+
+.unit-age.red {
+  color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  .unit-card {
+    padding: 14px 4px;
+  }
+
+  .unit-card::before {
+    right: 4px;
+    left: 4px;
+  }
+
+  .unit-card.small {
+    grid-template-areas:
+      'id status age'
+      'title title title';
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    row-gap: 4px;
+    padding: 14px 4px;
+  }
+
+  .unit-age {
+    min-width: 3em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unit-card {
+    animation: none;
+  }
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+</style>

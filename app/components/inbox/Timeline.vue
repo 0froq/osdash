@@ -622,4 +622,14 @@ function stagger(row: StoryRow, index: number): string {
     --st-col: 12px;
   }
 }
+.card-link {
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 12px;
+  transition: color var(--dur-1) var(--ease);
+}
+
+.card-link:hover {
+  color: var(--fg);
+}
 </style>

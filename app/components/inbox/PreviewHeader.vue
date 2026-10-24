@@ -126,3 +126,73 @@ onBeforeUnmount(() => {
     </div>
   </header>
 </template>
+
+<style scoped>
+.preview-head {
+  flex: 0 0 auto;
+  padding: 28px 28px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.preview-head h2 {
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.preview-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  align-items: baseline;
+  margin-top: 10px;
+}
+
+.preview-reason {
+  font-size: 14.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.preview-reason.mine {
+  color: var(--accent);
+}
+
+.preview-actions {
+  margin-top: 16px;
+}
+
+.later-wrap {
+  position: relative;
+}
+
+.later-pop {
+  --pop-origin: top left;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  min-width: 188px;
+}
+
+@media (max-width: 760px) {
+  .preview-head h2 {
+    font-size: 22px;
+  }
+
+  .preview-actions button,
+  .preview-actions a {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 760px) {
+  .preview-head {
+    padding: 12px 18px 18px;
+  }
+}
+</style>

@@ -71,3 +71,85 @@ const bodyId = useId()
     </div>
   </section>
 </template>
+
+<style scoped>
+.section {
+  min-width: 0;
+  margin-top: 44px;
+}
+
+.section-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+}
+
+.section-toggle {
+  align-items: center;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.section-title {
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.section-count {
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 12px;
+}
+
+.section-chevron {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  margin-right: -2px;
+  color: var(--muted);
+  transition:
+    transform var(--dur-2) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+.section-chevron.open {
+  transform: rotate(90deg);
+}
+
+.section-toggle:hover .section-chevron {
+  color: var(--fg);
+}
+
+.section-panel {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin: 8px -12px 0;
+  transition: grid-template-rows var(--dur-2) var(--ease);
+}
+
+.section-panel.collapsed {
+  grid-template-rows: 0fr;
+}
+
+.section-inner {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 760px) {
+  .section-panel {
+    margin-right: -4px;
+    margin-left: -4px;
+  }
+
+  .section-toggle {
+    min-height: 36px;
+  }
+}
+</style>

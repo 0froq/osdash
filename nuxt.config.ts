@@ -19,7 +19,6 @@ export default defineNuxtConfig({
     // Scoped to `.ui`; osdash skin stays on :root in tokens.css + inbox.css.
     '~/assets/css/ui.css',
     '~/assets/css/tokens.css',
-    '~/assets/css/inbox.css',
   ],
 
   vite: {

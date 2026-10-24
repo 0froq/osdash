@@ -126,3 +126,110 @@ onBeforeUnmount(() => {
     </PopMenu>
   </div>
 </template>
+
+<style scoped>
+.viewer-menu {
+  position: relative;
+  margin-top: auto;
+}
+
+.viewer-button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-row);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--dur-1) var(--ease);
+}
+
+.viewer-button:hover {
+  background: var(--soft);
+}
+
+.avatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--faint);
+  color: var(--fg);
+  font-family: var(--font-meta);
+  font-size: 12px;
+}
+
+img.avatar {
+  object-fit: cover;
+}
+
+.viewer-name {
+  overflow: hidden;
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-pop {
+  --pop-origin: bottom left;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 208px;
+}
+
+.menu-theme {
+  display: flex;
+  gap: 2px;
+  margin: 4px 6px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.menu-theme button {
+  flex: 1;
+  min-height: 26px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12.5px;
+  transition:
+    background-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+.menu-theme button:hover {
+  color: var(--fg);
+}
+
+.menu-theme button[aria-checked='true'] {
+  background: var(--soft-2);
+  color: var(--fg);
+}
+
+.menu-shortcuts {
+  margin: 0;
+  padding: 8px 10px 6px;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .menu-shortcuts {
+    display: none;
+  }
+}
+</style>

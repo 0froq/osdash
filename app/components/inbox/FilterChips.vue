@@ -86,3 +86,90 @@ watch(row, (el, _previous, onCleanup) => {
     </button>
   </div>
 </template>
+
+<style scoped>
+.repo-block {
+  min-width: 0;
+  margin-top: 20px;
+}
+
+.repo-row {
+  --pill-line: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 18px;
+  align-content: flex-start;
+  min-width: 0;
+  max-height: calc(var(--pill-line) * 3 + 2px);
+  overflow: hidden;
+}
+
+.repo-row.expanded {
+  max-height: none;
+}
+
+.repo-count {
+  font-family: var(--font-meta);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+
+.repo-chip {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 5px;
+  align-items: baseline;
+  min-height: var(--pill-line);
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12.5px;
+  white-space: nowrap;
+  transition: color var(--dur-1) var(--ease);
+}
+
+.repo-toggle {
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12.5px;
+  transition: color var(--dur-1) var(--ease);
+}
+
+.repo-toggle:hover {
+  color: var(--fg);
+}
+
+.repo-count {
+  font-family: var(--font-meta);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+.repo-chip:hover,
+.repo-chip.current {
+  color: var(--fg);
+}
+
+.repo-chip.current {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+}
+
+@media (max-width: 760px) {
+  .repo-row {
+    scrollbar-width: none;
+  }
+
+  .repo-chip {
+    min-height: 36px;
+  }
+
+  .repo-toggle {
+    display: none;
+  }
+}
+</style>

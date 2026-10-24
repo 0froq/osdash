@@ -508,3 +508,54 @@ onMounted(() => {
     <SettingsSheet v-model:open="settingsOpen" />
   </InboxShell>
 </template>
+
+<style scoped>
+.inbox-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.inbox-status.error {
+  color: var(--fg);
+}
+
+.inbox-status.error::before,
+.status-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.inbox-status.error::before {
+  content: '';
+}
+
+.status-dot {
+  background: var(--muted);
+}
+
+.status-dot.pulse {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.inbox-status button {
+  padding: 0;
+  border: 0;
+  color: var(--fg);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+</style>

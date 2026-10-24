@@ -137,3 +137,101 @@ async function save(clear = false): Promise<void> {
     </form>
   </dialog>
 </template>
+
+<style scoped>
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.settings-actions button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color var(--dur-1) var(--ease);
+}
+
+.settings-actions button:hover:not(:disabled) {
+  background: var(--soft);
+}
+
+.settings-actions button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.settings-dialog {
+  width: min(440px, calc(100% - 32px));
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow-pop);
+  color: var(--fg);
+}
+
+.settings-dialog[open] {
+  animation: dialog-in var(--dur-2) var(--ease) both;
+}
+
+.settings-dialog::backdrop {
+  background: color-mix(in oklab, var(--fg) 28%, transparent);
+  animation: fade-in var(--dur-2) var(--ease) both;
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+}
+
+.settings-panel h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.settings-note {
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.settings-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.settings-panel input {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  transition: border-color var(--dur-1) var(--ease);
+}
+
+.settings-panel input:hover {
+  border-color: color-mix(in oklab, var(--fg) 24%, transparent);
+}
+
+@media (max-width: 760px) {
+  .settings-actions button {
+    min-height: 36px;
+  }
+}
+</style>

@@ -34,3 +34,32 @@ const parts = computed(() => {
     >
   </header>
 </template>
+
+<style scoped>
+.greeting h1 {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.greeting-stats {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.greeting-stats .num {
+  font-family: var(--font-meta);
+}
+
+@media (max-width: 760px) {
+  .greeting h1 {
+    font-size: 28px;
+  }
+}
+</style>

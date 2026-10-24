@@ -20,3 +20,34 @@ defineProps<{
     <span class="card-meta-time">{{ time }}</span>
   </p>
 </template>
+
+<style scoped>
+.card-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.card-meta-repo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-number {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.card-meta-time {
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+</style>

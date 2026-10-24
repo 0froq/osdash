@@ -155,3 +155,277 @@ function onUp(): void {
     </Transition>
   </div>
 </template>
+
+<style scoped>
+.inbox-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.inbox-status.error {
+  color: var(--fg);
+}
+
+.inbox-status.error::before,
+.status-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.inbox-status.error::before {
+  content: '';
+}
+
+.status-dot {
+  background: var(--muted);
+}
+
+.status-dot.pulse {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.inbox-status button {
+  padding: 0;
+  border: 0;
+  color: var(--fg);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.preview-root {
+  display: none;
+  min-width: 0;
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  background: var(--bg);
+}
+
+.preview-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  animation: fade-in var(--dur-2) var(--ease) both;
+}
+
+.preview-empty {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  padding: 64px 40px;
+  color: var(--muted);
+  font-size: 13.5px;
+  text-align: center;
+}
+
+.preview-grab {
+  display: none;
+  justify-content: center;
+  padding: 10px 0 2px;
+  touch-action: none;
+}
+
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.preview-actions button,
+.preview-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color var(--dur-1) var(--ease);
+}
+
+.preview-actions button:hover,
+.preview-actions a:hover {
+  background: var(--soft);
+}
+
+.preview-scroll {
+  flex: 1;
+  min-height: 0;
+  padding: 24px 28px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.tl-skeleton span {
+  display: block;
+  height: 10px;
+  margin: 0 0 16px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--soft-2), var(--soft), var(--soft-2)) 0 0 / 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.tl-skeleton span:nth-child(1) {
+  width: 70%;
+}
+
+.tl-skeleton span:nth-child(2) {
+  width: 45%;
+}
+
+.tl-skeleton span:nth-child(3) {
+  width: 60%;
+}
+
+.grabber {
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--faint);
+}
+
+.preview-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  background: color-mix(in oklab, var(--fg) 28%, transparent);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (min-width: 1100px) {
+  .inbox-shell {
+    grid-template-columns: 216px minmax(0, 1fr) 460px;
+  }
+
+  .preview-root {
+    display: block;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+
+  .preview {
+    border-left: 1px solid var(--line);
+  }
+
+  .preview-mask {
+    display: none;
+  }
+}
+
+@media (max-width: 1099px) {
+  .preview-root.open {
+    position: fixed;
+    z-index: 36;
+    display: block;
+    inset: 0;
+  }
+
+  .preview-root.open .preview {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1;
+    width: min(460px, 100%);
+    height: 100%;
+    border-left: 1px solid var(--line);
+  }
+
+  .preview.slide-enter-active,
+  .preview.slide-leave-active {
+    transition:
+      transform var(--dur-2) var(--ease),
+      opacity var(--dur-2) var(--ease);
+  }
+
+  .preview.slide-enter-from,
+  .preview.slide-leave-to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@media (max-width: 760px) {
+  .preview-grab {
+    display: flex;
+  }
+
+  .preview-head {
+    padding: 12px 18px 18px;
+  }
+
+  .preview-scroll {
+    padding: 20px 18px calc(28px + env(safe-area-inset-bottom));
+  }
+
+  .preview-root.sheet.open .preview {
+    top: max(64px, 12vh);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    border-top: 1px solid var(--line);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    border-left: 0;
+  }
+
+  .preview {
+    transform: translateY(var(--drag, 0px));
+  }
+
+  .preview.sheet-enter-active,
+  .preview.sheet-leave-active {
+    transition: transform var(--dur-3) var(--ease);
+  }
+
+  .preview.sheet-enter-from,
+  .preview.sheet-leave-to {
+    transform: translateY(100%);
+  }
+}
+</style>
