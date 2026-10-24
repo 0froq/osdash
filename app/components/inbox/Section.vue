@@ -62,11 +62,10 @@ const bodyId = useId()
       >
         <div class="section-body">
           <slot />
-          <p
+          <EmptyState
             v-if="count === 0"
-            class="empty-state"
-            >{{ empty || copy.emptySection }}</p
-          >
+            :text="empty || copy.emptySection"
+          />
         </div>
       </div>
     </div>

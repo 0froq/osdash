@@ -77,10 +77,9 @@ onBeforeUnmount(() => {
           @click="laterOpen = !laterOpen"
           >{{ copy.menu.later }}</button
         >
-        <div
+        <PopMenu
           v-if="laterOpen"
-          class="later-pop pop"
-          role="menu"
+          class="later-pop"
         >
           <button
             class="pop-item"
@@ -111,7 +110,7 @@ onBeforeUnmount(() => {
             @click="pick(null)"
             >{{ copy.menu.clearLater }}</button
           >
-        </div>
+        </PopMenu>
       </div>
       <button
         type="button"

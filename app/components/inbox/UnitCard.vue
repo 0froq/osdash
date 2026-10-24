@@ -65,10 +65,7 @@ const hasNotes = computed(
   >
     <template v-if="size === 'small'">
       <p class="unit-id">
-        <span
-          v-if="unit.unread"
-          class="unread-dot"
-        />
+        <UnreadDot v-if="unit.unread" />
         <span class="unit-repo">{{ unit.repo }}</span>
         <span class="unit-number"
           ><template v-if="issueOnly">{{ copy.issuePrefix }} </template>#{{ unit.number }}</span

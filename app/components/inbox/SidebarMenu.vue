@@ -68,10 +68,9 @@ onBeforeUnmount(() => {
       >
       <span class="viewer-name">{{ name }}</span>
     </button>
-    <div
+    <PopMenu
       v-if="open"
-      class="menu-pop pop"
-      role="menu"
+      class="menu-pop"
     >
       <button
         class="menu-item pop-item"
@@ -124,6 +123,6 @@ onBeforeUnmount(() => {
         {{ copy.menu.logout }}
       </button>
       <p class="menu-shortcuts">{{ copy.shortcutsLabel }} {{ copy.shortcuts }}</p>
-    </div>
+    </PopMenu>
   </div>
 </template>

@@ -12,10 +12,7 @@ defineProps<{
 
 <template>
   <p class="card-meta">
-    <span
-      v-if="unread"
-      class="unread-dot"
-    />
+    <UnreadDot v-if="unread" />
     <span class="card-meta-repo">{{ repo }}</span>
     <span class="card-number">
       <template v-if="issue">{{ copy.issuePrefix }} </template>#{{ number }}

@@ -15,21 +15,22 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const root = ref<HTMLElement>()
+const menu = ref<{ el?: HTMLElement }>()
 const left = ref(props.x)
 const top = ref(props.y)
 
 function place(): void {
-  const menu = root.value
-  if (!menu) return
-  const rect = menu.getBoundingClientRect()
+  const node = menu.value?.el
+  if (!node) return
+  const rect = node.getBoundingClientRect()
   left.value = Math.max(8, Math.min(props.x, window.innerWidth - rect.width - 8))
   top.value = Math.max(8, Math.min(props.y, window.innerHeight - rect.height - 8))
 }
 
 function onPointer(event: PointerEvent): void {
   const target = event.target
-  if (target instanceof Node && root.value?.contains(target)) return
+  const node = menu.value?.el
+  if (node && target instanceof Node && node.contains(target)) return
   emit('close')
 }
 
@@ -44,10 +45,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    ref="root"
-    class="card-menu pop"
-    role="menu"
+  <PopMenu
+    ref="menu"
+    class="card-menu"
     :style="{ left: `${left}px`, top: `${top}px` }"
   >
     <button
@@ -100,5 +100,5 @@ onBeforeUnmount(() => {
     >
       {{ unit.starred ? copy.menu.unstar : copy.menu.star }}
     </button>
-  </div>
+  </PopMenu>
 </template>
