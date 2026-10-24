@@ -254,3 +254,372 @@ function stagger(row: StoryRow, index: number): string {
     </TransitionGroup>
   </div>
 </template>
+
+<style>
+/* The fold button lives in this component and the stack dots live in
+   TimelineGutter, so the hover has to cross a scope boundary. */
+.st-fold:hover .n-stack b:nth-child(1),
+.st-fold:focus-visible .n-stack b:nth-child(1) {
+  top: 8%;
+}
+
+.st-fold:hover .n-stack b:nth-child(3),
+.st-fold:focus-visible .n-stack b:nth-child(3) {
+  top: 92%;
+}
+</style>
+
+<style scoped>
+/*
+ * Contribution story. One rail per issue or PR. A PR branches from the issues
+ * it closes and joins them when it merges. Folds hide the lines between key
+ * lines and never change the rails. Every row puts its node at --st-y, so the
+ * rail segments meet at the node whatever the row height.
+ */
+.st {
+  --st-col: 14px;
+  --st-y: 14px;
+  --st-w: 1.5px;
+  --st-ink: color-mix(in oklab, var(--fg) 72%, transparent);
+  --st-ink-other: color-mix(in oklab, var(--fg) 26%, transparent);
+  --st-good: var(--good);
+  --st-bad: light-dark(#b2412f, #ef7a66);
+  --st-soft: color-mix(in oklab, var(--fg) 4.5%, transparent);
+  --st-bracket: color-mix(in oklab, var(--fg) 16%, transparent);
+  margin-top: 26px;
+}
+
+.st-truncated,
+.st-related {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.st-related-label {
+  flex: none;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.st-related ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.st-related li {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.st-related a {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+
+.st-related a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.st-related-rel::before {
+  content: '·';
+  margin-right: 6px;
+}
+
+/* Legend */
+.st-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 4px;
+}
+
+.st-tools button {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-meta);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  transition: color 160ms var(--ease);
+}
+
+.st-tools button:hover,
+.st-tools button:focus-visible {
+  color: var(--fg);
+}
+
+/* Rows */
+.st-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.st-row {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: opacity 220ms var(--ease);
+}
+
+.st-row-in {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 12px;
+  min-height: 0;
+}
+
+.st-body {
+  min-width: 0;
+  padding: 4px 0 14px;
+  transition: opacity 220ms var(--ease);
+}
+
+.st-row.dim .st-body {
+  opacity: 0.4;
+}
+
+.st-row.minor,
+.st-row.row-next {
+  --st-y: 11px;
+}
+
+.st-row.minor .st-body,
+.st-row.row-next .st-body {
+  padding: 2px 0 6px;
+}
+
+.st-row.row-fold {
+  --st-y: 12px;
+}
+
+.st-row.row-now {
+  --st-y: 19px;
+}
+
+.st-row.row-now .st-body {
+  padding: 8px 0 18px;
+}
+
+/* Gutter */
+/* Text */
+/* Open folds indent their lines inside a bracket that starts at the fold row. */
+.row-line.in-fold .st-body,
+.row-fold.open .st-fold-text {
+  position: relative;
+}
+
+.row-line.in-fold .st-body {
+  padding-left: 18px;
+}
+
+.row-fold.open .st-fold-text::before,
+.row-line.in-fold .st-body::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  width: 7px;
+  border-left: 1px solid var(--st-bracket);
+}
+
+.row-fold.open .st-fold-text::before {
+  top: var(--st-y);
+  bottom: 0;
+  border-top: 1px solid var(--st-bracket);
+  border-top-left-radius: 6px;
+}
+
+.row-line.in-fold .st-body::before {
+  top: 0;
+  bottom: 0;
+}
+
+.row-line.fold-last .st-body::before {
+  bottom: auto;
+  height: var(--st-y);
+  border-bottom: 1px solid var(--st-bracket);
+  border-bottom-left-radius: 6px;
+}
+
+.row-line.fold-last .st-body {
+  padding-bottom: 12px;
+}
+
+/* Fold rows */
+.st-fold {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.st-fold-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  align-items: baseline;
+  padding: 3px 0 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 18px;
+  transition: color 160ms var(--ease);
+}
+
+.row-fold.open .st-fold-text {
+  padding-left: 18px;
+}
+
+.st-fold-count {
+  color: var(--fg);
+  font-family: var(--font-meta);
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.st-fold:hover .st-fold-text,
+.st-fold:focus-visible .st-fold-text {
+  color: var(--fg);
+}
+
+.st-fold:focus-visible {
+  outline: none;
+}
+
+.st-fold:focus-visible .st-fold-sum {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Now and next */
+.st-now {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  align-items: baseline;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.st-now-label {
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.turn-you .st-now-label {
+  color: var(--accent);
+}
+
+.st-now-wait {
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.st-next {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.st-next b {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+/* Motion. Rows unroll by height so rails draw down as they arrive. */
+.st-row-enter-active,
+.st-row-leave-active {
+  transition:
+    grid-template-rows 380ms var(--ease),
+    opacity 300ms var(--ease);
+}
+
+.st-row-enter-active {
+  transition-delay: calc(var(--i) * 26ms);
+}
+
+.st-row-leave-active {
+  transition-duration: 240ms, 160ms;
+}
+
+.st-row-enter-from,
+.st-row-leave-to {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.st-row-enter-active .st-row-in,
+.st-row-leave-active .st-row-in {
+  overflow: hidden;
+}
+
+.st-row-enter-active .st-body {
+  transition: transform 420ms var(--ease);
+  transition-delay: calc(var(--i) * 26ms);
+}
+
+.st-row-enter-from .st-body {
+  transform: translateY(-5px);
+}
+
+.st-row-enter-active :deep(.st-node) {
+  animation: st-pop 460ms var(--ease) both;
+  animation-delay: calc(var(--i) * 26ms + 120ms);
+}
+
+@keyframes st-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@keyframes st-pulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+
+@media (max-width: 760px) {
+  .st {
+    --st-col: 12px;
+  }
+}
+</style>

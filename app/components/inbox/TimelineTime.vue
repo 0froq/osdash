@@ -28,3 +28,19 @@ const title = computed(() => {
     >{{ shortAge(at, nowMs) }}</time
   >
 </template>
+
+<style scoped>
+.st-when {
+  margin-left: auto;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 11px;
+  text-decoration: none;
+  transition: color 160ms var(--ease);
+}
+
+a.st-when:hover,
+a.st-when:focus-visible {
+  color: var(--fg);
+}
+</style>

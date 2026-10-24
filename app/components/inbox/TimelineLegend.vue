@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { StoryCell } from '~/utils/story'
 import { copy } from '~/copy/en'
 import { relationOf, type Story } from '~/utils/story'
 
@@ -8,6 +9,24 @@ const focus = defineModel<number | null>('focus', { default: null })
 const entries = computed(() =>
   props.story.lanes.flatMap((lane, index) => lane.map(item => ({ item, index }))),
 )
+
+/** The legend is a gutter with a single node: the lane this entry sits on. */
+function cellsOf(entry: (typeof entries.value)[number]): StoryCell[] {
+  return props.story.lanes.map((_, lane) => ({
+    lane,
+    up: false,
+    down: false,
+    node: lane === entry.index ? entry.item.state : null,
+    hl: false,
+    hr: false,
+    cross: false,
+    link: null,
+    dashed: false,
+    mine: entry.item.authorLogin.toLowerCase() === props.viewer.toLowerCase(),
+    primary: entry.item.role === 'primary',
+    fade: false,
+  }))
+}
 </script>
 
 <template>
@@ -20,26 +39,10 @@ const entries = computed(() =>
       @pointerenter="focus = entry.index"
       @pointerleave="focus = null"
     >
-      <span
-        class="st-gutter"
-        aria-hidden="true"
-      >
-        <span
-          v-for="(_, l) in story.lanes"
-          :key="l"
-          class="st-cell"
-          :class="{
-            other: entry.item.authorLogin.toLowerCase() !== viewer.toLowerCase(),
-            primary: entry.item.role === 'primary',
-          }"
-        >
-          <i
-            v-if="l === entry.index"
-            class="st-node"
-            :class="`n-${entry.item.state === 'open' ? 'open' : entry.item.state}`"
-          />
-        </span>
-      </span>
+      <TimelineGutter
+        :cells="cellsOf(entry)"
+        :focus="focus"
+      />
       <a
         class="st-legend-text"
         :href="entry.item.url"
@@ -61,3 +64,73 @@ const entries = computed(() =>
     </li>
   </ul>
 </template>
+
+<style scoped>
+.st-legend {
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.st-legend-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: center;
+  min-height: 24px;
+  transition: opacity 220ms var(--ease);
+}
+
+.st-legend-row.dim {
+  opacity: 0.35;
+}
+
+/* The gutter is its own component, so the row reaches in through the scope. */
+.st-legend-row :deep(.st-gutter) {
+  align-self: stretch;
+}
+
+.st-legend-row :deep(.st-node) {
+  top: 50%;
+}
+
+.st-legend-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  align-items: baseline;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 18px;
+  text-decoration: none;
+  transition: color 160ms var(--ease);
+}
+
+.st-legend-text:hover,
+.st-legend-text:focus-visible {
+  color: var(--fg);
+}
+
+.st-legend-text b {
+  color: var(--fg);
+  font-family: var(--font-meta);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.st-legend-kind,
+.st-legend-state {
+  font-family: var(--font-meta);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+}
+
+.st-legend-state.s-open {
+  color: var(--fg);
+}
+
+.st-legend-state.s-merged {
+  color: var(--good);
+}
+</style>
