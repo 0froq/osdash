@@ -21,6 +21,7 @@ export type FixedBy = {
   url: string
   authorLogin: string
   state: ItemState
+  createdAt?: string
 }
 
 export type UnitDraft = {
@@ -292,7 +293,7 @@ export function buildUnitDrafts(items: readonly Item[]): UnitDraft[] {
       primary: pr,
       issues,
       history,
-      fixedBy: null,
+      fixedBy: mergedFixFor(issueItems, byKey),
       members: memberItems,
     })
   }
@@ -398,8 +399,39 @@ export function toUnit(draft: UnitDraft, verdict: Verdict, nowMs: number): Unit 
       kind: item.kind,
       updatedAt: item.updatedAt,
       headSha: item.headSha,
+      title: item.title,
+      url: item.url,
+      state: item.state,
+      authorLogin: item.author.login,
+      createdAt: item.createdAt,
+      closedAt: item.closedAt,
+      closes: closesOf(item),
     })),
   }
+}
+
+function closesOf(item: Item): string[] {
+  const keys = new Set<string>()
+  for (const issue of item.closingIssues ?? []) keys.add(itemKey(issue.repo, issue.number))
+  for (const link of item.timelineLinks ?? []) {
+    if (link.event === 'connected' && link.kind === 'issue') {
+      keys.add(itemKey(link.repo, link.number))
+    }
+  }
+  return [...keys]
+}
+
+/** Someone else's merged PR that closes one of this PR card's issues. */
+function mergedFixFor(
+  issues: ReadonlyArray<{ link: LinkKind; item?: Item }>,
+  byKey: ReadonlyMap<string, Item>,
+): FixedBy | null {
+  for (const { link, item } of issues) {
+    if (link !== 'closing' || !item) continue
+    const fix = fixedByFor(item, byKey)
+    if (fix?.state === 'merged') return fix
+  }
+  return null
 }
 
 function fixedByFor(issue: Item, byKey: ReadonlyMap<string, Item>): FixedBy | null {
@@ -458,5 +490,6 @@ function fixedByFor(issue: Item, byKey: ReadonlyMap<string, Item>): FixedBy | nu
     url: best.url,
     authorLogin: best.authorLogin,
     state: best.state,
+    ...(best.createdAt ? { createdAt: best.createdAt } : {}),
   }
 }

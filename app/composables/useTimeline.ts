@@ -1,16 +1,9 @@
-import type { TimelineEntry } from '#shared/events'
-
-export type TimelinePayload = {
-  id: string
-  generatedAt: string
-  cached: boolean
-  entries: TimelineEntry[]
-  truncated: boolean
-}
+import type { TimelinePayload } from '#shared/story'
 
 const cache = new Map<string, TimelinePayload>()
 
 export function useTimeline() {
+  const { mock: mockMode } = useMockMode()
   const payload = ref<TimelinePayload | null>(null)
   const pending = ref(false)
   const error = ref('')
@@ -30,7 +23,7 @@ export function useTimeline() {
     pending.value = true
     error.value = ''
     const params = new URLSearchParams({ id })
-    if (import.meta.dev) params.set('mock', '1')
+    if (mockMode.value) params.set('mock', '1')
     if (refresh) params.set('refresh', '1')
     try {
       const body = await $fetch<TimelinePayload>(`/api/timeline?${params.toString()}`)

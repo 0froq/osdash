@@ -14,24 +14,18 @@ import {
   normalizeCheckRuns,
   normalizeRestTimeline,
   normalizeReviewComments,
-  type TimelineEntry,
   type UnitEvent,
 } from '../shared/events'
+import { storyItems, type TimelinePayload } from '../shared/story'
 import type { Item, ItemKind } from '../shared/turn'
 import type { Unit } from '../shared/unit'
 
 const RESPONSE_TTL_SECONDS = 10 * 60
 
-export type TimelinePayload = {
-  id: string
-  generatedAt: string
-  cached: boolean
-  entries: TimelineEntry[]
-  truncated: boolean
-}
+export type { TimelinePayload } from '../shared/story'
 
 function responseKey(login: string, unitId: string, hash: string): string {
-  return `tlresp:v1:${login.toLowerCase()}:${unitId}:${hash}`
+  return `tlresp:v2:${login.toLowerCase()}:${unitId}:${hash}`
 }
 
 export function reviewCommentsCacheKey(
@@ -49,12 +43,22 @@ function ciKey(login: string, repo: string, sha: string): string {
 }
 
 export function membersHash(unit: Unit): string {
-  return unit.members
-    .map(
-      member =>
-        `${member.kind}:${member.repo}#${member.number}:${member.updatedAt ?? ''}:${member.headSha ?? ''}`,
-    )
-    .join('|')
+  const members = unit.members.map(
+    member =>
+      `${member.kind}:${member.repo}#${member.number}:${member.updatedAt ?? ''}:${member.headSha ?? ''}`,
+  )
+  if (unit.fixedBy)
+    members.push(`fix:${unit.fixedBy.repo}#${unit.fixedBy.number}:${unit.fixedBy.state}`)
+  return members.join('|')
+}
+
+/** The fixing PR is not a member (it must not move the card's turn), but its merge belongs on the timeline. */
+function fixerMember(unit: Unit): Unit['members'][number] | null {
+  const fix = unit.fixedBy
+  if (!fix) return null
+  if (unit.members.some(member => member.repo === fix.repo && member.number === fix.number))
+    return null
+  return { repo: fix.repo, number: fix.number, kind: 'pr' }
 }
 
 function memberItem(member: Unit['members'][number], viewerLogin: string): Item {
@@ -137,7 +141,8 @@ export async function assembleTimeline(input: {
   let truncated = false
   const collected: UnitEvent[] = []
 
-  for (const member of unit.members) {
+  const fixer = fixerMember(unit)
+  for (const member of fixer ? [...unit.members, fixer] : unit.members) {
     const item = memberItem(member, login)
     const source = { repo: member.repo, number: member.number, kind: member.kind }
     const eventKey = eventsCacheKey(login, member.repo, member.number, member.updatedAt)
@@ -155,7 +160,7 @@ export async function assembleTimeline(input: {
     }
     collected.push(...events)
 
-    if (member.kind !== 'pr') continue
+    if (member.kind !== 'pr' || member === fixer) continue
 
     const commentsKey = reviewCommentsCacheKey(login, member.repo, member.number, member.updatedAt)
     let comments = await readJson<UnitEvent[]>(store, commentsKey, nowMs, fresh)
@@ -203,6 +208,7 @@ export async function assembleTimeline(input: {
     generatedAt: new Date(nowMs).toISOString(),
     cached: false,
     entries: foldEntries(mergeTimelineEvents(collected)),
+    items: storyItems(unit),
     truncated,
   }
   await writeCache(store, cachedKey, JSON.stringify(body), RESPONSE_TTL_SECONDS, nowMs)

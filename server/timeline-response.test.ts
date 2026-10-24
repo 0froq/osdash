@@ -142,12 +142,13 @@ it('skips the response cache when refresh=1', async () => {
   }
   const store = memoryStore()
   const unit = fixtureUnit()
-  const key = `tlresp:v1:octo-dev:${unit.id}:${membersHash(unit)}`
+  const key = `tlresp:v2:octo-dev:${unit.id}:${membersHash(unit)}`
   const sentinel: TimelinePayload = {
     id: unit.id,
     generatedAt: '2000-01-01T00:00:00.000Z',
     cached: false,
     entries: [],
+    items: [],
     truncated: true,
   }
   store.data.set(key, JSON.stringify(sentinel))

@@ -1,3 +1,4 @@
+import { isClaimComment } from './claim-keywords'
 import { isBot } from './identity'
 import { isCoderabbitActionable, isFailingClaComment } from './turn-rules'
 import type { Actor, CheckConclusion, CheckStatus, ItemKind, ReviewState } from './turn'
@@ -50,6 +51,9 @@ export type UnitEvent = {
   ref?: { repo: string; number: number; kind: ItemKind; url: string; title?: string }
   rename?: { from: string; to: string }
   commit?: { sha: string; message: string }
+  targetLogin?: string
+  association?: string
+  claim?: true
   bot: 'keep' | 'noise' | null
 }
 
@@ -85,6 +89,7 @@ export type RawRestTimelineEvent = {
   user?: { login?: string; type?: string } | null
   author?: { login?: string; type?: string } | null
   body?: string | null
+  author_association?: string | null
   html_url?: string | null
   state?: string | null
   label?: { name?: string; color?: string } | null
@@ -108,6 +113,7 @@ export type RawReviewComment = {
   id?: number | string
   user?: { login?: string; type?: string } | null
   body?: string | null
+  author_association?: string | null
   html_url?: string | null
   created_at?: string
   updated_at?: string
@@ -283,6 +289,12 @@ export function normalizeRestTimeline(
     const reviewState = kind === 'review' ? reviewStateOf(entry.state) : undefined
     const body = entry.body ?? undefined
     const ref = kind === 'cross-ref' || kind === 'connected' ? sourceOf(entry) : undefined
+    const targetLogin =
+      kind === 'assigned' || kind === 'unassigned'
+        ? entry.assignee?.login || undefined
+        : kind === 'review-requested'
+          ? entry.requested_reviewer?.login || undefined
+          : undefined
     events.push({
       id: String(
         entry.id ?? entry.node_id ?? `${kind}:${at}:${actor.login}:${source.repo}#${source.number}`,
@@ -306,6 +318,9 @@ export function normalizeRestTimeline(
         kind === 'commit' && entry.sha
           ? { sha: entry.sha, message: entry.message ?? '' }
           : undefined,
+      ...(targetLogin ? { targetLogin } : {}),
+      ...(entry.author_association ? { association: entry.author_association } : {}),
+      ...(kind === 'comment' && body && isClaimComment(body) ? { claim: true as const } : {}),
       bot: botMark(actor, body ?? undefined, reviewState),
     })
   }
@@ -330,6 +345,7 @@ export function normalizeReviewComments(
       source,
       url: comment.html_url ?? undefined,
       excerpt: excerptOf(body),
+      ...(comment.author_association ? { association: comment.author_association } : {}),
       bot: botMark(actor, body),
     })
   }

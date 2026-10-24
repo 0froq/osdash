@@ -42,36 +42,50 @@ const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'hel
       />
     </div>
     <nav
-      class="chip-row"
+      class="tab-row"
       :aria-label="copy.nav.home"
     >
       <button
-        class="nav-chip"
+        class="nav-tab"
         :class="{ current: view === 'home' && !category }"
         type="button"
         @click="emit('view', 'home')"
       >
         {{ copy.nav.home }}
-        <span class="chip-count">{{ homeCount }}</span>
+        <span class="nav-count">{{ homeCount }}</span>
       </button>
       <button
-        class="nav-chip"
+        class="nav-tab"
         :class="{ current: view === 'later' }"
         type="button"
         @click="emit('view', 'later')"
       >
         {{ copy.nav.later }}
-        <span class="chip-count">{{ laterCount }}</span>
+        <span class="nav-count">{{ laterCount }}</span>
       </button>
       <button
-        class="nav-chip"
+        class="nav-tab"
         :class="{ current: view === 'starred' }"
         type="button"
         @click="emit('view', 'starred')"
       >
         {{ copy.nav.starred }}
-        <span class="chip-count">{{ starredCount }}</span>
+        <span class="nav-count">{{ starredCount }}</span>
       </button>
+      <button
+        class="nav-tab"
+        :class="{ current: view === 'ended' }"
+        type="button"
+        @click="emit('view', 'ended')"
+      >
+        {{ copy.sections.ended }}
+        <span class="nav-count">{{ endedCount }}</span>
+      </button>
+    </nav>
+    <nav
+      class="chip-row"
+      :aria-label="copy.nav.kinds"
+    >
       <button
         v-for="item in categories"
         :key="item"
@@ -81,16 +95,7 @@ const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'hel
         @click="emit('category', item)"
       >
         {{ categoryLabel(item) }}
-        <span class="chip-count">{{ categoryCounts[item] }}</span>
-      </button>
-      <button
-        class="nav-chip"
-        :class="{ current: view === 'ended' }"
-        type="button"
-        @click="emit('view', 'ended')"
-      >
-        {{ copy.sections.ended }}
-        <span class="chip-count">{{ endedCount }}</span>
+        <span class="nav-count">{{ categoryCounts[item] }}</span>
       </button>
     </nav>
   </header>

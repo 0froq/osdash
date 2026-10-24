@@ -1,26 +1,25 @@
 <script setup lang="ts">
+import { copy } from '~/copy/en'
+
 defineProps<{
   repo: string
-  number: number | null
+  number: number
+  issue?: boolean
   time: string
   unread: boolean
-  tone?: 'none' | 'yellow' | 'red'
 }>()
 </script>
 
 <template>
   <p class="card-meta">
-    <span class="card-meta-repo">
-      {{ repo }}<template v-if="number !== null">#{{ number }}</template>
-    </span>
     <span
       v-if="unread"
       class="unread-dot"
     />
-    <span
-      class="card-meta-time"
-      :class="tone && tone !== 'none' ? tone : undefined"
-      >{{ time }}</span
-    >
+    <span class="card-meta-repo">{{ repo }}</span>
+    <span class="card-number">
+      <template v-if="issue">{{ copy.issuePrefix }} </template>#{{ number }}
+    </span>
+    <span class="card-meta-time">{{ time }}</span>
   </p>
 </template>

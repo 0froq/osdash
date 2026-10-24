@@ -159,6 +159,65 @@ it('records someone else\u2019s fixing pull request without making it a card', (
   assert.equal(drafts[0]?.fixedBy?.state, 'merged')
 })
 
+it('records a merged pull request by someone else on the viewer pull request card', () => {
+  const issue = item('issue', 4, {
+    author: user('pi0'),
+    linkedPullRequests: [
+      {
+        repo: 'acme/app',
+        number: 50,
+        url: 'https://github.com/acme/app/pull/50',
+        state: 'merged',
+        author: user('other'),
+      },
+    ],
+  })
+  const closing = {
+    repo: issue.repo,
+    number: issue.number,
+    url: issue.url,
+    state: 'closed' as const,
+    title: issue.title,
+    authorLogin: 'pi0',
+  }
+  const mine = item('pr', 12, { state: 'closed', closingIssues: [closing] })
+  const other = item('pr', 50, {
+    author: user('other'),
+    state: 'merged',
+    createdAt: '2026-10-02T00:00:00.000Z',
+  })
+  const drafts = buildUnitDrafts([issue, mine, other])
+  assert.equal(drafts.length, 1)
+  assert.equal(drafts[0]?.primary.number, 12)
+  assert.equal(drafts[0]?.fixedBy?.number, 50)
+  assert.equal(drafts[0]?.fixedBy?.createdAt, '2026-10-02T00:00:00.000Z')
+})
+
+it('ignores an open competing pull request on the viewer pull request card', () => {
+  const issue = item('issue', 4, {
+    author: user('pi0'),
+    linkedPullRequests: [
+      {
+        repo: 'acme/app',
+        number: 50,
+        url: 'https://github.com/acme/app/pull/50',
+        state: 'open',
+        author: user('other'),
+      },
+    ],
+  })
+  const closing = {
+    repo: issue.repo,
+    number: issue.number,
+    url: issue.url,
+    state: 'open' as const,
+    title: issue.title,
+    authorLogin: 'pi0',
+  }
+  const drafts = buildUnitDrafts([issue, item('pr', 12, { closingIssues: [closing] })])
+  assert.equal(drafts[0]?.fixedBy, null)
+})
+
 it('does not turn a timeline ghost stub into a card', () => {
   const issue = item('issue', 4, {
     timelineLinks: [{ event: 'cross-referenced', repo: 'acme/app', number: 99, kind: 'pr' }],

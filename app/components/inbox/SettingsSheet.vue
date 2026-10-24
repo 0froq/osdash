@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { withMockQuery } from '#shared/mock-mode'
 import { copy } from '~/copy/en'
 
 const open = defineModel<boolean>('open', { required: true })
+const { mock } = useMockMode()
 
 type SettingsResponse = {
   configured: boolean
@@ -17,16 +19,24 @@ const clefBuiltIn = ref(false)
 const saving = ref(false)
 const message = ref('')
 
+const dialog = ref<HTMLDialogElement>()
+
 watch(open, shown => {
-  if (shown) void load()
+  const el = dialog.value
+  if (!el) return
+  if (shown && !el.open) {
+    el.showModal()
+    void load()
+  } else if (!shown && el.open) {
+    el.close()
+  }
 })
 
 async function load(): Promise<void> {
   message.value = ''
   apiKey.value = ''
-  const params = import.meta.dev ? '?mock=1' : ''
   try {
-    const body = await $fetch<SettingsResponse>(`/api/settings${params}`)
+    const body = await $fetch<SettingsResponse>(withMockQuery('/api/settings', mock.value))
     baseUrl.value = body.baseUrl
     model.value = body.model
     clefBuiltIn.value = body.clefBuiltIn
@@ -38,9 +48,8 @@ async function load(): Promise<void> {
 async function save(clear = false): Promise<void> {
   saving.value = true
   message.value = ''
-  const params = import.meta.dev ? '?mock=1' : ''
   try {
-    await $fetch(`/api/settings${params}`, {
+    await $fetch(withMockQuery('/api/settings', mock.value), {
       method: 'PUT',
       body: clear
         ? { clear: true }
@@ -62,9 +71,11 @@ async function save(clear = false): Promise<void> {
 
 <template>
   <dialog
-    v-if="open"
+    ref="dialog"
     class="settings-dialog"
-    open
+    @close="open = false"
+    @keydown.esc.stop
+    @click.self="open = false"
   >
     <form
       class="settings-panel"
@@ -104,7 +115,7 @@ async function save(clear = false): Promise<void> {
         class="settings-note"
         >{{ message }}</p
       >
-      <p class="preview-actions">
+      <p class="settings-actions">
         <button
           type="button"
           :disabled="saving"

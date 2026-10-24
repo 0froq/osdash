@@ -70,11 +70,11 @@ onBeforeUnmount(() => {
     </button>
     <div
       v-if="open"
-      class="menu-pop"
+      class="menu-pop pop"
       role="menu"
     >
       <button
-        class="menu-item"
+        class="menu-item pop-item"
         type="button"
         role="menuitem"
         :disabled="pending"
@@ -108,7 +108,7 @@ onBeforeUnmount(() => {
         </button>
       </div>
       <button
-        class="menu-item"
+        class="menu-item pop-item"
         type="button"
         role="menuitem"
         @click="openSettings"
@@ -116,7 +116,7 @@ onBeforeUnmount(() => {
         {{ copy.settings.title }}
       </button>
       <button
-        class="menu-item"
+        class="menu-item pop-item"
         type="button"
         role="menuitem"
         @click="emit('logout')"

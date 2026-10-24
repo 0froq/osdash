@@ -63,7 +63,16 @@ const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'hel
         <span>{{ copy.nav.starred }}</span>
         <span class="side-count">{{ starredCount }}</span>
       </button>
-      <hr class="side-rule" />
+      <button
+        class="side-link"
+        :class="{ current: view === 'ended' }"
+        type="button"
+        @click="emit('view', 'ended')"
+      >
+        <span>{{ copy.sections.ended }}</span>
+        <span class="side-count">{{ endedCount }}</span>
+      </button>
+      <p class="side-label">{{ copy.nav.kinds }}</p>
       <button
         v-for="item in categories"
         :key="item"
@@ -74,15 +83,6 @@ const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'hel
       >
         <span>{{ categoryLabel(item) }}</span>
         <span class="side-count">{{ categoryCounts[item] }}</span>
-      </button>
-      <button
-        class="side-link"
-        :class="{ current: view === 'ended' }"
-        type="button"
-        @click="emit('view', 'ended')"
-      >
-        <span>{{ copy.sections.ended }}</span>
-        <span class="side-count">{{ endedCount }}</span>
       </button>
     </nav>
     <SidebarMenu

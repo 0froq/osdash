@@ -4,7 +4,9 @@ import { themePreferenceScript } from './app/theme'
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-19',
 
-  devtools: { enabled: false },
+  build: { transpile: ['@froq/ui'] },
+
+  devtools: { enabled: true },
 
   components: [{ path: '~/components', pathPrefix: false }],
 
@@ -13,8 +15,11 @@ export default defineNuxtConfig({
     '@fontsource-variable/geist-mono/index.css',
     '@fontsource/instrument-serif/400.css',
     '@fontsource/instrument-serif/400-italic.css',
+    // Scoped to `.ui`; osdash skin stays on :root in tokens.css + inbox.css.
+    '@froq/ui/tokens.css',
     '~/assets/css/tokens.css',
     '~/assets/css/inbox.css',
+    '~/assets/css/story.css',
   ],
 
   vite: {
@@ -57,4 +62,10 @@ export default defineNuxtConfig({
   },
 
   typescript: { strict: true },
+
+  runtimeConfig: {
+    public: {
+      osdashMock: process.env.OSDASH_MOCK || '',
+    },
+  },
 })

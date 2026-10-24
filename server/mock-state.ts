@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { getQuery } from 'h3'
+import { isMockEnabled } from '../shared/mock-mode'
 import { mockSeen, mockUnits } from './mock'
 import {
   pruneSeen,
@@ -21,9 +22,12 @@ const memory: MockMemory = {
 }
 
 export function devMock(event: H3Event): boolean {
-  if (!import.meta.dev) return false
   const query = getQuery(event)
-  return query.mock === '1' || process.env.OSDASH_MOCK === '1'
+  return isMockEnabled({
+    dev: import.meta.dev,
+    queryMock: query.mock,
+    envMock: process.env.OSDASH_MOCK,
+  })
 }
 
 export function mockSeenState(nowMs: number): SeenState {

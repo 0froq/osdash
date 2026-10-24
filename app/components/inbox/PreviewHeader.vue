@@ -13,12 +13,40 @@ const emit = defineEmits<{
 }>()
 
 const laterOpen = ref(false)
+const laterRoot = ref<HTMLElement>()
 const reason = computed(() =>
   props.unit.reasonCode === 'clef' && props.unit.quote
     ? props.unit.quote
     : reasonText(props.unit.reasonCode, props.unit.reasonActor),
 )
 const opened = computed(() => relativeAge(Date.now() - Date.parse(props.unit.createdAt)))
+
+function pick(preset: string | null): void {
+  laterOpen.value = false
+  emit('later', preset)
+}
+
+function onPointer(event: PointerEvent): void {
+  const target = event.target
+  if (target instanceof Node && laterRoot.value?.contains(target)) return
+  laterOpen.value = false
+}
+
+function onKey(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || !laterOpen.value) return
+  event.stopPropagation()
+  laterOpen.value = false
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', onPointer)
+  window.addEventListener('keydown', onKey, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onPointer)
+  window.removeEventListener('keydown', onKey, true)
+})
 </script>
 
 <template>
@@ -29,105 +57,72 @@ const opened = computed(() => relativeAge(Date.now() - Date.parse(props.unit.cre
       {{ copy.openedFor(opened) }}
     </p>
     <h2>{{ unit.title }}</h2>
-    <p class="preview-state">{{ stateLabel(unit.state) }}</p>
-    <ul
-      v-if="unit.issues.length"
-      class="preview-issues"
-    >
-      <li
-        v-for="issue in unit.issues"
-        :key="issue.url"
-      >
-        <a
-          :href="issue.url"
-          target="_blank"
-          rel="noreferrer"
-          >#{{ issue.number }} {{ issue.title }}</a
-        >
-        · {{ stateLabel(issue.state) }}
-        ·
-        <a
-          class="card-link"
-          :href="issue.url"
-          target="_blank"
-          rel="noreferrer"
-          >{{ copy.preview.source }}</a
-        >
-        <span
-          v-for="share in issue.sharedWith"
-          :key="share.url"
-        >
-          {{ copy.sharedWith(share.number) }}
-        </span>
-      </li>
-    </ul>
-    <p v-if="unit.fixedBy">
-      <a
-        class="card-link"
-        :href="unit.fixedBy.url"
-        target="_blank"
-        rel="noreferrer"
-        >{{ copy.fixedBy(unit.fixedBy.authorLogin, unit.fixedBy.number) }}</a
+    <p class="preview-status">
+      <span class="preview-state">{{ stateLabel(unit.state) }}</span>
+      <span
+        class="preview-reason"
+        :class="{ mine: unit.myTurn }"
+        >{{ reason }}</span
       >
     </p>
-    <details v-if="unit.history.length">
-      <summary>{{ copy.preview.historySummary }}</summary>
-      <p
-        v-for="pr in unit.history"
-        :key="pr.url"
-      >
-        <a
-          :href="pr.url"
-          target="_blank"
-          rel="noreferrer"
-          >{{ copy.historyPr(pr.number) }}</a
-        >
-      </p>
-    </details>
-    <p class="card-reason">{{ reason }}</p>
     <div class="preview-actions">
-      <button
-        type="button"
-        @click="laterOpen = !laterOpen"
-        >{{ copy.menu.later }}</button
+      <div
+        ref="laterRoot"
+        class="later-wrap"
       >
+        <button
+          type="button"
+          aria-haspopup="menu"
+          :aria-expanded="laterOpen"
+          @click="laterOpen = !laterOpen"
+          >{{ copy.menu.later }}</button
+        >
+        <div
+          v-if="laterOpen"
+          class="later-pop pop"
+          role="menu"
+        >
+          <button
+            class="pop-item"
+            type="button"
+            role="menuitem"
+            @click="pick('tomorrow')"
+            >{{ copy.laterPresets.tomorrow }}</button
+          >
+          <button
+            class="pop-item"
+            type="button"
+            role="menuitem"
+            @click="pick('three-days')"
+            >{{ copy.laterPresets.threeDays }}</button
+          >
+          <button
+            class="pop-item"
+            type="button"
+            role="menuitem"
+            @click="pick('monday')"
+            >{{ copy.laterPresets.nextMonday }}</button
+          >
+          <button
+            v-if="unit.laterUntil"
+            class="pop-item"
+            type="button"
+            role="menuitem"
+            @click="pick(null)"
+            >{{ copy.menu.clearLater }}</button
+          >
+        </div>
+      </div>
       <button
         type="button"
         @click="emit('star')"
         >{{ unit.starred ? copy.menu.unstar : copy.menu.star }}</button
       >
       <a
-        class="card-link"
         :href="unit.url"
         target="_blank"
         rel="noreferrer"
         >{{ copy.preview.openGithub }}</a
-      >
-    </div>
-    <div
-      v-if="laterOpen"
-      class="preview-later"
-    >
-      <button
-        type="button"
-        @click="emit('later', 'tomorrow')"
-        >{{ copy.laterPresets.tomorrow }}</button
-      >
-      <button
-        type="button"
-        @click="emit('later', 'three-days')"
-        >{{ copy.laterPresets.threeDays }}</button
-      >
-      <button
-        type="button"
-        @click="emit('later', 'monday')"
-        >{{ copy.laterPresets.nextMonday }}</button
-      >
-      <button
-        v-if="unit.laterUntil"
-        type="button"
-        @click="emit('later', null)"
-        >{{ copy.menu.clearLater }}</button
       >
     </div>
   </header>

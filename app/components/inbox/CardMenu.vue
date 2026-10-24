@@ -46,19 +46,21 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="root"
-    class="card-menu"
+    class="card-menu pop"
     role="menu"
     :style="{ left: `${left}px`, top: `${top}px` }"
   >
     <button
+      class="pop-item"
       type="button"
       role="menuitem"
       @click="emit('read')"
     >
       {{ copy.menu.markRead }}
     </button>
-    <p class="card-menu-label">{{ copy.menu.later }}</p>
+    <p class="pop-label">{{ copy.menu.later }}</p>
     <button
+      class="pop-item"
       type="button"
       role="menuitem"
       @click="emit('later', 'tomorrow')"
@@ -66,6 +68,7 @@ onBeforeUnmount(() => {
       {{ copy.laterPresets.tomorrow }}
     </button>
     <button
+      class="pop-item"
       type="button"
       role="menuitem"
       @click="emit('later', 'three-days')"
@@ -73,6 +76,7 @@ onBeforeUnmount(() => {
       {{ copy.laterPresets.threeDays }}
     </button>
     <button
+      class="pop-item"
       type="button"
       role="menuitem"
       @click="emit('later', 'monday')"
@@ -81,6 +85,7 @@ onBeforeUnmount(() => {
     </button>
     <button
       v-if="unit.laterUntil"
+      class="pop-item"
       type="button"
       role="menuitem"
       @click="emit('later', null)"
@@ -88,6 +93,7 @@ onBeforeUnmount(() => {
       {{ copy.menu.clearLater }}
     </button>
     <button
+      class="pop-item"
       type="button"
       role="menuitem"
       @click="emit('star')"

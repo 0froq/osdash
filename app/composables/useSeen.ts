@@ -1,12 +1,13 @@
+import { withMockQuery } from '#shared/mock-mode'
 import type { UnitView } from '#shared/unit'
 
 type UpdateUnit = (id: string, patch: Partial<UnitView>) => void
 
-function seenUrl(): string {
-  return import.meta.dev ? '/api/seen?mock=1' : '/api/seen'
-}
-
 export function useSeen(updateUnit: UpdateUnit) {
+  const { mock } = useMockMode()
+  function seenUrl(): string {
+    return withMockQuery('/api/seen', mock.value)
+  }
   const queue = new Map<string, { at: string; unread: boolean }>()
   let timer: ReturnType<typeof setTimeout> | null = null
 

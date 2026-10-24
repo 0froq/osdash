@@ -28,6 +28,7 @@ export const copy = {
     home: 'Home',
     later: 'Later',
     starred: 'Starred',
+    kinds: 'Kinds',
   },
   categories: {
     'claimed-fix': 'Claimed fix',
@@ -88,40 +89,172 @@ export const copy = {
     close: 'Close',
     openGithub: 'Open on GitHub ↗',
     source: 'Source ↗',
-    expand: 'Expand',
-    collapse: 'Collapse',
     truncated: 'Older activity was not loaded',
     loading: 'Loading timeline',
     failed: 'Could not load the timeline',
     retry: 'Retry',
     you: 'you',
-    historySummary: 'Earlier PRs',
-    botNoise: 'Bot messages',
-    ciPassed: 'passed',
-    ciFailed: 'failed',
+  },
+  story: {
+    you: 'You',
+    justNow: 'now',
+    permalink: 'Open on GitHub',
+    now: 'Now',
+    expandAll: 'Expand all',
+    collapseAll: 'Collapse all',
+    foldLabel(count: number, open: boolean): string {
+      return `${open ? 'Hide' : 'Show'} ${count} events`
+    },
+    events(count: number): string {
+      return count === 1 ? '1 event' : `${count} events`
+    },
+    related: 'Related',
+    kind: { pr: 'PR', issue: 'issue' },
+    state: { open: 'open', closed: 'closed', merged: 'merged' },
+    tag: { claim: 'claim', maintainer: 'maintainer' },
+    on(number: number): string {
+      return `on #${number}`
+    },
+    opened(kind: 'pr' | 'issue', number: number): string {
+      return `opened ${kind === 'pr' ? 'PR' : 'issue'} #${number}`
+    },
+    closes(number: number): string {
+      return `closes #${number}`
+    },
+    mentions(number: number): string {
+      return `mentions #${number}`
+    },
+    merged(number: number): string {
+      return `merged #${number}`
+    },
+    closed(number: number): string {
+      return `closed #${number}`
+    },
+    reopened(number: number): string {
+      return `reopened #${number}`
+    },
+    commented: 'commented',
+    commentedOnCode: 'commented on the code',
+    approved: 'approved',
+    changes: 'requested changes',
+    reviewed: 'reviewed',
+    dismissed: 'dismissed a review',
+    committed: 'pushed a commit',
+    forcePushed: 'force-pushed',
+    assigned(login: string): string {
+      return `assigned ${login}`
+    },
+    unassigned(login: string): string {
+      return `unassigned ${login}`
+    },
+    reviewRequested(login: string): string {
+      return `requested review from ${login}`
+    },
+    labeled(name: string): string {
+      return `added label ${name}`
+    },
+    unlabeled(name: string): string {
+      return `removed label ${name}`
+    },
+    crossRef(number: number): string {
+      return `mentioned this in #${number}`
+    },
+    connected(number: number): string {
+      return `linked #${number}`
+    },
+    renamed: 'renamed the title',
+    checksPassed(count: number): string {
+      return count === 1 ? '1 check passed' : `${count} checks passed`
+    },
+    checksFailed(names: string[]): string {
+      return `checks failed: ${names.join(', ')}`
+    },
+    checksOther(count: number): string {
+      return count === 1 ? '1 check finished' : `${count} checks finished`
+    },
+    relation: {
+      yourPr: 'your PR',
+      yourIssue: 'your issue',
+      theirIssue: 'issue you joined',
+      closes(number: number): string {
+        return `#${number} closes it`
+      },
+      mention: 'mentioned',
+      history: 'earlier PR, same issue',
+      fixedBy(login: string): string {
+        return login ? `${login}'s PR` : 'fixing PR'
+      },
+    },
+    summary: {
+      comments(count: number): string {
+        return count === 1 ? '1 comment' : `${count} comments`
+      },
+      commits(count: number): string {
+        return count === 1 ? '1 commit' : `${count} commits`
+      },
+      checksPassed: 'checks passed',
+      checksFailed: 'checks failed',
+      reviews(count: number): string {
+        return count === 1 ? '1 review' : `${count} reviews`
+      },
+      reviewRequested: 'review requested',
+      labels(count: number): string {
+        return count === 1 ? '1 label' : `${count} labels`
+      },
+      mentions(numbers: number[]): string {
+        return `mentioned in ${numbers.map(number => `#${number}`).join(', ')}`
+      },
+      bots(count: number): string {
+        return count === 1 ? '1 bot' : `${count} bots`
+      },
+      other(count: number): string {
+        return `${count} other`
+      },
+    },
+    next: {
+      you: 'You',
+      maintainers: 'Maintainers',
+      anyone: 'Anyone',
+      reviewer: 'Reviewer',
+      push(number: number): string {
+        return `push to #${number}`
+      },
+      reviewAgain: 'reviews again',
+      fixCheck(number: number): string {
+        return `fix the failing check on #${number}`
+      },
+      signCla(number: number): string {
+        return `sign the CLA on #${number}`
+      },
+      answerBot: 'answer the CodeRabbit comments',
+      reply(number: number): string {
+        return `reply on #${number}`
+      },
+      openPr(number: number): string {
+        return `open a PR for #${number}`
+      },
+      openClosingPr(number: number): string {
+        return `open a PR that closes #${number}`
+      },
+      confirmClaim(number: number): string {
+        return `confirm the claim on #${number}`
+      },
+      merge(number: number): string {
+        return `merge #${number}`
+      },
+      reviewCommits: 'review the new commits',
+    },
   },
   shortcuts: 'j / k move · Enter / o open · Esc close · s star · l later · e read · g h home',
   shortcutsLabel: 'Shortcuts',
   openedFor(age: string): string {
     return `Opened ${age}`
   },
-  sharedWith(number: number): string {
-    return `Also referenced by #${number}`
-  },
-  historyPr(number: number): string {
-    return `#${number} (closed)`
-  },
   sourcePr(number: number): string {
     return `PR #${number}`
   },
   sourceIssue(number: number): string {
     return `issue #${number}`
-  },
-  botGroup(count: number): string {
-    return count === 1 ? '1 bot message' : `${count} bot messages`
-  },
-  ciGroup(passed: number, failed: number): string {
-    return `CI passed ${passed} · failed ${failed}`
   },
   event: {
     opened: 'opened',
@@ -150,10 +283,10 @@ export const copy = {
     ciFailure: 'failed',
     ciCancelled: 'cancelled',
     ciSkipped: 'skipped',
-    ciNeutral: 'was inconclusive',
+    ciNeutral: 'inconclusive',
     ciAction: 'awaiting approval',
     ciTimedOut: 'timed out',
-    ciStale: 'went stale',
+    ciStale: 'stale',
   },
   greet(period: string, name: string): string {
     return `${period}, ${name}`

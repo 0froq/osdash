@@ -39,7 +39,7 @@ export function eventsCacheKey(
   updatedAt: string | undefined,
 ): string {
   const base = `${cacheViewerLogin(viewerLogin)}:${repo}#${number}`
-  return updatedAt ? `events:v1:${base}:${updatedAt}` : `events:v1:${base}`
+  return updatedAt ? `events:v2:${base}:${updatedAt}` : `events:v2:${base}`
 }
 
 function githubHeaders(token: string): HeadersInit {

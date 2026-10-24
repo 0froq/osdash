@@ -119,17 +119,17 @@ it('matches the mock inbox section counts', async () => {
   const units = mockUnits(NOW)
   const views = mergeUserState(units, mockSeen(NOW), { starred: [], later: {} }, NOW)
   const counts = inboxCounts(views, NOW)
-  assert.equal(counts.mine, 3)
-  assert.equal(counts.activity, 1)
-  assert.equal(counts.waiting, 4)
-  assert.equal(counts.ended, 2)
+  assert.equal(counts.mine, 4)
+  assert.equal(counts.activity, 4)
+  assert.equal(counts.waiting, 2)
+  assert.equal(counts.ended, 3)
   assert.equal(counts.later, 0)
-  assert.equal(views.filter(view => view.history.length > 0).length, 1)
+  assert.equal(views.filter(view => view.history.length > 0).length, 2)
   assert.equal(
     views.filter(view => view.issues.some(issue => issue.sharedWith.length > 0)).length,
     2,
   )
-  assert.equal(views.filter(view => view.fixedBy).length, 1)
+  assert.equal(views.filter(view => view.fixedBy).length, 2)
   assert.equal(views.filter(view => view.kind === 'issue-only' && view.myTurn).length, 1)
   const store = memoryStore()
   await writeSeen(

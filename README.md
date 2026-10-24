@@ -6,7 +6,7 @@ Multi-user, read-only inbox of your open-source contributions. Each visitor sign
 
 - **Nuxt 4** on **Cloudflare Workers** (Nitro `cloudflare-module`). Production deploys with **Void** (`void.config.ts`); branch previews use `cloudflare.config.ts`.
 - **GitHub OAuth** (`read:user`): callback exchanges the code for a user access token, encrypts it with **AES-GCM** (`SESSION_SECRET`), stores it in **KV** under `session:v1:*`, and sets an **httpOnly** session cookie. The browser never sees the GitHub token.
-- **Inbox data**: GraphQL search per logged-in user. A contribution card groups the viewer's PR with its closing or mentioned issues. Responses are cached in **KV** per user (`inbox:v1:{login}`) with **stale-while-revalidate**. Per-user read state, stars, and snooze live in the same KV under `seen:v1:{login}` and `prefs:v1:{login}` (no TTL). Timeline responses are cached as `tlresp:v1:{login}:{unitId}:{membersHash}`.
+- **Inbox data**: GraphQL search per logged-in user. A contribution card groups the viewer's PR with its closing or mentioned issues. Responses are cached in **KV** per user (`inbox:v1:{login}`) with **stale-while-revalidate**. Per-user read state, stars, and snooze live in the same KV under `seen:v1:{login}` and `prefs:v1:{login}` (no TTL). Timeline responses are cached as `tlresp:v2:{login}:{unitId}:{membersHash}`.
 - **HTTP**: `GET /api/inbox`, `GET /api/timeline?id=`, `POST /api/seen`, `PUT /api/prefs`. `?refresh=1` skips the KV read.
 - **Turn classification**: existing rules unchanged. **Workers AI clef** runs for logins listed in `OSDASH_CLEF_LOGINS` (comma-separated, case-insensitive). Other users can opt into the same prompts via **BYOK** (OpenAI-compatible base URL, API key, model) stored encrypted per user in KV.
 - **Cloudflare Access**: JWT middleware runs only when `OSDASH_ACCESS_ENFORCE=true` (branch previews). Production leaves it unset (unset means off).
@@ -57,16 +57,18 @@ ACCESS_AUD=
 OSDASH_ACCESS_ENFORCE=false
 ```
 
-**Sample inbox (no GitHub):**
+Then:
 
 ```sh
 pnpm install
 pnpm exec vp run dev
 ```
 
-Open http://localhost:3000 — dev mode uses `mock=1` sample data.
+Open http://localhost:3000 with no query params to use GitHub login. Unauthenticated requests go to `/login`.
 
-**Real GitHub locally:** set the OAuth secrets, register callback `http://localhost:3000/api/auth/callback`, unset mock by building for production preview or patch dev to skip `mock=1` and sign in via `/login`.
+**Sample inbox (no GitHub):** open http://localhost:3000/?mock=1, or set `OSDASH_MOCK=1` in `.env`. Production builds ignore both (`import.meta.dev` is false).
+
+**Real GitHub locally:** set the OAuth secrets above, register callback `http://localhost:3000/api/auth/callback`, then sign in via `/login`. Do not set `OSDASH_MOCK` and do not add `?mock=1`.
 
 ## Checks
 

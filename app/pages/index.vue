@@ -262,13 +262,26 @@ function toggleStar(unit: UnitView): void {
   void prefs.setStar(unit, !unit.starred)
 }
 
+const intro = ref(true)
+
+watch(
+  () => inbox.stats.value,
+  stats => {
+    if (stats) setTimeout(() => (intro.value = false), 1200)
+  },
+  { once: true },
+)
+
 onMounted(() => {
   void inbox.load(false)
 })
 </script>
 
 <template>
-  <InboxShell :mobile="media.isMobile.value">
+  <InboxShell
+    :mobile="media.isMobile.value"
+    :data-intro="intro ? '1' : undefined"
+  >
     <template #sidebar>
       <Sidebar
         v-if="inbox.viewer.value"
@@ -314,8 +327,9 @@ onMounted(() => {
       v-if="inbox.error.value"
       class="inbox-status error"
       role="alert"
-      >{{ inbox.error.value }}</p
     >
+      {{ inbox.error.value }}
+    </p>
     <template v-if="inbox.stats.value && inbox.viewer.value">
       <Greeting
         :name="inbox.displayName.value"
@@ -327,8 +341,10 @@ onMounted(() => {
       <p
         v-if="inbox.revalidating.value"
         class="inbox-status"
-        >{{ copy.updating }}</p
       >
+        <span class="status-dot pulse" />
+        {{ copy.updating }}
+      </p>
       <p
         v-if="inbox.truncated.value"
         class="inbox-status"
@@ -351,8 +367,9 @@ onMounted(() => {
           layout="mine"
         >
           <UnitCard
-            v-for="unit in sectionRows('mine')"
+            v-for="(unit, index) in sectionRows('mine')"
             :key="unit.id"
+            :index="index"
             :unit="unit"
             size="large"
             :selected="unit.id === selectedId"
@@ -367,8 +384,9 @@ onMounted(() => {
           layout="activity"
         >
           <UnitCard
-            v-for="unit in sectionRows('activity')"
+            v-for="(unit, index) in sectionRows('activity')"
             :key="unit.id"
+            :index="index"
             :unit="unit"
             size="row"
             :selected="unit.id === selectedId"
@@ -383,8 +401,9 @@ onMounted(() => {
           layout="waiting"
         >
           <UnitCard
-            v-for="unit in sectionRows('waiting')"
+            v-for="(unit, index) in sectionRows('waiting')"
             :key="unit.id"
+            :index="index"
             :unit="unit"
             size="small"
             :selected="unit.id === selectedId"
@@ -400,8 +419,9 @@ onMounted(() => {
           collapsible
         >
           <UnitCard
-            v-for="unit in sectionRows('ended')"
+            v-for="(unit, index) in sectionRows('ended')"
             :key="unit.id"
+            :index="index"
             :unit="unit"
             size="small"
             :selected="unit.id === selectedId"
@@ -418,8 +438,9 @@ onMounted(() => {
         :empty="copy.emptyLater"
       >
         <UnitCard
-          v-for="unit in visible"
+          v-for="(unit, index) in visible"
           :key="unit.id"
+          :index="index"
           :unit="unit"
           size="large"
           :selected="unit.id === selectedId"
@@ -435,8 +456,9 @@ onMounted(() => {
         :empty="copy.emptyStarred"
       >
         <UnitCard
-          v-for="unit in visible"
+          v-for="(unit, index) in visible"
           :key="unit.id"
+          :index="index"
           :unit="unit"
           size="large"
           :selected="unit.id === selectedId"
@@ -451,8 +473,9 @@ onMounted(() => {
         layout="ended"
       >
         <UnitCard
-          v-for="unit in visible"
+          v-for="(unit, index) in visible"
           :key="unit.id"
+          :index="index"
           :unit="unit"
           size="small"
           :selected="unit.id === selectedId"

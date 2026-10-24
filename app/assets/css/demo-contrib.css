@@ -1,0 +1,592 @@
+/* Timeline review v3 (dev only). Builds on demo.css and demo-story.css. */
+
+/* Page */
+.cv-rules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 40px;
+  margin-top: 64px;
+}
+
+.cv-rules h2 {
+  margin-bottom: 14px;
+}
+
+.cv-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.cv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.cv-table.wide {
+  max-width: 920px;
+}
+
+.cv-table th {
+  padding: 0 12px 8px 0;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.cv-table td {
+  padding: 9px 12px 9px 0;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.cv-table td:first-child {
+  white-space: nowrap;
+}
+
+.cv-note {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.cv-answer {
+  max-width: 760px;
+  margin-top: 96px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.cv-answer h2 {
+  margin: 10px 0 14px;
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 1.05;
+}
+
+.cv-answer p + p {
+  margin-top: 14px;
+}
+
+.cv-collapsed {
+  margin: 18px 0;
+  padding: 16px 20px 16px 40px;
+  border-radius: 12px;
+  background: var(--x-soft);
+  font-family: var(--font-meta);
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.cv-archetype {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.demo code {
+  font-family: var(--font-meta);
+  font-size: 0.88em;
+}
+
+/* Pane */
+.ct {
+  --ct-col: 12px;
+  --ct-y: 15px;
+  --ct-rail: color-mix(in oklab, var(--fg) 70%, transparent);
+  --ct-rail-other: color-mix(in oklab, var(--fg) 24%, transparent);
+}
+
+.ct.wide {
+  --ct-col: 18px;
+}
+
+.ct.mode-spine {
+  --ct-col: 14px;
+}
+
+.ct .x-status.slow .x-status-word {
+  color: light-dark(#a07800, #e0b84a);
+}
+
+.ct .x-status.late .x-status-word {
+  color: light-dark(#b2412f, #ef7a66);
+}
+
+.ct-items,
+.ct-legend {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ct-items li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+  padding: 5px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.ct-items li + li {
+  border-top: 1px solid var(--line);
+}
+
+.ct-items b,
+.ct-item b {
+  color: var(--fg);
+  font-family: var(--font-meta);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ct-items li:not(.primary) b {
+  color: var(--muted);
+}
+
+.ct-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+  padding: 4px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.ct-item-kind,
+.ct-state {
+  font-family: var(--font-meta);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+.ct-state.s-merged {
+  color: var(--x-good);
+}
+
+.ct-state.s-open {
+  color: var(--fg);
+}
+
+.ct-item-rel {
+  min-width: 0;
+}
+
+.ct-mentions {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ct-tools {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin: 18px 0 6px;
+}
+
+.ct-tools button {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-meta);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  transition:
+    color 160ms var(--ease),
+    background-color 160ms var(--ease);
+}
+
+.ct-tools button:hover {
+  color: var(--fg);
+}
+
+.ct-tools button[aria-pressed='true'] {
+  border-color: transparent;
+  background: color-mix(in oklab, var(--fg) 8%, transparent);
+  color: var(--fg);
+}
+
+/* Rows */
+.ct-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ct-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 12px;
+}
+
+.ct-row.minor {
+  --ct-y: 12px;
+}
+
+.ct-gutter {
+  display: flex;
+}
+
+.ct-cell {
+  position: relative;
+  width: var(--ct-col);
+  color: var(--ct-rail);
+}
+
+.ct-cell.other {
+  color: var(--ct-rail-other);
+}
+
+.ct-cell > i {
+  position: absolute;
+  display: block;
+}
+
+.ct-up,
+.ct-down {
+  left: calc(50% - 0.75px);
+  width: 1.5px;
+  background: currentColor;
+}
+
+.ct-up {
+  top: 0;
+  height: var(--ct-y);
+}
+
+.ct-down {
+  top: var(--ct-y);
+  bottom: 0;
+}
+
+.ct-cell.dashed .ct-up,
+.ct-cell.dashed .ct-down,
+.row-now .ct-down {
+  background: repeating-linear-gradient(currentColor 0 3px, transparent 3px 7px);
+}
+
+.ct-h {
+  top: calc(var(--ct-y) - 0.75px);
+  height: 1.5px;
+  background: currentColor;
+}
+
+.ct-h.left {
+  left: 0;
+  right: 50%;
+}
+
+.ct-h.right {
+  left: 50%;
+  right: 0;
+}
+
+.ct-node {
+  top: var(--ct-y);
+  left: 50%;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px var(--bg);
+  transform: translate(-50%, -50%);
+}
+
+.minor .ct-node {
+  width: 5px;
+  height: 5px;
+}
+
+.ct-node.n-legend {
+  top: 50%;
+}
+
+.ct-node.n-fold {
+  width: 5px;
+  height: 5px;
+  border: 1.5px solid currentColor;
+  background: var(--bg);
+}
+
+.ct-node.n-closed {
+  width: 9px;
+  height: 9px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ct-node.n-closed::before,
+.ct-node.n-closed::after {
+  content: '';
+  position: absolute;
+  top: calc(50% - 0.75px);
+  left: -1px;
+  width: 11px;
+  height: 1.5px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+.ct-node.n-closed::after {
+  transform: rotate(-45deg);
+}
+
+.ct-node.n-merged {
+  width: 9px;
+  height: 9px;
+  background: var(--x-good);
+}
+
+.ct-node.n-join {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--x-good);
+  background: var(--bg);
+}
+
+.ct-node.n-now {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--muted);
+  background: var(--bg);
+}
+
+.turn-you .ct-node.n-now {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 22%, var(--bg));
+}
+
+.turn-done .ct-node.n-now {
+  border-color: var(--x-good);
+  background: var(--x-good);
+}
+
+.ct-node.n-next {
+  width: 7px;
+  height: 7px;
+  border: 1.5px dashed currentColor;
+  background: var(--bg);
+}
+
+.ct-body {
+  min-width: 0;
+  padding: 5px 0 12px;
+}
+
+.minor .ct-body {
+  padding: 4px 0 6px;
+}
+
+.ct-line,
+.ct-next,
+.ct-now {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  align-items: baseline;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.minor .ct-line {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 16px;
+}
+
+.ct-line b,
+.ct-next b {
+  font-weight: 600;
+}
+
+.minor .ct-line b {
+  font-weight: 500;
+}
+
+.ct-line.tone-bad .ct-verb {
+  color: light-dark(#b2412f, #ef7a66);
+}
+
+.ct-line.tone-good .ct-verb {
+  color: var(--x-good);
+}
+
+.ct-ref,
+.ct-tag {
+  font-family: var(--font-meta);
+  font-size: 10.5px;
+}
+
+.ct-ref {
+  color: var(--muted);
+}
+
+.ct-tag {
+  padding: 0 6px;
+  border-radius: 99px;
+  background: var(--x-soft);
+  color: var(--muted);
+  line-height: 17px;
+}
+
+.ct-tag.t-claim {
+  background: color-mix(in oklab, var(--fg) 9%, transparent);
+  color: var(--fg);
+}
+
+.ct-ago {
+  margin-left: auto;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 11px;
+}
+
+.ct-quote {
+  margin-top: 5px;
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.turn-you .ask .ct-quote {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.ct-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.ct-chips span {
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 10.5px;
+}
+
+.ct-src {
+  margin-top: 4px;
+  color: light-dark(#6a5a00, #d8c25a);
+  font-family: var(--font-meta);
+  font-size: 10.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ct-fold {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12.5px;
+  line-height: 16px;
+  text-align: left;
+}
+
+.row-fold {
+  --ct-y: 12px;
+}
+
+.row-fold .ct-body {
+  padding: 4px 0 8px;
+}
+
+.ct-fold:hover {
+  color: var(--fg);
+}
+
+.ct-fold-act {
+  margin-left: auto;
+  font-family: var(--font-meta);
+  font-size: 10.5px;
+}
+
+.row-now {
+  --ct-y: 18px;
+}
+
+.row-now .ct-body {
+  padding: 8px 0 14px;
+}
+
+.ct-now {
+  font-weight: 600;
+}
+
+.ct-now-label {
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.turn-you .ct-now-label {
+  color: var(--accent);
+}
+
+.turn-done .ct-now-label {
+  color: var(--x-good);
+}
+
+.row-next .ct-body {
+  padding: 4px 0 8px;
+}
+
+.row-next {
+  --ct-y: 14px;
+}
+
+.ct-next {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ct-next b {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+@media (max-width: 1180px) {
+  .cv-rules {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ct-tools button {
+    transition: none;
+  }
+}

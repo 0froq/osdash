@@ -70,10 +70,10 @@ Nitro 不会读 `void.config.ts` 或 `wrangler.config.ts` 来判断要不要开 
 ## 数据
 
 - `server/github.ts` 用 GitHub GraphQL。查询是 `author:{viewer} -user:{viewer}`，PR 和 issue 分开搜：开着的，或 `closed:>=` 14 天前。每种最多 5 页、每页 20 条。
-- 一张卡是一个 contribution（`shared/units.ts`）。viewer 自己的 PR 是实线卡，关联 issue 只作上下文。viewer 只在 issue 上出过力、还没有自己的 PR 时，是虚线卡。别人的 PR 不成卡，只用来填 `fixedBy`。同一 issue 上已关闭未合并、且关闭时间不晚于下一张 PR 创建后 24 小时的旧 PR，并进新卡的 `history`。
+- 一张卡是一个 contribution（`shared/units.ts`）。viewer 自己的 PR 是实线卡，关联 issue 只作上下文。viewer 只在 issue 上出过力、还没有自己的 PR 时，是虚线卡。别人的 PR 不成卡，只用来填 `fixedBy`。viewer 的 PR 卡也有 `fixedBy`：它 closing 的 issue 上，别人已合并的那张 PR。还开着的竞争 PR 不算。`fixedBy` 不进 `members`，不影响回合，只让时间线接口多拉这张 PR 的 REST timeline（不拉 check run 和行内评论）。同一 issue 上已关闭未合并、且关闭时间不晚于下一张 PR 创建后 24 小时的旧 PR，并进新卡的 `history`。
 - `myTurn` 是未结束且 `judge` 的回合为 `mine`。未读是 `lastOtherActivityAt` 晚于该用户的 seen 戳（首次访问的 `baselineAt` 算已读）。首页分区：轮到我、有动静（未读）、等别人、已结束（关闭在 14 天内）。`laterUntil` 没过期的卡只出现在稍后。星标、稍后、已读按用户存在 KV，不进 `inbox:v1` 缓存。
 - 判断在 `shared/turn.ts` 的 `judge`。创建本身算作者的一条真人动静。bot：`__typename == Bot`，login 以 `[bot]` 结尾，或 login 在 `coderabbitai`、`codecov`、`netlify`、`vercel`、`coldtea-pr-lens`、`chatgpt-codex-connector`。丢掉 bot 评论，但失败的 CLA 检查和 CodeRabbit 可执行评论算「轮到我」。
-- 每条 issue / PR 再拉 REST timeline（`/repos/{owner}/{repo}/issues/{number}/timeline`）和 PR head 的 check runs。`action_required` 且名字不是 CLA，是首次贡献者 workflow 等维护者批准。timeline 按 `updatedAt` 做 KV 键，check run 按 head sha，刷新 `?refresh=1` 不读 KV。标准化事件缓存在 `events:v1:{login}:…`，行内评论缓存在 `revcomments:v1:{login}:…`，都带 viewer login，避免私有仓库时间线跨用户读到。预览走 `GET /api/timeline`。
+- 每条 issue / PR 再拉 REST timeline（`/repos/{owner}/{repo}/issues/{number}/timeline`）和 PR head 的 check runs。`action_required` 且名字不是 CLA，是首次贡献者 workflow 等维护者批准。timeline 按 `updatedAt` 做 KV 键，check run 按 head sha，刷新 `?refresh=1` 不读 KV。标准化事件缓存在 `events:v2:{login}:…`，行内评论缓存在 `revcomments:v1:{login}:…`，都带 viewer login，避免私有仓库时间线跨用户读到。预览走 `GET /api/timeline`。
 - issue 和 PR 只按 timeline 的 `cross-referenced` / `connected`（以及 GraphQL 的 cross-reference / `closingIssuesReferences`）并成一张卡。不从正文猜 `Fixes #`。
 - 贡献类型和回合是两套字段。类型可多选：claim、proposal、help、non-code。回合是 `mine` / `maintainer` / `other` / `none`，只在规则内部使用。计时是距最近一条相关动静的天数。「said I'd do it but haven't」是 mine 且认领了但还没有自己的 PR；「stalled >14d」是回合不是 none 且超过 14 天。刚好 14 天不算。
 - 回合先走规则：已合并或已关闭是 none；真实 CI 失败、CLA 失败、最新已提交 review 是 `CHANGES_REQUESTED` 且之后 viewer 没有 push、维护者最后一条评论 @ 了 viewer、或维护者要 PR / rebase，都是 mine。维护者看 `author_association` 的 OWNER / MEMBER / COLLABORATOR。viewer 的问句、viewer 的 issue 还没人回、干净 PR 等评审，是 maintainer。最后一条真人评论来自其他人，是 other。`PENDING` 的 review 不算「最新一条已提交的 review」。

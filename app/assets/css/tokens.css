@@ -17,14 +17,18 @@
   --gap: 24px;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --radius: 2px;
-  --radius-card: 12px;
+  --radius-card: 10px;
+  --radius-row: 8px;
   --card: #fbfaf6;
-  --lig-light_paper-diag-error: #cb4d50;
-  --lig-light_paper-diag-warn: #dbb800;
-  --lig-light_paper-diag-info: #009392;
-  --lig-dark_paper-diag-error: #f28885;
-  --lig-dark_paper-diag-warn: #dbb800;
-  --lig-dark_paper-diag-info: #26c2c1;
+  --soft: color-mix(in oklab, var(--fg) 4%, transparent);
+  --soft-2: color-mix(in oklab, var(--fg) 7%, transparent);
+  --good: #00807f;
+  --warn: #8a6a00;
+  --dur-1: 140ms;
+  --dur-2: 240ms;
+  --dur-3: 420ms;
+  --shadow-pop:
+    0 14px 36px -18px color-mix(in oklab, var(--fg) 38%, transparent), 0 0 0 1px var(--line);
   color-scheme: light;
 }
 
@@ -36,6 +40,8 @@
   --line: rgba(242, 240, 234, 0.1);
   --accent: #ff6242;
   --card: #18181a;
+  --good: #26c2c1;
+  --warn: #dbb800;
   color-scheme: dark;
 }
 
@@ -48,6 +54,8 @@
     --line: rgba(242, 240, 234, 0.1);
     --accent: #ff6242;
     --card: #18181a;
+    --good: #26c2c1;
+    --warn: #dbb800;
     color-scheme: dark;
   }
 }
@@ -96,8 +104,8 @@ body {
 }
 
 :focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: 4px;
+  outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent);
+  outline-offset: 2px;
 }
 
 button,

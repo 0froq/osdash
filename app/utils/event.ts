@@ -1,5 +1,5 @@
-import type { ItemKind, CheckConclusion, ReviewState } from '#shared/turn'
 import { timelineSourceKind, type EventKind, type UnitEvent } from '#shared/events'
+import type { CheckConclusion, ItemKind, ReviewState } from '#shared/turn'
 import { copy } from '~/copy/en'
 
 export type TimelineSubject = {
@@ -89,13 +89,11 @@ export function eventAction(event: UnitEvent): string {
     case 'force-push':
       return copy.event.forcePush
     case 'ci':
-      return event.ci
-        ? `${copy.event.ci} ${event.ci.name} ${conclusionAction(event.ci.conclusion)}`
-        : copy.event.ci
+      return copy.event.ci
     case 'labeled':
-      return event.label ? `${copy.event.labeled} ${event.label.name}` : copy.event.labeled
+      return copy.event.labeled
     case 'unlabeled':
-      return event.label ? `${copy.event.unlabeled} ${event.label.name}` : copy.event.unlabeled
+      return copy.event.unlabeled
     case 'assigned':
       return copy.event.assigned
     case 'unassigned':
@@ -121,7 +119,60 @@ export function eventAction(event: UnitEvent): string {
   }
 }
 
-export function actorLabel(login: string, viewer: string): string {
-  if (login.toLowerCase() === viewer.toLowerCase()) return copy.preview.you
-  return login
+export type EventDetail = {
+  text: string
+  mark?: string
+  markTone?: 'bad'
+}
+
+function firstLine(value: string): string {
+  const line = value.split('\n')[0]?.trim() ?? ''
+  if (!line) return ''
+  return line.length > 140 ? `${line.slice(0, 139)}…` : line
+}
+
+function ciMark(conclusion: CheckConclusion): Pick<EventDetail, 'mark' | 'markTone'> {
+  const mark = conclusionAction(conclusion)
+  if (conclusion === 'FAILURE' || conclusion === 'TIMED_OUT') return { mark, markTone: 'bad' }
+  return { mark }
+}
+
+export function eventDetail(event: UnitEvent): EventDetail | null {
+  const kind: EventKind = event.kind
+  switch (kind) {
+    case 'comment':
+    case 'review':
+    case 'review-comment':
+      return event.excerpt ? { text: event.excerpt } : null
+    case 'ci':
+      return event.ci ? { text: event.ci.name, ...ciMark(event.ci.conclusion) } : null
+    case 'commit': {
+      const message = event.commit?.message ? firstLine(event.commit.message) : ''
+      if (message) return { text: message }
+      const sha = event.commit?.sha
+      return sha ? { text: sha.slice(0, 7) } : null
+    }
+    case 'labeled':
+    case 'unlabeled':
+      return event.label ? { text: event.label.name } : null
+    case 'assigned':
+    case 'unassigned':
+    case 'review-requested':
+      return event.targetLogin ? { text: `@${event.targetLogin}` } : null
+    case 'cross-ref':
+    case 'connected':
+      return event.ref?.title ? { text: event.ref.title } : null
+    case 'renamed':
+      return event.rename ? { text: `${event.rename.from} → ${event.rename.to}` } : null
+    case 'opened':
+    case 'force-push':
+    case 'merged':
+    case 'closed':
+    case 'reopened':
+      return null
+    default: {
+      const exhaustive: never = kind
+      return exhaustive
+    }
+  }
 }

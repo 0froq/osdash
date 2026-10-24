@@ -64,7 +64,7 @@ watch(row, (el, _previous, onCleanup) => {
       <button
         v-for="(repo, index) in repos"
         :key="repo.name"
-        class="nav-chip"
+        class="repo-chip"
         :class="{ current: repo.name === active }"
         type="button"
         data-pill
@@ -72,7 +72,7 @@ watch(row, (el, _previous, onCleanup) => {
         @click="emit('select', repo.name === active ? '' : repo.name)"
       >
         {{ repo.name }}
-        <span class="chip-count">{{ repo.count }}</span>
+        <span class="repo-count">{{ repo.count }}</span>
       </button>
     </div>
     <button

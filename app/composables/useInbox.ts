@@ -62,6 +62,7 @@ function messageFor(status: number | undefined): string {
 }
 
 export function useInbox() {
+  const { mock: mockMode } = useMockMode()
   const units = ref<UnitView[]>([])
   const counts = ref<InboxCounts | null>(null)
   const stats = ref<InboxStats | null>(null)
@@ -118,7 +119,7 @@ export function useInbox() {
     if (!quiet) pending.value = true
     error.value = ''
     const params = new URLSearchParams()
-    if (import.meta.dev) params.set('mock', '1')
+    if (mockMode.value) params.set('mock', '1')
     if (refresh) params.set('refresh', '1')
     const query = params.size > 0 ? `?${params.toString()}` : ''
     try {
@@ -127,7 +128,7 @@ export function useInbox() {
       scheduleRevalidatePoll()
     } catch (caught) {
       const status = statusOf(caught)
-      if (status === 401 && !import.meta.dev) {
+      if (status === 401 && !mockMode.value) {
         await navigateTo('/login')
         return
       }

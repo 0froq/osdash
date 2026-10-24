@@ -5,7 +5,9 @@
   >
     <slot name="sidebar" />
     <div class="inbox-main">
-      <slot />
+      <div class="inbox-inner">
+        <slot />
+      </div>
     </div>
     <slot name="preview" />
   </div>

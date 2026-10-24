@@ -48,6 +48,7 @@ export type Unit = {
     url: string
     authorLogin: string
     state: ItemState
+    createdAt?: string
   } | null
   myTurn: boolean
   ended: boolean
@@ -69,6 +70,14 @@ export type Unit = {
     kind: ItemKind
     updatedAt?: string
     headSha?: string
+    title?: string
+    url?: string
+    state?: ItemState
+    authorLogin?: string
+    createdAt?: string
+    closedAt?: string | null
+    /** storyKey list of issues this item closes or is connected to. */
+    closes?: string[]
   }>
 }
 

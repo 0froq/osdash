@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { copy } from '~/copy/en'
 
-defineProps<{
+const props = defineProps<{
   title: string
   count: number
   layout: 'mine' | 'activity' | 'waiting' | 'ended'
   collapsible?: boolean
   empty?: string
 }>()
+
+const open = ref(!props.collapsible)
+const bodyId = useId()
 </script>
 
 <template>
@@ -15,33 +18,57 @@ defineProps<{
     class="section"
     :data-layout="layout"
   >
-    <details
+    <button
       v-if="collapsible"
-      class="section-details"
+      class="section-head section-toggle"
+      type="button"
+      :aria-expanded="open"
+      :aria-controls="bodyId"
+      @click="open = !open"
     >
-      <summary class="section-title">{{ title }} {{ count }}</summary>
-      <div class="section-body">
-        <slot />
-        <p
-          v-if="count === 0"
-          class="empty-state"
-          >{{ empty || copy.emptySection }}</p
-        >
+      <svg
+        class="section-chevron"
+        :class="{ open }"
+        viewBox="0 0 12 12"
+        aria-hidden="true"
+      >
+        <path
+          d="M4.5 2.5 8 6l-3.5 3.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.3"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <span class="section-title">{{ title }}</span>
+      <span class="section-count">{{ count }}</span>
+    </button>
+    <h2
+      v-else
+      class="section-head"
+    >
+      <span class="section-title">{{ title }}</span>
+      <span class="section-count">{{ count }}</span>
+    </h2>
+    <div
+      :id="bodyId"
+      class="section-panel"
+      :class="{ collapsed: !open }"
+    >
+      <div
+        class="section-inner"
+        :inert="!open"
+      >
+        <div class="section-body">
+          <slot />
+          <p
+            v-if="count === 0"
+            class="empty-state"
+            >{{ empty || copy.emptySection }}</p
+          >
+        </div>
       </div>
-    </details>
-    <template v-else>
-      <h2 class="section-title">
-        {{ title }}
-        <span class="section-count">{{ count }}</span>
-      </h2>
-      <div class="section-body">
-        <slot />
-        <p
-          v-if="count === 0"
-          class="empty-state"
-          >{{ empty || copy.emptySection }}</p
-        >
-      </div>
-    </template>
+    </div>
   </section>
 </template>

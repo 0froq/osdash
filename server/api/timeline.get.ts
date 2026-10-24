@@ -2,6 +2,7 @@ import { createError, getQuery } from 'h3'
 import { workerEnv } from '../bindings'
 import { readInboxCache } from '../inbox-response'
 import { mockTimeline } from '../mock'
+import { devMock } from '../mock-state'
 import { assembleTimeline } from '../timeline-response'
 
 export default defineEventHandler(async event => {
@@ -10,8 +11,7 @@ export default defineEventHandler(async event => {
   if (!id) throw createError({ statusCode: 400, statusMessage: 'id is required' })
 
   const nowMs = Date.now()
-  const mock = import.meta.dev && (query.mock === '1' || process.env.OSDASH_MOCK === '1')
-  if (mock) {
+  if (devMock(event)) {
     const body = mockTimeline(id, nowMs)
     if (!body) throw createError({ statusCode: 404, statusMessage: 'Card not found' })
     return body

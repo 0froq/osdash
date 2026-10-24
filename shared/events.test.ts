@@ -87,6 +87,9 @@ it('maps each known timeline event and drops unknown ones', () => {
   assert.equal(events[1]?.reviewState, 'CHANGES_REQUESTED')
   assert.equal(events[2]?.commit?.sha, 'abc')
   assert.equal(events[4]?.label?.name, 'bug')
+  assert.equal(events[6]?.targetLogin, 'octo-dev')
+  assert.equal(events[8]?.targetLogin, 'patak')
+  assert.equal(events[0]?.targetLogin, undefined)
   assert.equal(events[9]?.ref?.number, 4)
   assert.equal(events[11]?.rename?.to, 'new')
 })
@@ -186,4 +189,45 @@ it('omits the card PR number and keeps issue numbers', () => {
     'issue',
   )
   assert.equal(timelineSourceKind({ repo: 'acme/app', number: 9, kind: 'pr' }, subject), 'pr')
+})
+
+it('carries author association and flags claim comments only when present', () => {
+  const events = normalizeRestTimeline(
+    [
+      raw('commented', {
+        id: 'claim',
+        body: 'I can take this one. The fix probably belongs in the html plugin.',
+        author_association: 'CONTRIBUTOR',
+      }),
+      raw('commented', { id: 'plain', body: 'Looks good.', author_association: 'MEMBER' }),
+      raw('reviewed', { id: 'rev', state: 'APPROVED', author_association: 'OWNER' }),
+      raw('labeled', { id: 'lab', label: { name: 'bug' } }),
+    ],
+    source,
+  )
+  assert.equal(events[0]?.association, 'CONTRIBUTOR')
+  assert.equal(events[0]?.claim, true)
+  assert.equal(events[1]?.association, 'MEMBER')
+  assert.equal('claim' in events[1]!, false)
+  assert.equal(events[2]?.association, 'OWNER')
+  assert.equal('claim' in events[2]!, false)
+  assert.equal('association' in events[3]!, false)
+  assert.equal('claim' in events[3]!, false)
+
+  const comments = normalizeReviewComments(
+    [
+      {
+        id: 1,
+        user: { login: 'patak', type: 'User' },
+        body: 'I can take this one',
+        author_association: 'MEMBER',
+        created_at: '2026-10-20T01:00:00.000Z',
+      },
+      { id: 2, user: { login: 'x', type: 'User' }, created_at: '2026-10-20T01:00:00.000Z' },
+    ],
+    source,
+  )
+  assert.equal(comments[0]?.association, 'MEMBER')
+  assert.equal('claim' in comments[0]!, false)
+  assert.equal('association' in comments[1]!, false)
 })
