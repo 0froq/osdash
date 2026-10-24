@@ -1,0 +1,22 @@
+.ui-icon-button.ui-button {
+  display: inline-grid;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+}
+
+.ui-icon-button-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.ui-icon-button-glyph > svg {
+  width: 16px;
+  height: 16px;
+}

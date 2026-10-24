@@ -1,0 +1,359 @@
+@import './tokens.css';
+@import './components/button/copy-button.css';
+@import './components/button/icon-button.css';
+@import './components/date/date.css';
+@import './components/devtools/devtools.css';
+@import './components/display/display.css';
+@import './components/display/code-block.css';
+@import './components/feedback/skeleton.css';
+@import './components/feedback/feedback.css';
+@import './components/feedback/banner.css';
+@import './components/feedback/toast.css';
+@import './components/field/form.css';
+@import './components/disclosure/collapsible.css';
+@import './components/navigation/sidebar.css';
+@import './components/navigation/navigation.css';
+@import './components/navigation/tabs.css';
+@import './components/overlay/overlay.css';
+@import './components/radio/radio-group.css';
+@import './components/select/combobox.css';
+@import './components/select/select.css';
+@import './components/toggle/toggle-group.css';
+
+/* Choice: the accent full stop sits after the chosen word and travels to the next one. */
+.ui-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  align-items: baseline;
+}
+
+.ui-choice-label {
+  color: var(--ui-muted);
+  font-family: var(--ui-font-meta);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The mark's geometry in Choice.vue assumes this 24px line. */
+.ui-choice-options {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 26px;
+  font-family: var(--ui-font-text);
+  font-size: 15px;
+  line-height: 24px;
+}
+
+.ui-choice-word {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-muted);
+  cursor: pointer;
+  font: inherit;
+  transition: color var(--ui-dur) var(--ui-ease);
+}
+
+.ui-choice-word::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: calc(100% + 3px);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  opacity: 0;
+  scale: 0.5;
+  transition:
+    opacity 0.3s var(--ui-ease),
+    scale 0.3s var(--ui-ease);
+}
+
+.ui-choice-word:hover,
+.ui-choice-word:focus-visible,
+.ui-choice-word.is-active {
+  color: var(--ui-fg);
+}
+
+.ui-choice-word:not(.is-active):not(:disabled):hover::after {
+  opacity: 0.35;
+  scale: 1;
+}
+
+.ui-choice-word:focus-visible {
+  outline: none;
+  text-decoration: underline 1px;
+  text-underline-offset: 5px;
+}
+
+.ui-choice-mark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ui-accent);
+  pointer-events: none;
+}
+
+/* Toggle: two words in one slot, the other rolls in. Inherits the font of the line it sits in. */
+.ui-toggle {
+  display: inline-grid;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--ui-fg) 45%, transparent);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  clip-path: inset(0 -0.3em);
+  transition:
+    border-color 0.3s var(--ui-ease),
+    width 0.55s var(--ui-ease);
+}
+
+.ui-toggle > span {
+  grid-area: 1 / 1;
+  justify-self: start;
+  white-space: nowrap;
+  transition:
+    translate 0.55s var(--ui-ease),
+    opacity 0.4s var(--ui-ease);
+}
+
+.ui-toggle > span:first-child:not(.is-on) {
+  translate: 0 -100%;
+  opacity: 0;
+}
+
+.ui-toggle > span:last-child:not(.is-on) {
+  translate: 0 100%;
+  opacity: 0;
+}
+
+.ui-toggle:hover,
+.ui-toggle:focus-visible {
+  border-bottom: 1px solid var(--ui-fg);
+  outline: none;
+}
+
+/* ChoiceCircle: the pen circles the chosen word. */
+.ui-circle {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 36px;
+  padding: 0 6px;
+}
+
+.ui-circle-word {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-muted);
+  cursor: pointer;
+  font-family: var(--ui-font-meta);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.3s var(--ui-ease);
+}
+
+.ui-circle-word:hover,
+.ui-circle-word:focus-visible,
+.ui-circle-word.is-active {
+  color: var(--ui-fg);
+  outline: none;
+}
+
+.ui-circle-ring {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ui-choice-word:disabled,
+.ui-circle-word:disabled,
+.ui-toggle:disabled {
+  color: var(--ui-muted);
+  cursor: not-allowed;
+}
+
+.ui-toggle:disabled {
+  border-bottom: 1px dashed var(--ui-line);
+}
+
+.ui-circle-ring path {
+  fill: none;
+  stroke: var(--ui-fg);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.ui-circle-ring.is-drawn path {
+  animation: ui-draw 0.8s var(--ui-ease) both;
+}
+
+@keyframes ui-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-circle-ring.is-drawn path {
+    animation: none;
+  }
+}
+
+.ui-button {
+  padding: 0 0 1px;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: none;
+  color: var(--ui-fg);
+  cursor: pointer;
+  font-family: var(--ui-font-text);
+  font-size: 15px;
+  line-height: 1.4;
+  transition: color var(--ui-dur) var(--ui-ease);
+}
+
+.ui-button:hover:not(:disabled) {
+  color: var(--ui-accent);
+}
+
+.ui-button:disabled {
+  color: var(--ui-muted);
+  cursor: not-allowed;
+}
+
+.ui-check {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--ui-fg);
+  cursor: pointer;
+  font-family: var(--ui-font-text);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.ui-check-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.ui-check-mark {
+  display: grid;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  border: 1px solid var(--ui-fg);
+  border-radius: var(--ui-radius);
+}
+
+.ui-check-mark::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  content: '';
+  opacity: 0;
+}
+
+.ui-check-input:checked + .ui-check-mark::after {
+  opacity: 1;
+}
+
+.ui-check-input:focus-visible + .ui-check-mark {
+  outline: 1px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+
+.ui-check:has(.ui-check-input:disabled) {
+  color: var(--ui-muted);
+  cursor: not-allowed;
+}
+
+.ui-check-input:disabled + .ui-check-mark {
+  border-color: var(--ui-muted);
+}
+
+.ui-field {
+  display: grid;
+  gap: 8px;
+  max-width: 20rem;
+}
+
+.ui-field-label {
+  color: var(--ui-muted);
+  font-family: var(--ui-font-meta);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ui-field-control {
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--ui-line);
+  border-radius: 0;
+  appearance: none;
+  background: none;
+  color: var(--ui-fg);
+  font: inherit;
+  font-family: var(--ui-font-text);
+  font-size: 16px;
+}
+
+.ui-field-control:focus {
+  border-bottom-color: var(--ui-accent);
+  outline: none;
+}
+
+.ui-field-control:disabled {
+  color: var(--ui-muted);
+  cursor: not-allowed;
+}
+
+.ui-field-area {
+  min-height: 5.5em;
+  resize: vertical;
+}
+
+/* Paper: fibre on a light container, specks on a dark one. */
+.ui-paper {
+  position: relative;
+  background: var(--ui-bg);
+}
+
+.ui-paper-grain {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.ui-paper-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100%;
+}

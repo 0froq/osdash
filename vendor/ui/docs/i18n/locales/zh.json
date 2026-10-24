@@ -1,0 +1,82 @@
+{
+  "site": {
+    "skip": "跳到正文",
+    "noticeLabel": "站点提示",
+    "wip": "此网站仍在建设中。站点与 AI 生成的组件尚待人工设计与验收。",
+    "noticeAction": "查看组件初稿"
+  },
+  "theme": {
+    "dark": "深色",
+    "light": "浅色"
+  },
+  "nav": {
+    "docs": "文档",
+    "components": "组件",
+    "changelog": "更新日志",
+    "github": "GitHub"
+  },
+  "hero": {
+    "tagline": "一份仍在打磨的界面语言。",
+    "lede": "小控件，共用的行为，同一套视觉语言。为 froq 的项目而做，细节仍待逐一推敲。",
+    "cta": "阅读文档",
+    "browse": "浏览组件",
+    "specimen": "可交互样本",
+    "tone": "语气",
+    "quiet": "安静",
+    "clear": "清晰",
+    "loud": "响亮",
+    "switchLabel": "演示开关",
+    "switchBefore": "一点交互，",
+    "on": "开启",
+    "off": "关闭",
+    "selected": "当前选择",
+    "index": "库里的东西",
+    "indexDescription": "按概念浏览，试试交互，看看接口，再放进自己的项目。",
+    "contract": "外观之下",
+    "contractDescription": "core 放纯逻辑，vue 放无样式的行为，组件共用十二个 token。",
+    "contractLink": "阅读 token 契约"
+  },
+  "docs": {
+    "label": "文档",
+    "prev": "上一页",
+    "next": "下一页",
+    "groups": {
+      "start": "开始",
+      "contract": "契约"
+    }
+  },
+  "changelog": {
+    "label": "更新日志",
+    "title": "更新日志",
+    "lede": "这个库发出去的变化。",
+    "count": "共 {n} 次发布",
+    "latest": "最新"
+  },
+  "notFound": {
+    "title": "找不到这一页",
+    "back": "回到首页"
+  },
+  "components": {
+    "title": "组件",
+    "draft": "AI Draft · 待验证",
+    "draftDescription": "AI 生成的初稿，尚未经维护者手动设计或验收。",
+    "lede": "一个目录是概念页。目录里的每个组件再有自己的一页。",
+    "concepts": "共 {n} 个概念",
+    "count": "共 {n} 个组件",
+    "noDemo": "还没有 demo 文件。",
+    "details": "说明",
+    "demo": "演示",
+    "usage": "用法",
+    "api": "接口",
+    "props": "参数",
+    "model": "v-model",
+    "slots": "插槽",
+    "events": "事件",
+    "required": "必填。",
+    "default": "默认",
+    "sections": {
+      "form": "表单",
+      "prose": "正文"
+    }
+  }
+}

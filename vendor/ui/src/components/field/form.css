@@ -1,0 +1,70 @@
+.ui-form-field {
+  display: grid;
+  gap: 8px;
+  max-width: 20rem;
+  color: var(--ui-fg);
+  font-family: var(--ui-font-text);
+}
+
+.ui-field-description,
+.ui-field-error {
+  margin: 0;
+  font-family: var(--ui-font-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ui-field-description {
+  color: var(--ui-muted);
+}
+
+.ui-field-error,
+.ui-field-control[aria-invalid='true'] {
+  color: var(--ui-accent);
+  border-bottom-color: var(--ui-accent);
+}
+
+.ui-slider-control {
+  box-sizing: border-box;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  accent-color: var(--ui-accent);
+  cursor: pointer;
+}
+
+.ui-file-control {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--ui-line);
+  background: none;
+  color: var(--ui-muted);
+  font-family: var(--ui-font-text);
+  font-size: 14px;
+}
+
+.ui-file-control::file-selector-button {
+  margin-inline-end: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  color: var(--ui-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ui-slider-control:focus-visible,
+.ui-file-control:focus-visible {
+  outline: 1px solid var(--ui-accent);
+  outline-offset: 4px;
+}
+
+.ui-slider-control:disabled,
+.ui-file-control:disabled,
+.ui-file-control:disabled::file-selector-button {
+  color: var(--ui-muted);
+  cursor: not-allowed;
+}

@@ -1,0 +1,49 @@
+.ui-skeleton {
+  position: relative;
+  min-width: 0;
+}
+
+.ui-skeleton:not(.has-content) {
+  min-height: 1lh;
+}
+
+.ui-skeleton-content {
+  display: flow-root;
+  min-width: 0;
+}
+
+.ui-skeleton.is-loading > .ui-skeleton-content {
+  visibility: hidden;
+}
+
+.ui-skeleton-surface {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ui-radius);
+  background: color-mix(in srgb, var(--ui-fg) 7%, transparent);
+  pointer-events: none;
+}
+
+.ui-skeleton.is-text > .ui-skeleton-surface {
+  inset-block: 20%;
+}
+
+.ui-skeleton.is-circle > .ui-skeleton-surface {
+  border-radius: 50%;
+}
+
+.ui-skeleton.is-animated > .ui-skeleton-surface {
+  animation: ui-skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes ui-skeleton-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton-surface {
+    animation: none !important;
+  }
+}
