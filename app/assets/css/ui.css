@@ -1,0 +1,15 @@
+/* Consumer bridge: the site owns colors and fonts; the library owns controls. */
+.ui {
+  --ui-bg: var(--bg);
+  --ui-fg: var(--fg);
+  --ui-muted: var(--muted);
+  --ui-faint: var(--faint);
+  --ui-line: var(--line);
+  --ui-accent: var(--accent);
+  --ui-font-display: var(--font-display);
+  --ui-font-text: var(--font-text);
+  --ui-font-meta: var(--font-meta);
+  --ui-ease: var(--ease);
+  --ui-dur: 0.35s;
+  --ui-radius: 2px;
+}

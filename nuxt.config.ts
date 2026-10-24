@@ -11,12 +11,13 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   css: [
+    '@froq/ui/style.css',
     '@fontsource-variable/geist/index.css',
     '@fontsource-variable/geist-mono/index.css',
     '@fontsource/instrument-serif/400.css',
     '@fontsource/instrument-serif/400-italic.css',
     // Scoped to `.ui`; osdash skin stays on :root in tokens.css + inbox.css.
-    '@froq/ui/tokens.css',
+    '~/assets/css/ui.css',
     '~/assets/css/tokens.css',
     '~/assets/css/inbox.css',
     '~/assets/css/story.css',
