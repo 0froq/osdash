@@ -25,7 +25,7 @@
     "@fontsource-variable/geist": "catalog:prod",
     "@fontsource-variable/geist-mono": "catalog:prod",
     "@fontsource/instrument-serif": "catalog:prod",
-    "@froq/ui": "file:../ui",
+    "@froq/ui": "file:vendor/ui",
     "jose": "catalog:prod",
     "nuxt": "catalog:prod",
     "vue": "catalog:prod"
