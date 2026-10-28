@@ -1,0 +1,89 @@
+{
+  "repo": "0froq/osdash",
+  "synced_at": "2026-10-28T06:06:55.824Z",
+  "repository": {
+    "owner": "0froq",
+    "name": "osdash",
+    "full_name": "0froq/osdash",
+    "description": "froQ's open-source contribution dashboard",
+    "private": true,
+    "archived": false,
+    "default_branch": "main",
+    "html_url": "https://github.com/0froq/osdash",
+    "fork": false,
+    "open_issues_count": 0,
+    "has_issues": true,
+    "has_projects": true,
+    "has_wiki": false,
+    "created_at": "2026-10-19T17:50:16Z",
+    "updated_at": "2026-10-23T10:37:11Z",
+    "pushed_at": "2026-10-23T10:37:07Z",
+    "allow_merge_commit": true,
+    "allow_squash_merge": true,
+    "allow_rebase_merge": true,
+    "merge_queue_enabled": false
+  },
+  "labels": [
+    {
+      "name": "accessibility",
+      "color": "f143ab",
+      "description": "Barrier affecting people with disabilities",
+      "default": true
+    },
+    {
+      "name": "bug",
+      "color": "d73a4a",
+      "description": "Something isn't working",
+      "default": true
+    },
+    {
+      "name": "documentation",
+      "color": "0075ca",
+      "description": "Improvements or additions to documentation",
+      "default": true
+    },
+    {
+      "name": "duplicate",
+      "color": "cfd3d7",
+      "description": "This issue or pull request already exists",
+      "default": true
+    },
+    {
+      "name": "enhancement",
+      "color": "a2eeef",
+      "description": "New feature or request",
+      "default": true
+    },
+    {
+      "name": "good first issue",
+      "color": "7057ff",
+      "description": "Good for newcomers",
+      "default": true
+    },
+    {
+      "name": "help wanted",
+      "color": "008672",
+      "description": "Extra attention is needed",
+      "default": true
+    },
+    {
+      "name": "invalid",
+      "color": "e4e669",
+      "description": "This doesn't seem right",
+      "default": true
+    },
+    {
+      "name": "question",
+      "color": "d876e3",
+      "description": "Further information is requested",
+      "default": true
+    },
+    {
+      "name": "wontfix",
+      "color": "ffffff",
+      "description": "This will not be worked on",
+      "default": true
+    }
+  ],
+  "milestones": []
+}
