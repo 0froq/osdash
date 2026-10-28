@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import IconButton from '../button/IconButton.vue'
+import IconControl from '../button/IconControl.vue'
 import Tooltip from './Tooltip.vue'
 </script>
 
 <template>
   <Tooltip text="Save this draft locally">
-    <IconButton label="Save draft">
+    <IconControl label="Save draft">
       ↓
-    </IconButton>
+    </IconControl>
   </Tooltip>
 </template>

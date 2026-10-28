@@ -18,6 +18,22 @@
   cursor: not-allowed;
 }
 
+/* A bordered trigger is a framed control; the default is a plain text link. */
+.ui-overlay-scope.is-bordered > .ui-overlay-trigger {
+  padding: 0 14px;
+  min-height: 32px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  background: none;
+  font-family: var(--ui-font-text);
+  font-size: 13px;
+  transition: background-color var(--ui-dur) var(--ui-ease);
+}
+
+.ui-overlay-scope.is-bordered > .ui-overlay-trigger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-fg) 4%, transparent);
+}
+
 .ui-dialog-overlay {
   position: fixed;
   inset: 0;

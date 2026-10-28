@@ -4,6 +4,8 @@ import ToggleGroup from './ToggleGroup.vue'
 
 const alignment = ref<'' | 'left' | 'center' | 'right'>('left')
 const emphasis = ref<('italic' | 'underline' | 'strike')[]>(['italic'])
+const selectedTopics = ref<string[]>(['accessibility'])
+const topics = ['accessibility', 'animation', 'typography', 'navigation', 'forms', 'layout', 'color', 'performance', 'internationalization', 'keyboard', 'responsive', 'tokens'].map(value => ({ value, label: value }))
 </script>
 
 <template>
@@ -26,6 +28,17 @@ const emphasis = ref<('italic' | 'underline' | 'strike')[]>(['italic'])
         { value: 'underline', label: 'Underline' },
         { value: 'strike', label: 'Strike', disabled: true },
       ]"
+    />
+    <ToggleGroup
+      v-model="selectedTopics"
+      type="multiple"
+      variant="pill"
+      label="Topics"
+      :options="topics"
+      :max-rows="2"
+      clear-label="All"
+      expand-label="Show all"
+      collapse-label="Show less"
     />
   </div>
 </template>

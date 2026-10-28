@@ -1,6 +1,6 @@
 @import './tokens.css';
 @import './components/button/copy-button.css';
-@import './components/button/icon-button.css';
+@import './components/button/icon-control.css';
 @import './components/date/date.css';
 @import './components/devtools/devtools.css';
 @import './components/display/display.css';

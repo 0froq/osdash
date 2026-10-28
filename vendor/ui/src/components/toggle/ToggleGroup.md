@@ -34,6 +34,24 @@ props:
     type: boolean
     default: "false"
     description: Disable the entire group.
+  - name: variant
+    type: "'default' | 'pill'"
+    default: default
+    description: Use connected toggle buttons or separate rounded pills.
+  - name: maxRows
+    type: number
+    description: Maximum visible rows when collapsed. Positive integers apply to horizontal groups. Omit for no limit.
+  - name: clearLabel
+    type: string
+    description: Show a leading clear button with this label. Clears to an empty array or string without adding an option value.
+  - name: expandLabel
+    type: string
+    default: Show more
+    description: Label for the button shown when more rows exist.
+  - name: collapseLabel
+    type: string
+    default: Show less
+    description: Label for the same button while expanded.
 slots:
   - name: option
     description: Receives option and active to replace its label; do not add interactive descendants.
@@ -48,6 +66,26 @@ The component adapts the supplied model shape for display without rewriting the 
 The group has `role="group"` and uses its visible label as its accessible name. Each option is a button with `aria-pressed`. Disabled options and a disabled group use Reka UI's native disabled handling. Arrow keys move focus according to `orientation`, Home and End move to the first and last enabled item, and `loop` controls wrapping. Horizontal arrow behavior follows RTL direction. Space and Enter toggle the focused item. The `option` slot replaces only the button label, so its content must not contain interactive descendants. This is not a tabs widget or a native radio group with required-radio validation; use `RadioGroup` when native radio form behavior is needed.
 
 `class` and `style` are applied to the outer field wrapper. Other undeclared attributes are applied to the Reka group root, not to individual option buttons.
+
+## Pills and row limits
+
+Use `variant="pill"` for separate pills. `clearLabel` adds a leading button, shown as pressed when no options are selected. Clearing never inserts a sentinel into the model. The clear button has its own Tab stop. Arrow keys move among the option buttons.
+
+`maxRows` counts actual wrapped rows, including the clear button. The component measures item bounds after mount, font loading, option changes and resizing. It renders an expand/collapse button only when the limit is exceeded. Options outside the collapsed area remain selected but are disabled and inert until expanded, so keyboard focus and screen readers cannot enter clipped content. Expanding does not change the selection. Option or limit changes reset the expanded state. Vertical groups ignore `maxRows`.
+
+```vue
+<ToggleGroup
+  v-model="selected"
+  type="multiple"
+  variant="pill"
+  label="Topics"
+  :options="topics"
+  :max-rows="3"
+  clear-label="All"
+  expand-label="Show all"
+  collapse-label="Show less"
+/>
+```
 
 ## Usage
 

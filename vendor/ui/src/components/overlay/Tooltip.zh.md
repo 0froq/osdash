@@ -39,7 +39,7 @@ slots:
     description: 单个可聚焦的原生 button，或会转发触发属性及 button ref 的按钮组件。
 ---
 
-Tooltip 在可聚焦触发元素旁显示简短文字。默认插槽必须最终渲染为一个真实 button，或能转发触发 primitive 所需属性和 button ref 的按钮组件。提示文字不能替代触发元素自身的无障碍名称；例如 `IconButton` 仍需要设置 `label` 属性。Tooltip 内容只有文字，不应放交互控件。
+Tooltip 在可聚焦触发元素旁显示简短文字。默认插槽必须最终渲染为一个真实 button，或能转发触发 primitive 所需属性和 button ref 的按钮组件。提示文字不能替代触发元素自身的无障碍名称；例如 `IconControl` 仍需要设置 `label` 属性。Tooltip 内容只有文字，不应放交互控件。
 
 `disabled` 会禁止提示交互，但不会设置触发元素的原生 `disabled` 状态，也不会阻止父组件更新 `v-model`。`delayDuration` 会规范为大于等于零的有限数值；无效或非有限值使用 500 毫秒。每个 Tooltip 实例各自创建 provider，因此延迟仅作用于当前实例，不会由相邻 tooltip 共享。
 

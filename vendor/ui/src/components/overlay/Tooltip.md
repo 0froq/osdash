@@ -39,7 +39,7 @@ slots:
     description: A single focusable native button or a button component that forwards the trigger attributes and button ref.
 ---
 
-Tooltip shows short text beside a focusable trigger. Its default slot must resolve to one real button, or a button component that forwards the attributes and button ref supplied by the trigger primitive. The tooltip text is not a substitute for the trigger's own accessible label; for example, an `IconButton` still needs its `label` prop. Tooltip content is text only and should not contain interactive elements.
+Tooltip shows short text beside a focusable trigger. Its default slot must resolve to one real button, or a button component that forwards the attributes and button ref supplied by the trigger primitive. The tooltip text is not a substitute for the trigger's own accessible label; for example, an `IconControl` still needs its `label` prop. Tooltip content is text only and should not contain interactive elements.
 
 `disabled` suppresses tooltip interactions, but does not set the trigger's native `disabled` state or prevent the parent from changing `v-model`. `delayDuration` is normalized to a finite value greater than or equal to zero; invalid or non-finite values use 500 ms. Each Tooltip creates its own provider, so its delay setting is local to that instance rather than shared with sibling tooltips.
 

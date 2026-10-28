@@ -41,6 +41,10 @@ props:
   - name: portalTo
     type: string | HTMLElement
     description: Teleport target. Defaults to the closest consumer element with class ui, or renders inline when none exists.
+  - name: bordered
+    type: boolean
+    default: "true"
+    description: Frame the trigger as a bordered control. Turn it off when the trigger slot supplies its own styling.
 events:
   - name: select
     payload: MenuItem, Event

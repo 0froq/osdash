@@ -1,6 +1,6 @@
 export { default as Button } from './components/button/Button.vue'
 export { default as CopyButton } from './components/button/CopyButton.vue'
-export { default as IconButton } from './components/button/IconButton.vue'
+export { default as IconControl } from './components/button/IconControl.vue'
 export { default as Checkbox } from './components/checkbox/Checkbox.vue'
 export { default as Calendar } from './components/date/Calendar.vue'
 export { default as DatePicker } from './components/date/DatePicker.vue'

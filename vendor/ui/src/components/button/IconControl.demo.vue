@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import IconButton from './IconButton.vue'
+import IconControl from './IconControl.vue'
 
 const saved = ref(false)
 </script>
 
 <template>
-  <IconButton
+  <IconControl
     :label="saved ? 'Remove bookmark' : 'Bookmark document'"
     :aria-pressed="saved"
     @click="saved = !saved"
@@ -17,5 +17,5 @@ const saved = ref(false)
       stroke="currentColor"
       stroke-width="1.5"
     ><path d="M6 3h12v18l-6-4-6 4z" /></svg>
-  </IconButton>
+  </IconControl>
 </template>

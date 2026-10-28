@@ -41,6 +41,10 @@ props:
   - name: portalTo
     type: string | HTMLElement
     description: Teleport 目标。默认使用最近的消费者 class 为 ui 的元素；找不到时以内联方式渲染。
+  - name: bordered
+    type: boolean
+    default: "true"
+    description: 把触发按钮画成带边框的控件。trigger 插槽自带样式时设为 false。
 events:
   - name: select
     payload: MenuItem, Event

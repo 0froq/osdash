@@ -16,7 +16,9 @@ withDefaults(defineProps<{
   align?: 'start' | 'center' | 'end'
   sideOffset?: number
   portalTo?: string | HTMLElement
-}>(), { disabled: false, modal: true, side: 'bottom', align: 'start', sideOffset: 8 })
+  /** Draw the hairline frame around the trigger. Turn it off when the caller supplies its own control. */
+  bordered?: boolean
+}>(), { disabled: false, modal: true, side: 'bottom', align: 'start', sideOffset: 8, bordered: true })
 const emit = defineEmits<{ select: [item: MenuItem, event: Event] }>()
 defineSlots<{
   trigger?: () => unknown
@@ -32,6 +34,7 @@ const target = usePortalTarget(scope)
   <div
     ref="scope"
     class="ui-overlay-scope"
+    :class="{ 'is-bordered': bordered }"
   >
     <DropdownMenuRoot
       v-model:open="model"
@@ -41,7 +44,7 @@ const target = usePortalTarget(scope)
       <DropdownMenuTrigger
         :as-child="Boolean(slots.trigger)"
         :disabled="disabled"
-        class="ui-overlay-trigger"
+        :class="slots.trigger ? undefined : 'ui-overlay-trigger'"
       >
         <slot name="trigger">
           {{ label }}
