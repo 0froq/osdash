@@ -17,8 +17,7 @@ Multi-user, read-only inbox of your open-source contributions. Each visitor sign
 | ---------------------- | ------------------ | ---------------------------------------------------------------- |
 | `GITHUB_CLIENT_ID`     | Worker secret      | OAuth app client ID                                              |
 | `GITHUB_CLIENT_SECRET` | Worker secret      | OAuth app client secret                                          |
-| `SESSION_SECRET`       | Worker secret      | AES-GCM key for session + BYOK blobs                             |
-| `CACHE`                | KV binding         | Sessions, inbox cache, seen/prefs, classifier cache, OAuth state |
+| `SESSION_SECRET`       | Worker secret      | HMAC for the session cookie and OAuth state                      |
 | `AI`                   | Workers AI binding | Clef for logins in `OSDASH_CLEF_LOGINS`                          |
 | `OSDASH_CLEF_LOGINS`   | var or secret      | Comma-separated logins. Production example: `0froq`              |
 | `ACCESS_TEAM_DOMAIN`   | Worker secret      | Preview only (when Access enforced)                              |

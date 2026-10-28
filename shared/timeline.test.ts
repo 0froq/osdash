@@ -98,5 +98,5 @@ it('does not make a card from a linked pull authored by someone else', () => {
   assert.equal(drafts.length, 1)
   assert.equal(drafts[0]?.kind, 'issue-only')
   assert.equal(drafts[0]?.primary.author.login, 'octo-dev')
-  assert.equal(drafts[0]?.fixedBy?.authorLogin, '0froq')
+  assert.equal(drafts[0]?.fixedBy, null)
 })

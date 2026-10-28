@@ -1,175 +1,262 @@
 <script setup lang="ts">
 import { copy } from '~/copy/en'
 
+const rows = 2
+
 const props = defineProps<{
   repos: Array<{ name: string; count: number }>
-  active: string
+  active: string[]
 }>()
 
-const emit = defineEmits<{ select: [repo: string] }>()
+const emit = defineEmits<{ select: [repos: string[]] }>()
+const names = computed(() => props.repos.map(repo => repo.name))
+const empty = computed(() => props.active.length === 0)
+const open = ref(false)
+const list = ref<HTMLElement | null>(null)
+const overflow = ref(false)
+const cap = ref(0)
+const full = ref(0)
+const hiddenAt = ref(0)
 
-const row = ref<HTMLElement | null>(null)
-const expanded = ref(false)
-const overflows = ref(false)
-const hiddenFrom = ref<number | null>(null)
-
+/** Both heights are pixels: max-height cannot transition to auto. */
 function measure(): void {
-  const el = row.value
+  const el = list.value
   if (!el) return
-  const pills = [...el.querySelectorAll<HTMLElement>('[data-pill]')]
-  const tops = [...new Set(pills.map(pill => pill.offsetTop))].sort((left, right) => left - right)
-  const clipped = !expanded.value && el.scrollHeight > el.clientHeight + 1
-  const overflow = tops.length > 3 || clipped
-  overflows.value = overflow
-  if (!overflow) {
-    hiddenFrom.value = null
-    return
-  }
-  const limit = tops[2] ?? 0
-  const index = pills.findIndex(pill => pill.offsetTop > limit + 1)
-  hiddenFrom.value = index === -1 ? null : index
+  const items = [...el.querySelectorAll<HTMLElement>('[data-repo]')]
+  const top = el.getBoundingClientRect().top
+  const placed = items.map(item => {
+    const box = item.getBoundingClientRect()
+    return { y: Math.round(box.top - top), bottom: box.bottom - top }
+  })
+  const rowsAt = [...new Set(placed.map(item => item.y))].sort((a, b) => a - b)
+  overflow.value = rowsAt.length > rows
+  const edge = rowsAt[rows - 1]
+  const past = rowsAt[rows]
+  const last = edge === undefined ? undefined : placed.findLast(item => item.y <= edge)
+  cap.value = last ? Math.ceil(last.bottom) : 0
+  hiddenAt.value = past ?? cap.value
+  full.value = el.scrollHeight
+  places.value = placed.map(item => item.y)
 }
 
-function toggle(): void {
-  expanded.value = !expanded.value
-}
-
-watch(
-  () => props.repos,
-  () => {
-    expanded.value = false
-    void nextTick(measure)
-  },
-)
-
-watch(row, (el, _previous, onCleanup) => {
-  void nextTick(measure)
-  if (!el || typeof ResizeObserver === 'undefined') return
-  const observer = new ResizeObserver(() => measure())
-  observer.observe(el)
-  onCleanup(() => observer.disconnect())
+let observer: ResizeObserver | undefined
+onMounted(() => {
+  observer = new ResizeObserver(measure)
+  if (list.value) observer.observe(list.value)
+  measure()
 })
+onBeforeUnmount(() => observer?.disconnect())
+watch(names, () => {
+  open.value = false
+  nextTick(measure)
+})
+
+const places = ref<number[]>([])
+
+function place(index: number): number {
+  return places.value[index] ?? 0
+}
+
+function on(name: string): boolean {
+  return props.active.includes(name)
+}
+
+function toggle(name: string): void {
+  emit('select', on(name) ? props.active.filter(item => item !== name) : [...props.active, name])
+}
+
+/** Keep every repo except the ones currently chosen. */
+function invert(): void {
+  emit(
+    'select',
+    names.value.filter(name => !props.active.includes(name)),
+  )
+}
 </script>
 
 <template>
   <div
     v-if="repos.length > 1"
-    class="repo-block"
+    class="repo-filter"
   >
+    <span class="repo-label">{{ copy.repos.label }}</span>
     <div
-      ref="row"
-      class="repo-row"
-      :class="{ expanded }"
+      ref="list"
+      class="repo-list"
+      role="group"
+      :class="{ 'is-open': open }"
+      :aria-label="copy.repos.label"
+      :style="
+        overflow
+          ? { 'maxHeight': `${open ? full : cap}px`, '--repo-cut': String(hiddenAt) }
+          : undefined
+      "
     >
+      <button
+        type="button"
+        class="repo-chip"
+        data-repo
+        :style="{ '--repo-y': '0' }"
+        :aria-pressed="empty"
+        @click="emit('select', [])"
+      >
+        <span class="repo-reveal">{{ copy.repos.all }}</span>
+      </button>
       <button
         v-for="(repo, index) in repos"
         :key="repo.name"
-        class="repo-chip"
-        :class="{ current: repo.name === active }"
         type="button"
-        data-pill
-        :inert="!expanded && hiddenFrom !== null && index >= hiddenFrom ? true : undefined"
-        @click="emit('select', repo.name === active ? '' : repo.name)"
+        class="repo-chip"
+        data-repo
+        :style="{ '--repo-y': String(place(index + 1)) }"
+        :aria-pressed="on(repo.name)"
+        @click="toggle(repo.name)"
       >
-        {{ repo.name }}
-        <span class="repo-count">{{ repo.count }}</span>
+        <span class="repo-reveal"
+          >{{ repo.name }} <span class="repo-count">{{ repo.count }}</span></span
+        >
+      </button>
+      <button
+        type="button"
+        class="repo-invert"
+        data-repo
+        :style="{ '--repo-y': String(place(repos.length + 1)) }"
+        :disabled="empty"
+        @click="invert"
+      >
+        <span class="repo-reveal">{{ copy.repos.invert }}</span>
       </button>
     </div>
     <button
-      v-if="overflows"
-      class="repo-toggle"
+      v-if="overflow"
       type="button"
-      :aria-expanded="expanded"
-      @click="toggle"
+      class="repo-more"
+      :aria-expanded="open"
+      @click="open = !open"
     >
-      {{ expanded ? copy.repos.showLess : copy.repos.showAll }}
+      {{ open ? copy.repos.showLess : copy.repos.showAll }}
     </button>
   </div>
 </template>
 
 <style scoped>
-.repo-block {
+.repo-filter {
+  display: grid;
+  gap: 10px;
   min-width: 0;
   margin-top: 20px;
 }
 
-.repo-row {
-  --pill-line: 30px;
+.repo-label {
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.repo-list {
+  --reveal: calc(var(--repo-y, 0) * 1px - var(--repo-cut, 0) * 1px);
   display: flex;
   flex-wrap: wrap;
-  gap: 0 18px;
-  align-content: flex-start;
-  min-width: 0;
-  max-height: calc(var(--pill-line) * 3 + 2px);
-  overflow: hidden;
-}
-
-.repo-row.expanded {
-  max-height: none;
-}
-
-.repo-count {
-  font-family: var(--font-meta);
-  font-size: 11.5px;
-  font-weight: 400;
-}
-
-.repo-chip {
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 5px;
+  gap: 8px 18px;
   align-items: baseline;
-  min-height: var(--pill-line);
-  padding: 0;
-  border: 0;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 12.5px;
-  white-space: nowrap;
-  transition: color var(--dur-1) var(--ease);
+  overflow: hidden;
+  transition: max-height var(--dur-3) var(--ease);
 }
 
-.repo-toggle {
-  margin-top: 4px;
-  padding: 0;
-  border: 0;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 12.5px;
-  transition: color var(--dur-1) var(--ease);
+/* Rows past the cut rise and fade in with the height, instead of being sliced. */
+.repo-reveal {
+  display: inline-block;
+  transition:
+    opacity var(--dur-3) var(--ease),
+    translate var(--dur-3) var(--ease);
 }
 
-.repo-toggle:hover {
+.repo-list:not(.is-open) .repo-reveal {
+  opacity: clamp(0, calc(1 - var(--reveal) / 28), 1);
+  translate: 0 clamp(0px, calc(var(--reveal) * 0.45), 10px);
+}
+
+.repo-more {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-meta);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.repo-more:hover,
+.repo-more:focus-visible {
   color: var(--fg);
+  outline: none;
+}
+
+.repo-chip,
+.repo-invert {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  transition: color 160ms var(--ease);
+}
+
+.repo-chip:hover,
+.repo-chip:focus-visible,
+.repo-invert:hover:not(:disabled),
+.repo-invert:focus-visible {
+  color: var(--fg);
+  outline: none;
+}
+
+/* Same mark as a card title: drawn in from the left, sitting under the word. */
+.repo-chip {
+  background-image: linear-gradient(
+    100deg,
+    transparent 0.2em,
+    color-mix(in oklab, var(--accent) 20%, transparent) 0.35em,
+    color-mix(in oklab, var(--accent) 20%, transparent) calc(100% - 0.35em),
+    transparent calc(100% - 0.15em)
+  );
+  background-repeat: no-repeat;
+  background-position: 0 88%;
+  background-size: 0 46%;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition:
+    color 160ms var(--ease),
+    background-size var(--dur-3) var(--ease);
+}
+
+.repo-chip[aria-pressed='true'] {
+  background-size: 100% 46%;
+  color: var(--fg);
+}
+
+.repo-invert {
+  border-bottom: 1px dashed color-mix(in oklab, var(--fg) 35%, transparent);
+  font-family: var(--font-meta);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.repo-invert:disabled {
+  color: var(--faint, var(--muted));
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .repo-count {
   font-family: var(--font-meta);
-  font-size: 11.5px;
-  font-weight: 400;
-}
-.repo-chip:hover,
-.repo-chip.current {
-  color: var(--fg);
-}
-
-.repo-chip.current {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 5px;
-}
-
-@media (max-width: 760px) {
-  .repo-row {
-    scrollbar-width: none;
-  }
-
-  .repo-chip {
-    min-height: 36px;
-  }
-
-  .repo-toggle {
-    display: none;
-  }
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 </style>

@@ -121,6 +121,96 @@ it('merges pull request and issue events in time order and drops a duplicate cro
   }
 })
 
+it('keeps a downstream reference as an event without expanding its PR or reading old derived caches', async () => {
+  const unit = fixtureUnit()
+  unit.repo = 'acme/app'
+  unit.number = 12
+  unit.history = []
+  unit.fixedBy = null
+  unit.issues = [
+    {
+      repo: 'acme/app',
+      number: 4,
+      url: 'https://github.com/acme/app/issues/4',
+      title: 'upstream bug',
+      state: 'open',
+      authorLogin: 'other',
+      link: 'closing',
+      sharedWith: [],
+    },
+  ]
+  const store = memoryStore()
+  store.data.set(
+    `tlresp:v2:octo-dev:${unit.id}:${membersHash(unit)}`,
+    JSON.stringify({
+      id: unit.id,
+      generatedAt: new Date(NOW).toISOString(),
+      entries: [],
+      items: [],
+      truncated: true,
+    }),
+  )
+  const calls: string[] = []
+  const original = globalThis.fetch
+  globalThis.fetch = async input => {
+    const url = String(input)
+    calls.push(url)
+    if (url.includes('/issues/4/timeline'))
+      return respond([
+        {
+          id: 'downstream-ref',
+          event: 'cross-referenced',
+          created_at: '2026-10-18T00:00:00Z',
+          actor: { login: 'PhyberApex', type: 'User' },
+          source: {
+            issue: {
+              number: 942,
+              html_url: 'https://github.com/PhyberApex/lightning-talks/pull/942',
+              repository_url: 'https://api.github.com/repos/PhyberApex/lightning-talks',
+              pull_request: {},
+            },
+          },
+        },
+      ])
+    return respond(url.includes('/check-runs') ? { check_runs: [] } : [])
+  }
+  try {
+    const body = await assembleTimeline({
+      token: 'token',
+      login: 'octo-dev',
+      unit,
+      store,
+      nowMs: NOW,
+      fresh: false,
+    })
+    assert.ok(body)
+    assert.equal(body.cached, false)
+    assert.equal(body.entries.filter(entry => entry.kind === 'cross-ref').length, 1)
+    assert.deepEqual(
+      body.items.map(item => item.key),
+      ['acme/app#12', 'acme/app#4'],
+    )
+    assert.ok(calls.every(url => !url.includes('/repos/PhyberApex/')))
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+it('invalidates a timeline response when the fixing PR targets change', () => {
+  const unit = fixtureUnit()
+  unit.fixedBy = {
+    repo: 'other/repo',
+    number: 50,
+    url: 'https://github.com/other/repo/pull/50',
+    authorLogin: 'other',
+    state: 'merged',
+    closes: ['acme/app#4'],
+  }
+  const before = membersHash(unit)
+  unit.fixedBy.closes.push('acme/app#9')
+  assert.notEqual(membersHash(unit), before)
+})
+
 it('returns null when the card is not on the viewer board', async () => {
   const body = await assembleTimeline({
     token: 'token',
@@ -133,6 +223,68 @@ it('returns null when the card is not on the viewer board', async () => {
   assert.equal(body, null)
 })
 
+it('ignores pre-Markdown derived caches and retains complete bodies in the new response', async () => {
+  const store = memoryStore()
+  const unit = fixtureUnit()
+  unit.fixedBy = null
+  const member = unit.members[0]!
+  const legacy = JSON.stringify([{ id: 'legacy', kind: 'comment', excerpt: '<summary>broken' }])
+  store.data.set(
+    `tlresp:v3:octo-dev:${unit.id}:${membersHash(unit)}`,
+    JSON.stringify({ entries: [] }),
+  )
+  store.data.set(`events:v2:octo-dev:acme/app#12:${member.updatedAt}`, legacy)
+  store.data.set(`revcomments:v1:octo-dev:acme/app#12:${member.updatedAt}`, legacy)
+  const markdown =
+    '<details><summary>Fresh report</summary><p>Full <strong>Markdown</strong> body.</p></details>'
+  const original = globalThis.fetch
+  globalThis.fetch = async input => {
+    const url = String(input)
+    if (url.includes('/issues/12/timeline'))
+      return respond([
+        {
+          id: 'fresh-comment',
+          event: 'commented',
+          created_at: '2026-10-10T00:00:00Z',
+          actor: { login: 'octo-dev', type: 'User' },
+          body: markdown,
+        },
+      ])
+    if (url.includes('/pulls/12/comments'))
+      return respond([
+        {
+          id: 'fresh-inline',
+          created_at: '2026-10-10T01:00:00Z',
+          user: { login: 'reviewer', type: 'User' },
+          body: markdown,
+        },
+      ])
+    return respond(url.includes('/check-runs') ? { check_runs: [] } : [])
+  }
+  try {
+    const body = await assembleTimeline({
+      token: 'token',
+      login: 'octo-dev',
+      unit,
+      store,
+      nowMs: NOW,
+      fresh: false,
+    })
+    assert.equal(body?.cached, false)
+    for (const id of ['fresh-comment', 'fresh-inline']) {
+      const entry: TimelinePayload['entries'][number] | undefined = body?.entries.find(
+        event => event.id === id,
+      )
+      assert.ok(entry && 'body' in entry)
+      assert.equal(entry.body, markdown)
+      assert.equal(entry.excerpt, 'Fresh report Full Markdown body.')
+    }
+    assert.ok(!body?.entries.some(entry => entry.id === 'legacy'))
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
 it('skips the response cache when refresh=1', async () => {
   let calls = 0
   const original = globalThis.fetch
@@ -142,7 +294,7 @@ it('skips the response cache when refresh=1', async () => {
   }
   const store = memoryStore()
   const unit = fixtureUnit()
-  const key = `tlresp:v2:octo-dev:${unit.id}:${membersHash(unit)}`
+  const key = `tlresp:v4:octo-dev:${unit.id}:${membersHash(unit)}`
   const sentinel: TimelinePayload = {
     id: unit.id,
     generatedAt: '2000-01-01T00:00:00.000Z',

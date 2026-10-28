@@ -9,6 +9,13 @@ const dev = import.meta.dev
     <Paper>
       <NuxtPage />
     </Paper>
-    <UiDevtools v-if="dev" />
+  </div>
+  <!-- Outside the Paper slot: the overlay walks the component tree, and a slot
+       child would put Paper's own subtree in its path. -->
+  <div
+    v-if="dev"
+    class="ui"
+  >
+    <UiDevtools />
   </div>
 </template>

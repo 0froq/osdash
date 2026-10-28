@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import type { MenuItem } from '@froq/ui/vue'
 import type { UnitView } from '#shared/unit'
+import { Menu } from '@froq/ui'
 import { copy } from '~/copy/en'
+import { laterAt } from '~/composables/useLater'
 
-const props = defineProps<{
+defineProps<{
   unit: UnitView
   x: number
   y: number
@@ -10,106 +13,83 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   read: []
-  star: []
-  later: [until: string | null]
+  later: [at: number]
   close: []
 }>()
 
-const menu = ref<{ el?: HTMLElement }>()
-const left = ref(props.x)
-const top = ref(props.y)
+const open = ref(true)
 
-function place(): void {
-  const node = menu.value?.el
-  if (!node) return
-  const rect = node.getBoundingClientRect()
-  left.value = Math.max(8, Math.min(props.x, window.innerWidth - rect.width - 8))
-  top.value = Math.max(8, Math.min(props.y, window.innerHeight - rect.height - 8))
+/**
+ * The menu is anchored to a zero-size element pinned at the pointer, so the
+ * library's own collision handling places the sheet without a second popover
+ * implementation. Group labels ride along as disabled items.
+ */
+const items = computed<MenuItem[]>(() => [
+  { value: 'read', label: copy.menu.markRead },
+  { value: 'later:hour', label: copy.menu.laterHour },
+  { value: 'later:tonight', label: copy.menu.laterTonight },
+  { value: 'later:tomorrow', label: copy.menu.laterTomorrow },
+  { value: 'later:week', label: copy.menu.laterWeek },
+])
+
+/**
+ * The library's Menu does not turn the layer's dismiss event into a close, so
+ * Escape has to close it here. The listener only runs while the sheet is open.
+ */
+function onEscape(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || !open.value) return
+  open.value = false
 }
 
-function onPointer(event: PointerEvent): void {
-  const target = event.target
-  const node = menu.value?.el
-  if (node && target instanceof Node && node.contains(target)) return
-  emit('close')
+onMounted(() => window.addEventListener('keydown', onEscape, true))
+onBeforeUnmount(() => window.removeEventListener('keydown', onEscape, true))
+
+function select(item: MenuItem): void {
+  open.value = false
+  if (item.value === 'read') emit('read')
+  if (item.value.startsWith('later:')) {
+    const preset = item.value.slice('later:'.length) as 'hour' | 'tonight' | 'tomorrow' | 'week'
+    emit('later', laterAt(preset))
+  }
 }
 
-onMounted(() => {
-  place()
-  document.addEventListener('pointerdown', onPointer)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onPointer)
+watch(open, value => {
+  if (!value) emit('close')
 })
 </script>
 
 <template>
-  <PopMenu
-    ref="menu"
-    class="card-menu"
-    :style="{ left: `${left}px`, top: `${top}px` }"
+  <Menu
+    v-model="open"
+    class="osdash-menu"
+    :label="copy.menu.open"
+    :modal="false"
+    :items="items"
+    side="bottom"
+    align="start"
+    :side-offset="0"
+    @select="select"
   >
-    <button
-      class="pop-item"
-      type="button"
-      role="menuitem"
-      @click="emit('read')"
-    >
-      {{ copy.menu.markRead }}
-    </button>
-    <p class="pop-label">{{ copy.menu.later }}</p>
-    <button
-      class="pop-item"
-      type="button"
-      role="menuitem"
-      @click="emit('later', 'tomorrow')"
-    >
-      {{ copy.laterPresets.tomorrow }}
-    </button>
-    <button
-      class="pop-item"
-      type="button"
-      role="menuitem"
-      @click="emit('later', 'three-days')"
-    >
-      {{ copy.laterPresets.threeDays }}
-    </button>
-    <button
-      class="pop-item"
-      type="button"
-      role="menuitem"
-      @click="emit('later', 'monday')"
-    >
-      {{ copy.laterPresets.nextMonday }}
-    </button>
-    <button
-      v-if="unit.laterUntil"
-      class="pop-item"
-      type="button"
-      role="menuitem"
-      @click="emit('later', null)"
-    >
-      {{ copy.menu.clearLater }}
-    </button>
-    <button
-      class="pop-item"
-      type="button"
-      role="menuitem"
-      @click="emit('star')"
-    >
-      {{ unit.starred ? copy.menu.unstar : copy.menu.star }}
-    </button>
-  </PopMenu>
+    <template #trigger>
+      <span
+        class="card-menu-anchor"
+        :style="{ left: `${x}px`, top: `${y}px` }"
+        aria-hidden="true"
+      />
+    </template>
+    <template #item="{ item }">
+      <span :class="{ 'is-menu-label': item.disabled && item.value.startsWith('label:') }">
+        {{ item.label }}
+      </span>
+    </template>
+  </Menu>
 </template>
 
 <style scoped>
-.card-menu {
-  --pop-origin: top left;
+.card-menu-anchor {
   position: fixed;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  min-width: 188px;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
 </style>

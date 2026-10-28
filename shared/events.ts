@@ -1,4 +1,5 @@
 import { isClaimComment } from './claim-keywords'
+import { markdownExcerpt } from './markdown'
 import { isBot } from './identity'
 import { isCoderabbitActionable, isFailingClaComment } from './turn-rules'
 import type { Actor, CheckConclusion, CheckStatus, ItemKind, ReviewState } from './turn'
@@ -45,6 +46,8 @@ export type UnitEvent = {
   source: { repo: string; number: number; kind: ItemKind }
   url?: string
   excerpt?: string
+  /** Original Markdown, possibly containing HTML. Sanitize at the rendering boundary. */
+  body?: string
   reviewState?: ReviewState
   ci?: { name: string; conclusion: CheckConclusion; status: CheckStatus }
   label?: { name: string; color: string }
@@ -193,32 +196,23 @@ function eventKind(event: KnownEvent): EventKind {
 }
 
 export function excerptOf(body: string | null | undefined): string | undefined {
-  if (!body) return undefined
-  const noQuotes = body
-    .split('\n')
-    .filter(line => !line.trim().startsWith('>'))
-    .join('\n')
-  const plain = noQuotes
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/`([^`]*)`/g, '$1')
-    .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
-    .replace(/\[([^\]]*)]\([^)]*\)/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/[*_~]/g, '')
-  const collapsed = plain.replace(/\s+/g, ' ').trim()
-  if (!collapsed) return undefined
-  return collapsed.slice(0, 140)
+  return body ? markdownExcerpt(body) : undefined
 }
 
 function actorFrom(raw: {
-  actor?: { login?: string; type?: string } | null
-  user?: { login?: string; type?: string } | null
-  author?: { login?: string; type?: string } | null
+  actor?: { login?: string; type?: string; avatar_url?: string; html_url?: string } | null
+  user?: { login?: string; type?: string; avatar_url?: string; html_url?: string } | null
+  author?: { login?: string; type?: string; avatar_url?: string; html_url?: string } | null
 }): Actor {
   const person = raw.actor ?? raw.user ?? raw.author
   const login = person?.login || 'ghost'
   const bot = person?.type === 'Bot' || login.endsWith('[bot]')
-  return { typename: bot ? 'Bot' : 'User', login }
+  return {
+    typename: bot ? 'Bot' : 'User',
+    login,
+    ...(person?.avatar_url ? { avatarUrl: person.avatar_url } : {}),
+    ...(person?.html_url ? { url: person.html_url } : {}),
+  }
 }
 
 function botMark(
@@ -305,6 +299,7 @@ export function normalizeRestTimeline(
       source,
       url: entry.html_url ?? undefined,
       excerpt: excerptOf(body),
+      ...((kind === 'comment' || kind === 'review') && body ? { body } : {}),
       reviewState,
       label: entry.label?.name
         ? { name: entry.label.name, color: entry.label.color ?? 'cccccc' }
@@ -345,6 +340,7 @@ export function normalizeReviewComments(
       source,
       url: comment.html_url ?? undefined,
       excerpt: excerptOf(body),
+      ...(body ? { body } : {}),
       ...(comment.author_association ? { association: comment.author_association } : {}),
       bot: botMark(actor, body),
     })

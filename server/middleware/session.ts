@@ -1,9 +1,10 @@
-import { bindingString, workerEnv } from '../bindings'
+import { bindingString } from '../bindings'
 import { readSession, sessionIdFromEvent } from '../session'
 
 declare module 'h3' {
   interface H3EventContext {
     osdashUser?: {
+      id?: string
       login: string
       token: string
       name?: string
@@ -23,7 +24,7 @@ export default defineEventHandler(async event => {
   const secret = bindingString(event, 'SESSION_SECRET')
   if (!secret) return
 
-  const user = await readSession(workerEnv(event).CACHE, secret, sessionId)
+  const user = await readSession(secret, sessionId)
   if (!user) return
   event.context.osdashUser = user
 })

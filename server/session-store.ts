@@ -1,10 +1,9 @@
 import { decryptString, encryptString } from './crypto'
-import type { CacheStore } from './cache'
 
-export const SESSION_PREFIX = 'session:v1:'
 export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
 
 export type SessionRecord = {
+  id?: string
   login: string
   token: string
   createdAt: string
@@ -13,67 +12,37 @@ export type SessionRecord = {
 }
 
 export type SessionUser = {
+  id?: string
   login: string
   token: string
   name?: string
   avatarUrl?: string
 }
 
-function sessionKey(id: string): string {
-  return `${SESSION_PREFIX}${id}`
-}
-
-export function randomSessionId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(24))
-  let binary = ''
-  for (const byte of bytes) binary += String.fromCharCode(byte)
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
-}
-
-export async function createSession(
-  store: CacheStore | undefined,
-  secret: string,
-  user: SessionUser,
-): Promise<string> {
-  const id = randomSessionId()
+export async function createSession(secret: string, user: SessionUser): Promise<string> {
   const record: SessionRecord = {
     login: user.login,
     token: user.token,
     createdAt: new Date().toISOString(),
   }
+  if (user.id && /^[1-9]\d{0,19}$/.test(user.id)) record.id = user.id
   if (user.name) record.name = user.name
   if (user.avatarUrl) record.avatarUrl = user.avatarUrl
-  const encrypted = await encryptString(secret, JSON.stringify(record))
-  await store?.put(sessionKey(id), encrypted, { expirationTtl: SESSION_TTL_SECONDS })
-  return id
+  return encryptString(secret, JSON.stringify(record))
 }
 
-export async function readSession(
-  store: CacheStore | undefined,
-  secret: string,
-  sessionId: string,
-): Promise<SessionUser | null> {
-  if (!store) return null
-  const encrypted = await store.get(sessionKey(sessionId))
-  if (!encrypted) return null
-  const plain = await decryptString(secret, encrypted)
+export async function readSession(secret: string, sealed: string): Promise<SessionUser | null> {
+  const plain = await decryptString(secret, sealed)
   if (!plain) return null
   try {
     const record = JSON.parse(plain) as SessionRecord
     if (!record.login || !record.token) return null
     const user: SessionUser = { login: record.login, token: record.token }
+    if (typeof record.id === 'string' && /^[1-9]\d{0,19}$/.test(record.id)) user.id = record.id
     if (record.name) user.name = record.name
     if (record.avatarUrl) user.avatarUrl = record.avatarUrl
     return user
   } catch {
     return null
   }
-}
-
-export async function destroySession(
-  store: CacheStore | undefined,
-  sessionId: string,
-): Promise<void> {
-  if (!store) return
-  await store.put(sessionKey(sessionId), '', { expirationTtl: 1 })
 }

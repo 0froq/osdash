@@ -5,7 +5,7 @@ export function oauthAuthorizeUrl(clientId: string, redirectUri: string, state: 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'read:user',
+    scope: 'read:user notifications',
     state,
   })
   return `${AUTHORIZE}?${params.toString()}`
@@ -41,6 +41,7 @@ export async function exchangeOAuthCode(
 }
 
 export type GitHubUser = {
+  id: string
   login: string
   name: string | null
   avatarUrl: string | null
@@ -58,12 +59,16 @@ export async function fetchGitHubUser(token: string): Promise<GitHubUser> {
   })
   if (!response.ok) throw new Error(`GitHub user lookup failed: HTTP ${response.status}`)
   const payload = (await response.json()) as {
+    id?: number
     login?: string
     name?: string | null
     avatar_url?: string | null
   }
-  if (!payload.login) throw new Error('GitHub user lookup returned no login')
+  if (!payload.login || !Number.isSafeInteger(payload.id) || payload.id! <= 0) {
+    throw new Error('GitHub user lookup returned no valid identity')
+  }
   return {
+    id: String(payload.id),
     login: payload.login,
     name: payload.name ?? null,
     avatarUrl: payload.avatar_url ?? null,

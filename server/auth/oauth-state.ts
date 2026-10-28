@@ -14,7 +14,6 @@ export type CallbackOriginConfig =
   | { status: 'set'; origin: string }
 
 export type OAuthStart =
-  | { ok: true; mode: 'legacy'; redirectUri: string }
   | { ok: true; mode: 'fixed'; redirectUri: string; returnOrigin: string }
   | { ok: false }
 
@@ -56,7 +55,13 @@ export function resolveOAuthStart(
   callbackOrigin: string | undefined,
 ): OAuthStart {
   if (!callbackOrigin) {
-    return { ok: true, mode: 'legacy', redirectUri: `${requestOrigin}/api/auth/callback` }
+    if (!isAllowedReturnOrigin(requestOrigin)) return { ok: false }
+    return {
+      ok: true,
+      mode: 'fixed',
+      redirectUri: `${requestOrigin}/api/auth/callback`,
+      returnOrigin: requestOrigin,
+    }
   }
   if (!isAllowedReturnOrigin(requestOrigin)) return { ok: false }
   return {

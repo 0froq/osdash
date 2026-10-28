@@ -1,17 +1,13 @@
 import type { H3Event } from 'h3'
-import { parseClefLogins, readByok } from './byok'
+import { getHeader } from 'h3'
+import { parseByokHeader, parseClefLogins } from './byok'
 import { bindingString, workerEnv } from './bindings'
-import { readCache, writeCache } from './cache'
+import { readCache, writeCache, type CacheStore } from './cache'
 import { loadUnits } from './github'
+import type { NotificationSnapshot } from './notifications'
 import type { SessionUser } from './session'
-import {
-  inboxCounts,
-  mergeUserState,
-  readPrefs,
-  readSeen,
-  type PrefsState,
-  type SeenState,
-} from './user-state'
+import { inboxCounts } from './user-state'
+import { cardNotification, unreadIndex } from '../shared/notifications'
 import { summarize } from '../shared/turn'
 import type { Unit, UnitView } from '../shared/unit'
 
@@ -36,6 +32,7 @@ export type InboxPayload = {
   revalidating?: boolean
   truncated: boolean
   mock: boolean
+  notificationsScope: boolean
   viewer: InboxViewer
   counts: ReturnType<typeof inboxCounts>
   stats: ReturnType<typeof summarize>
@@ -43,7 +40,7 @@ export type InboxPayload = {
 }
 
 export function inboxCacheKey(login: string): string {
-  return `inbox:v1:${login.toLowerCase()}`
+  return `inbox:v2:${login.toLowerCase()}`
 }
 
 export function viewerFromSession(user: SessionUser): InboxViewer {
@@ -60,16 +57,13 @@ export async function loadInboxUnits(
   now: Date,
   fresh: boolean,
 ): Promise<InboxCacheBody> {
-  const store = workerEnv(event).CACHE
-  const sessionSecret = bindingString(event, 'SESSION_SECRET')
-  const byok = sessionSecret ? await readByok(store, sessionSecret, user.login) : null
+  const byok = parseByokHeader(getHeader(event, 'x-osdash-byok'))
   const loaded = await loadUnits(
     user.token,
     user.login,
     now,
     {
       AI: workerEnv(event).AI,
-      CACHE: store,
       viewerLogin: user.login,
       byok,
       clefLogins: parseClefLogins(bindingString(event, 'OSDASH_CLEF_LOGINS')),
@@ -84,7 +78,7 @@ export async function loadInboxUnits(
 }
 
 export async function persistInbox(
-  store: ReturnType<typeof workerEnv>['CACHE'],
+  store: CacheStore | undefined,
   login: string,
   body: InboxCacheBody,
   nowMs: number,
@@ -93,35 +87,39 @@ export async function persistInbox(
 }
 
 export async function readInboxCache(
-  store: ReturnType<typeof workerEnv>['CACHE'],
+  store: CacheStore | undefined,
   login: string,
   nowMs: number,
 ): Promise<InboxCacheBody | null> {
   const hit = await readCache(store, inboxCacheKey(login), nowMs)
   if (!hit) return null
-  return JSON.parse(hit) as InboxCacheBody
+  try {
+    return JSON.parse(hit) as InboxCacheBody
+  } catch {
+    return null
+  }
 }
 
-export async function presentInbox(
-  store: ReturnType<typeof workerEnv>['CACHE'],
+export function presentInbox(
   user: SessionUser,
   body: InboxCacheBody,
-  nowMs: number,
   flags: { cached: boolean; revalidating?: boolean; mock: boolean },
-  seenOverride?: SeenState,
-  prefsOverride?: PrefsState,
-): Promise<InboxPayload> {
-  const seen = seenOverride ?? (await readSeen(store, user.login, nowMs))
-  const prefs = prefsOverride ?? (await readPrefs(store, user.login, nowMs))
-  const units = mergeUserState(body.units, seen, prefs, nowMs)
+  snapshot: NotificationSnapshot,
+): InboxPayload {
+  const index = unreadIndex(snapshot.scope ? snapshot.threads : [])
+  const units = body.units.map(unit => {
+    const match = cardNotification(unit.members, index)
+    return { ...unit, ...match, notes: [] }
+  })
   return {
     generatedAt: body.generatedAt,
     cached: flags.cached,
     revalidating: flags.revalidating,
     truncated: body.truncated,
     mock: flags.mock,
+    notificationsScope: snapshot.scope,
     viewer: viewerFromSession(user),
-    counts: inboxCounts(units, nowMs),
+    counts: inboxCounts(units, Date.now()),
     stats: summarize(units),
     units,
   }

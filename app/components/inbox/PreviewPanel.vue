@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UnitView } from '#shared/unit'
+import type { UnitNote, UnitView } from '#shared/unit'
 import { copy } from '~/copy/en'
 
 const props = defineProps<{
@@ -8,12 +8,22 @@ const props = defineProps<{
   mobile: boolean
   /** True when the preview covers the list (phone sheet or tablet overlay). */
   backdrop: boolean
+  notes?: UnitNote[]
+  notesEditable?: boolean
+  editableNoteIds?: string[]
+  noteError?: string
+  noteDisabledReason?: string
 }>()
 
 const emit = defineEmits<{
   close: []
-  star: []
-  later: [preset: string | null]
+  noteAdd: []
+  noteSave: [payload: { id: string; text: string; version: string | null }]
+  noteMove: [payload: { id: string; anchor: string }]
+  noteDelete: [id: string]
+  noteCancel: [id: string]
+  deviceSettings: []
+  notesReload: []
 }>()
 
 const timeline = useTimeline()
@@ -117,10 +127,46 @@ function onUp(): void {
           </div>
           <PreviewHeader
             :unit="unit"
-            @star="emit('star')"
-            @later="emit('later', $event)"
+            :notes-editable="notesEditable"
+            :note-disabled-reason="noteDisabledReason"
+            @note="emit('noteAdd')"
           />
           <div class="preview-scroll">
+            <p
+              v-if="!notesEditable"
+              class="note-access"
+            >
+              {{ noteDisabledReason ?? copy.note.requiresLocal }}
+              <button
+                type="button"
+                @click="emit('deviceSettings')"
+                >{{ copy.note.deviceSettings }}</button
+              >
+            </p>
+            <p
+              v-if="notesEditable"
+              class="note-access"
+            >
+              <span v-if="unit.notes?.length">{{ copy.note.legacyReadOnly }}</span>
+              <button
+                type="button"
+                @click="emit('notesReload')"
+                >{{ copy.note.reloadLocal }}</button
+              >
+            </p>
+            <p
+              v-if="noteError"
+              class="note-access"
+              role="alert"
+            >
+              {{ noteError }}
+              <button
+                v-if="!notesEditable"
+                type="button"
+                @click="emit('notesReload')"
+                >{{ copy.note.reloadLocal }}</button
+              >
+            </p>
             <div
               v-if="timeline.pending.value && !timeline.payload.value"
               class="tl-skeleton"
@@ -148,6 +194,13 @@ function onUp(): void {
               :viewer="viewer"
               :truncated="timeline.payload.value.truncated"
               :original-url="unit.url"
+              :notes="notes ?? unit.notes ?? []"
+              :notes-editable="notesEditable"
+              :editable-note-ids="editableNoteIds"
+              @note-save="emit('noteSave', $event)"
+              @note-move="emit('noteMove', $event)"
+              @note-delete="emit('noteDelete', $event)"
+              @note-cancel="emit('noteCancel', $event)"
             />
           </div>
         </div>
@@ -157,6 +210,26 @@ function onUp(): void {
 </template>
 
 <style scoped>
+.note-access {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.note-access button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .inbox-status {
   display: flex;
   gap: 8px;
@@ -272,7 +345,9 @@ function onUp(): void {
 }
 
 .preview-scroll {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-height: 0;
   padding: 24px 28px;
   overflow: auto;

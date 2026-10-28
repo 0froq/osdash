@@ -1,32 +1,15 @@
 <script setup lang="ts">
-import type { StoryCell } from '~/utils/story'
 import { copy } from '~/copy/en'
 import { relationOf, type Story } from '~/utils/story'
 
-const props = defineProps<{ story: Story; viewer: string }>()
+const props = defineProps<{ story: Story; viewer: string; skip?: string[] }>()
 const focus = defineModel<number | null>('focus', { default: null })
 
 const entries = computed(() =>
-  props.story.lanes.flatMap((lane, index) => lane.map(item => ({ item, index }))),
+  props.story.lanes.flatMap((lane, index) =>
+    lane.flatMap(item => (props.skip?.includes(item.key) ? [] : [{ item, index }])),
+  ),
 )
-
-/** The legend is a gutter with a single node: the lane this entry sits on. */
-function cellsOf(entry: (typeof entries.value)[number]): StoryCell[] {
-  return props.story.lanes.map((_, lane) => ({
-    lane,
-    up: false,
-    down: false,
-    node: lane === entry.index ? entry.item.state : null,
-    hl: false,
-    hr: false,
-    cross: false,
-    link: null,
-    dashed: false,
-    mine: entry.item.authorLogin.toLowerCase() === props.viewer.toLowerCase(),
-    primary: entry.item.role === 'primary',
-    fade: false,
-  }))
-}
 </script>
 
 <template>
@@ -36,13 +19,10 @@ function cellsOf(entry: (typeof entries.value)[number]): StoryCell[] {
       :key="entry.item.key"
       class="st-legend-row"
       :class="{ dim: focus !== null && focus !== entry.index }"
+      :style="{ '--lane': String(entry.index) }"
       @pointerenter="focus = entry.index"
       @pointerleave="focus = null"
     >
-      <TimelineGutter
-        :cells="cellsOf(entry)"
-        :focus="focus"
-      />
       <a
         class="st-legend-text"
         :href="entry.item.url"
@@ -52,8 +32,8 @@ function cellsOf(entry: (typeof entries.value)[number]): StoryCell[] {
         @focus="focus = entry.index"
         @blur="focus = null"
       >
+        <KindIcon :kind="entry.item.kind" />
         <b>#{{ entry.item.number }}</b>
-        <span class="st-legend-kind">{{ copy.story.kind[entry.item.kind] }}</span>
         <span
           class="st-legend-state"
           :class="`s-${entry.item.state}`"
@@ -73,25 +53,13 @@ function cellsOf(entry: (typeof entries.value)[number]): StoryCell[] {
 }
 
 .st-legend-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 12px;
-  align-items: center;
   min-height: 24px;
+  padding-left: calc(var(--lane) * var(--st-col));
   transition: opacity 220ms var(--ease);
 }
 
 .st-legend-row.dim {
   opacity: 0.35;
-}
-
-/* The gutter is its own component, so the row reaches in through the scope. */
-.st-legend-row :deep(.st-gutter) {
-  align-self: stretch;
-}
-
-.st-legend-row :deep(.st-node) {
-  top: 50%;
 }
 
 .st-legend-text {

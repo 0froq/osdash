@@ -191,6 +191,25 @@ it('omits the card PR number and keeps issue numbers', () => {
   assert.equal(timelineSourceKind({ repo: 'acme/app', number: 9, kind: 'pr' }, subject), 'pr')
 })
 
+it('retains complete comment bodies separately from clean bounded summaries', () => {
+  const body = `<details><summary>Bot report</summary><p>**Keep the full report.** ${'More detail. '.repeat(30)}</p></details>`
+  const events = normalizeRestTimeline(
+    [raw('commented', { body }), raw('reviewed', { body, state: 'COMMENTED' })],
+    source,
+  )
+  const comments = normalizeReviewComments(
+    [{ id: 'inline', created_at: '2026-10-20T01:00:00Z', body }],
+    source,
+  )
+  for (const event of [...events, ...comments]) {
+    assert.equal(event.body, body)
+    assert.ok(event.excerpt)
+    assert.ok(Array.from(event.excerpt).length <= 140)
+    assert.doesNotMatch(event.excerpt, /<\/?(?:details|summary|p)>/)
+    assert.match(event.excerpt, /Bot report/)
+  }
+})
+
 it('carries author association and flags claim comments only when present', () => {
   const events = normalizeRestTimeline(
     [

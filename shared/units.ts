@@ -3,9 +3,10 @@ import { contributionTypes } from './contribution'
 import { isSelf, viewerLoginOf } from './identity'
 import { combineItems } from './timeline'
 import { isDroppedBot } from './turn-rules'
-import type { Unit, UnitCategory, UnitHistoryPr, UnitIssue, UnitKind } from './unit'
+import type { Unit, UnitBeat, UnitCategory, UnitHistoryPr, UnitIssue, UnitKind } from './unit'
 import {
   firstReplyMs,
+  type Activity,
   type Check,
   type ClosingIssue,
   type Item,
@@ -22,6 +23,8 @@ export type FixedBy = {
   authorLogin: string
   state: ItemState
   createdAt?: string
+  /** Verified targets from this PR's closingIssuesReferences. */
+  closes: string[]
 }
 
 export type UnitDraft = {
@@ -360,6 +363,73 @@ export function lastOtherActivityAt(items: readonly Item[], nowMs: number): stri
   return new Date(latest).toISOString()
 }
 
+/** How many beats a card shows. The preview carries the rest. */
+export const BEAT_LIMIT = 2
+
+function beatVerb(activity: Activity): string | null {
+  switch (activity.kind) {
+    case 'create':
+      return null
+    case 'comment':
+      return 'commented'
+    case 'review':
+      switch (activity.reviewState) {
+        case 'APPROVED':
+          return 'approved'
+        case 'CHANGES_REQUESTED':
+          return 'requested changes'
+        case 'DISMISSED':
+          return 'review dismissed'
+        default:
+          return 'reviewed'
+      }
+    case 'push':
+      return 'pushed commits'
+    default: {
+      const exhaustive: never = activity.kind
+      return exhaustive
+    }
+  }
+}
+
+/**
+ * Only the newest beat carries a full node. Older beats are the small ones, the
+ * same way the preview dims everything that is not the current position.
+ */
+function beatNode(_activity: Activity, isLast: boolean): UnitBeat['node'] {
+  return isLast ? 'dot' : 'minor'
+}
+
+/**
+ * The newest few beats of a card, drawn from the same activities the preview
+ * renders. Opening, closing and merging are structural and stay out of the
+ * preview strip: they are what the card header already says.
+ */
+export function recentBeats(items: readonly Item[], limit = BEAT_LIMIT): UnitBeat[] {
+  const combined = combinedItem(items)
+  if (!combined) return []
+  const viewer = viewerLoginOf(combined)
+  const beats = combined.activities
+    .filter(activity => activity.kind !== 'create' && !isDroppedBot(activity))
+    .map(activity => ({ activity, at: Date.parse(activity.at) }))
+    .filter(entry => Number.isFinite(entry.at))
+    .sort((left, right) => left.at - right.at)
+    .slice(-limit)
+  return beats.map(({ activity }, index) => ({
+    at: activity.at,
+    actor: activity.actor.login,
+    what: beatVerb(activity) ?? 'updated',
+    node: beatNode(activity, index === beats.length - 1),
+    // Only the newest beat can still be asking something of the viewer. An
+    // older changes-requested review has since been answered.
+    wants:
+      index === beats.length - 1 &&
+      !isSelf(activity.actor, viewer) &&
+      activity.kind === 'review' &&
+      activity.reviewState === 'CHANGES_REQUESTED',
+  }))
+}
+
 export function toUnit(draft: UnitDraft, verdict: Verdict, nowMs: number): Unit {
   const primary = draft.primary
   const ended = primary.state !== 'open'
@@ -393,6 +463,7 @@ export function toUnit(draft: UnitDraft, verdict: Verdict, nowMs: number): Unit 
     ageMs: verdict.ageMs,
     firstReplyMs: firstReplyMs(combinedItem(draft.members) ?? primary),
     links: verdict.links,
+    beats: recentBeats(draft.members),
     members: draft.members.map(item => ({
       repo: item.repo,
       number: item.number,
@@ -436,60 +507,32 @@ function mergedFixFor(
 
 function fixedByFor(issue: Item, byKey: ReadonlyMap<string, Item>): FixedBy | null {
   const viewer = viewerLoginOf(issue)
-  const candidates = new Map<string, FixedBy & { createdAt: string }>()
-
-  const add = (candidate: FixedBy & { createdAt: string }): void => {
-    const key = itemKey(candidate.repo, candidate.number)
-    const current = candidates.get(key)
-    if (!current || (current.authorLogin === 'ghost' && candidate.authorLogin !== 'ghost')) {
-      candidates.set(key, candidate)
-    }
-  }
-
-  for (const pull of issue.linkedPullRequests ?? []) {
-    if (isSelf(pull.author, viewer)) continue
-    const existing = byKey.get(itemKey(pull.repo, pull.number))
-    add({
-      repo: pull.repo,
-      number: pull.number,
-      url: pull.url,
-      authorLogin: pull.author.login,
-      state: existing?.state ?? pull.state,
-      createdAt: existing?.createdAt ?? '',
-    })
-  }
-
-  for (const link of issue.timelineLinks ?? []) {
-    if (link.kind !== 'pr') continue
-    const existing = byKey.get(itemKey(link.repo, link.number))
-    if (!existing || isSelf(existing.author, viewerLoginOf(existing))) continue
-    add({
-      repo: existing.repo,
-      number: existing.number,
-      url: existing.url,
-      authorLogin: existing.author.login,
-      state: existing.state,
-      createdAt: existing.createdAt,
-    })
-  }
-
-  const ranked = [...candidates.values()].sort((left, right) => {
-    if (left.state === 'merged' && right.state !== 'merged') return -1
-    if (right.state === 'merged' && left.state !== 'merged') return 1
+  const candidates = [...byKey.values()].filter(
+    pull =>
+      pull.kind === 'pr' &&
+      pull.state === 'merged' &&
+      !isSelf(pull.author, viewer) &&
+      // A mention or an unhydrated stub is not evidence of a fix.
+      pull.closingIssues?.some(
+        target => target.repo === issue.repo && target.number === issue.number,
+      ),
+  )
+  candidates.sort((left, right) => {
     const leftAt = Date.parse(left.createdAt)
     const rightAt = Date.parse(right.createdAt)
-    if (!Number.isNaN(leftAt) && !Number.isNaN(rightAt) && leftAt !== rightAt)
+    if (Number.isFinite(leftAt) && Number.isFinite(rightAt) && leftAt !== rightAt)
       return rightAt - leftAt
     return right.number - left.number
   })
-  const best = ranked[0]
+  const best = candidates[0]
   if (!best) return null
   return {
     repo: best.repo,
     number: best.number,
     url: best.url,
-    authorLogin: best.authorLogin,
+    authorLogin: best.author.login,
     state: best.state,
-    ...(best.createdAt ? { createdAt: best.createdAt } : {}),
+    createdAt: best.createdAt,
+    closes: (best.closingIssues ?? []).map(target => itemKey(target.repo, target.number)),
   }
 }

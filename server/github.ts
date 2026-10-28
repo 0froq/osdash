@@ -126,6 +126,7 @@ type RawNode = {
   timelineItems?: { nodes?: Array<RawTimeline | null> | null }
   assignees?: { nodes?: Array<RawActor | null> | null }
   closingIssuesReferences?: {
+    pageInfo?: { hasNextPage?: boolean }
     nodes?: Array<{
       number?: number
       url?: string
@@ -429,6 +430,27 @@ ${PULL_REQUEST_FIELDS}
   }
 `
 
+// Fix candidates need identity and closing targets, not reviews, CI or inline comments.
+const FIXING_PULL_BY_NUMBER = `
+  query FixingPull($owner: String!, $name: String!, $number: Int!) {
+    repository(owner: $owner, name: $name) {
+      pullRequest(number: $number) {
+        __typename number title url state merged createdAt closedAt
+        author { __typename login }
+        repository { nameWithOwner }
+        closingIssuesReferences(first: 100) {
+          pageInfo { hasNextPage }
+          nodes {
+            number url state title
+            repository { nameWithOwner }
+            author { __typename login }
+          }
+        }
+      }
+    }
+  }
+`
+
 const ISSUE_BY_NUMBER = `
   query ClosingIssue($owner: String!, $name: String!, $number: Int!) {
     repository(owner: $owner, name: $name) {
@@ -455,6 +477,7 @@ type IssueByNumberPayload = {
 }
 
 const MAX_CLOSING_ISSUE_HYDRATIONS = 20
+const MAX_FIXING_PULL_HYDRATIONS = 20
 
 function parseRepo(nameWithOwner: string): { owner: string; name: string } | null {
   const slash = nameWithOwner.indexOf('/')
@@ -467,6 +490,7 @@ async function fetchLinkedPullRequest(
   repo: string,
   number: number,
   viewerLogin?: string,
+  query = PULL_BY_NUMBER,
 ): Promise<Item | null> {
   const parts = parseRepo(repo)
   if (!parts) return null
@@ -478,7 +502,7 @@ async function fetchLinkedPullRequest(
       'User-Agent': 'osdash',
     },
     body: JSON.stringify({
-      query: PULL_BY_NUMBER,
+      query,
       variables: { owner: parts.owner, name: parts.name, number },
     }),
     signal: AbortSignal.timeout(20_000),
@@ -488,10 +512,13 @@ async function fetchLinkedPullRequest(
   if (payload.errors?.length) return null
   const node = payload.data?.repository?.pullRequest
   if (!node) return null
+  // Incomplete target metadata cannot establish a fixing relationship.
+  if (query === FIXING_PULL_BY_NUMBER && node.closingIssuesReferences?.pageInfo?.hasNextPage)
+    return null
   return mapNode(node, viewerLogin)
 }
 
-function collectMissingSelfLinkedPulls(
+function collectMissingLinkedPulls(
   items: readonly Item[],
   seen: ReadonlySet<string>,
   viewerLogin: string,
@@ -500,7 +527,7 @@ function collectMissingSelfLinkedPulls(
   const queued = new Set<string>()
   for (const item of items) {
     for (const link of item.linkedPullRequests ?? []) {
-      if (!isSelf(link.author, viewerLogin)) continue
+      if (!isSelf(link.author, viewerLogin) && link.state !== 'merged') continue
       const key = `${link.repo}#${link.number}`
       if (seen.has(key) || queued.has(key)) continue
       queued.add(key)
@@ -548,6 +575,7 @@ async function hydrateMissingClosingIssues(
   const missing: Array<{ repo: string; number: number }> = []
   const queued = new Set<string>()
   for (const item of items) {
+    if (item.kind !== 'pr' || !isSelf(item.author, viewerLogin)) continue
     for (const issue of item.closingIssues ?? []) {
       const key = `${issue.repo}#${issue.number}`
       if (seen.has(key) || queued.has(key)) continue
@@ -579,16 +607,25 @@ function itemForJudge(draft: UnitDraft): Item {
   }
 }
 
-async function hydrateMissingLinkedPullRequests(
+export async function hydrateMissingLinkedPullRequests(
   token: string,
   viewerLogin: string,
   items: Item[],
   seen: Set<string>,
 ): Promise<void> {
-  const missing = collectMissingSelfLinkedPulls(items, seen, viewerLogin)
+  const missing = collectMissingLinkedPulls(items, seen, viewerLogin)
+  let fixingPulls = 0
   for (const link of missing) {
+    const self = isSelf(link.author, viewerLogin)
+    if (!self && fixingPulls++ >= MAX_FIXING_PULL_HYDRATIONS) continue
     const key = `${link.repo}#${link.number}`
-    const fetched = await fetchLinkedPullRequest(token, link.repo, link.number, viewerLogin)
+    const fetched = await fetchLinkedPullRequest(
+      token,
+      link.repo,
+      link.number,
+      viewerLogin,
+      self ? PULL_BY_NUMBER : FIXING_PULL_BY_NUMBER,
+    ).catch(() => null)
     if (!fetched || seen.has(key)) continue
     seen.add(key)
     items.push(fetched)
@@ -914,12 +951,13 @@ export async function loadUnits(
     }
   }
 
+  await hydrateMissingClosingIssues(token, viewerLogin, raw, seen)
   await hydrateMissingLinkedPullRequests(token, viewerLogin, raw, seen)
   await hydrateMissingClosingIssues(token, viewerLogin, raw, seen)
   await enrichItemsFromRest(
     token,
     viewerLogin,
-    raw,
+    raw.filter(item => item.kind !== 'pr' || isSelf(item.author, viewerLogin)),
     classifierEnv.CACHE,
     now.getTime(),
     options.fresh === true,

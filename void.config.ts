@@ -8,12 +8,13 @@ export default defineConfig({
     appType: 'framework',
     build: 'pnpm exec vp run build',
     bindings: {
-      kv: 'CACHE',
       ai: 'AI',
     },
   },
   cloudflare: {
     name: 'osdash',
+    durable_objects: { bindings: [{ name: 'DEVICE_RELAY', class_name: 'DeviceRelay' }] },
+    migrations: [{ tag: 'device-relay-v1', new_sqlite_classes: ['DeviceRelay'] }],
     routes: [{ pattern: 'osdash.froq.me', custom_domain: true }],
     workers_dev: false,
     preview_urls: true,

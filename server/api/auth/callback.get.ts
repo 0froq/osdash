@@ -1,6 +1,5 @@
 import { createError, getQuery, sendRedirect, type H3Event } from 'h3'
-import { bindingString, workerEnv } from '../../bindings'
-import { readCache } from '../../cache'
+import { bindingString } from '../../bindings'
 import { exchangeOAuthCode, fetchGitHubUser } from '../../auth/github-oauth'
 import { parseCallbackOrigin, planOAuthCallback, verifyOAuthState } from '../../auth/oauth-state'
 import { getRequestOrigin } from '../../request-origin'
@@ -14,16 +13,15 @@ export default defineEventHandler(async event => {
     throw createError({ statusCode: 400, statusMessage: 'Missing OAuth code or state' })
   }
 
-  const store = workerEnv(event).CACHE
   const requestOrigin = getRequestOrigin(event)
   const callbackOrigin = callbackOriginFromEvent(event)
+  const secret = bindingString(event, 'SESSION_SECRET')
+  if (!secret) {
+    throw createError({ statusCode: 503, statusMessage: 'OAuth is not configured' })
+  }
+  const verified = await verifyOAuthState(secret, state, Date.now())
   let redirectUri: string
   if (callbackOrigin) {
-    const sessionSecret = bindingString(event, 'SESSION_SECRET')
-    if (!sessionSecret) {
-      throw createError({ statusCode: 503, statusMessage: 'OAuth is not configured' })
-    }
-    const verified = await verifyOAuthState(sessionSecret, state, Date.now())
     const plan = planOAuthCallback({
       requestOrigin,
       callbackOrigin,
@@ -44,30 +42,28 @@ export default defineEventHandler(async event => {
         throw new Error(`unexpected oauth plan ${String(unreachable)}`)
       }
     }
+  } else if (!verified || verified.origin !== requestOrigin) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid OAuth state' })
   } else {
-    const stateHit = await readCache(store, `oauth:v1:${state}`, Date.now())
-    if (!stateHit) {
-      throw createError({ statusCode: 400, statusMessage: 'Invalid OAuth state' })
-    }
     redirectUri = `${requestOrigin}/api/auth/callback`
   }
 
   const clientId = bindingString(event, 'GITHUB_CLIENT_ID')
   const clientSecret = bindingString(event, 'GITHUB_CLIENT_SECRET')
-  const sessionSecret = bindingString(event, 'SESSION_SECRET')
-  if (!clientId || !clientSecret || !sessionSecret) {
+  if (!clientId || !clientSecret) {
     throw createError({ statusCode: 503, statusMessage: 'OAuth is not configured' })
   }
 
   const token = await exchangeOAuthCode(clientId, clientSecret, code, redirectUri)
   const profile = await fetchGitHubUser(token)
-  const sessionId = await createSession(store, sessionSecret, {
+  const sealed = await createSession(secret, {
+    id: profile.id,
     login: profile.login,
     token,
     name: profile.name ?? undefined,
     avatarUrl: profile.avatarUrl ?? undefined,
   })
-  setSessionCookie(event, sessionId)
+  setSessionCookie(event, sealed)
   return sendRedirect(event, '/', 302)
 })
 

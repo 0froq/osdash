@@ -88,6 +88,8 @@ it('lists primary, history, closing and mention issues in order', () => {
   assert.equal(items[0]?.kind, 'pr')
   assert.equal(items[0]?.authorLogin, 'octo-dev')
   assert.deepEqual(items[0]?.closes, ['acme/app#1', 'acme/app#2'])
+  assert.equal(items[0]?.closingEvidence, 'explicit')
+  assert.equal(items[1]?.closingEvidence, 'explicit')
   assert.equal(items[1]?.state, 'closed')
   assert.equal(items[1]?.createdAt, '2026-10-05T00:00:00.000Z')
   assert.equal(items[1]?.closedAt, '2026-10-09T00:00:00.000Z')
@@ -114,6 +116,7 @@ it('falls back to the unit closing issues for a history PR without a member', ()
   assert.equal(history?.createdAt, null)
   assert.equal(history?.authorLogin, '')
   assert.deepEqual(history?.closes, ['acme/app#1'])
+  assert.equal(history?.closingEvidence, 'inferred')
 })
 
 it('builds an issue-only card with a fixed-by PR', () => {
@@ -129,6 +132,7 @@ it('builds an issue-only card with a fixed-by PR', () => {
         authorLogin: 'pi0',
         state: 'merged',
         createdAt: '2026-10-12T00:00:00.000Z',
+        closes: ['acme/app#880'],
       },
       members: [{ repo: 'acme/app', number: 880, kind: 'issue', authorLogin: 'octo-dev' }],
     }),
@@ -140,11 +144,12 @@ it('builds an issue-only card with a fixed-by PR', () => {
   assert.equal(fixed.role, 'fixed-by')
   assert.equal(fixed.kind, 'pr')
   assert.deepEqual(fixed.closes, ['acme/app#880'])
+  assert.equal(fixed.closingEvidence, 'explicit')
   assert.equal(fixed.createdAt, '2026-10-12T00:00:00.000Z')
   assert.equal(fixed.title, '')
 })
 
-it('points a fixed-by PR on a PR card at the shared closing issues', () => {
+it('uses the fixing PR own verified targets instead of copying all card issues', () => {
   const items = storyItems(
     unit({
       issues: [issue(1, 'closing'), issue(3, 'mention')],
@@ -154,11 +159,13 @@ it('points a fixed-by PR on a PR card at the shared closing issues', () => {
         url: `${URL}/pull/30`,
         authorLogin: 'pi0',
         state: 'merged',
+        closes: ['acme/app#1', 'other/repo#99'],
       },
     }),
   )
   const fixed = items.find(item => item.role === 'fixed-by')
-  assert.deepEqual(fixed?.closes, ['acme/app#1'])
+  assert.deepEqual(fixed?.closes, ['acme/app#1', 'other/repo#99'])
+  assert.equal(fixed?.closingEvidence, 'explicit')
 })
 
 it('leaves createdAt null for an issue known only through closingIssuesReferences', () => {
@@ -166,4 +173,5 @@ it('leaves createdAt null for an issue known only through closingIssuesReference
   assert.equal(items[1]?.createdAt, null)
   assert.equal(items[1]?.closedAt, null)
   assert.equal(items[0]?.authorLogin, '')
+  assert.equal(items[0]?.closingEvidence, 'inferred')
 })

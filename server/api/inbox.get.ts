@@ -1,5 +1,4 @@
 import { createError, getQuery } from 'h3'
-import { workerEnv } from '../bindings'
 import {
   INBOX_STALE_MS,
   loadInboxUnits,
@@ -9,8 +8,11 @@ import {
   type InboxPayload,
 } from '../inbox-response'
 import { MOCK_VIEWER, mockUnits } from '../mock'
-import { devMock, mockPrefsState, mockSeenState } from '../mock-state'
+import { devMock } from '../mock-state'
+import { loadUnreadNotifications, type NotificationSnapshot } from '../notifications'
 import type { SessionUser } from '../session'
+
+const emptyNotes: NotificationSnapshot = { scope: true, threads: [] }
 
 export default defineEventHandler(async event => {
   const query = getQuery(event)
@@ -19,17 +21,14 @@ export default defineEventHandler(async event => {
   if (devMock(event)) {
     const user: SessionUser = { login: MOCK_VIEWER, token: '', name: 'Octo Dev' }
     return presentInbox(
-      undefined,
       user,
       {
         generatedAt: now.toISOString(),
         truncated: false,
         units: mockUnits(nowMs),
       },
-      nowMs,
       { cached: false, mock: true },
-      mockSeenState(nowMs),
-      mockPrefsState(),
+      emptyNotes,
     )
   }
 
@@ -37,15 +36,15 @@ export default defineEventHandler(async event => {
   if (!user) throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
 
   const refresh = query.refresh === '1'
-  const store = workerEnv(event).CACHE
+  const snapshot = await loadUnreadNotifications(user.token, user.login, undefined, nowMs, refresh)
 
   if (!refresh) {
-    const cached = await readInboxCache(store, user.login, nowMs)
+    const cached = await readInboxCache(undefined, user.login, nowMs)
     if (cached) {
       const stale = nowMs - Date.parse(cached.generatedAt) >= INBOX_STALE_MS
       if (stale) {
-        const revalidate = loadInboxUnits(event, user, new Date(), true)
-          .then(body => persistInbox(store, user.login, body, Date.now()))
+        const revalidate = loadInboxUnits(event, user, new Date(), false)
+          .then(body => persistInbox(undefined, user.login, body, Date.now()))
           .catch(error => {
             const message = error instanceof Error ? error.message : 'inbox refresh failed'
             console.warn(`inbox revalidate ${user.login}: ${message}`)
@@ -64,18 +63,19 @@ export default defineEventHandler(async event => {
           console.warn(`inbox revalidate schedule ${user.login}: ${message}`)
         }
       }
-      return presentInbox(store, user, cached, nowMs, {
-        cached: true,
-        revalidating: stale,
-        mock: false,
-      })
+      return presentInbox(
+        user,
+        cached,
+        { cached: true, revalidating: stale, mock: false },
+        snapshot,
+      )
     }
   }
 
   try {
     const body = await loadInboxUnits(event, user, now, refresh)
-    await persistInbox(store, user.login, body, nowMs)
-    return presentInbox(store, user, body, nowMs, { cached: false, mock: false })
+    await persistInbox(undefined, user.login, body, nowMs)
+    return presentInbox(user, body, { cached: false, mock: false }, snapshot)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'GitHub search failed'
     throw createError({ statusCode: 502, statusMessage: message })

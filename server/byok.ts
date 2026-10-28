@@ -1,51 +1,42 @@
-import { decryptString, encryptString } from './crypto'
-import type { CacheStore } from './cache'
-
 export type ByokSettings = {
   baseUrl: string
   apiKey: string
   model: string
 }
 
-const BYOK_PREFIX = 'byok:v1:'
-const BYOK_TTL_SECONDS = 365 * 24 * 60 * 60
+const MAX_HEADER = 8 * 1024
 
-function byokKey(login: string): string {
-  return `${BYOK_PREFIX}${login.toLowerCase()}`
-}
-
-export async function readByok(
-  store: CacheStore | undefined,
-  secret: string,
-  login: string,
-): Promise<ByokSettings | null> {
-  if (!store) return null
-  const encrypted = await store.get(byokKey(login))
-  if (!encrypted) return null
-  const plain = await decryptString(secret, encrypted)
-  if (!plain) return null
+function fromBase64Url(value: string): Uint8Array | null {
   try {
-    const parsed = JSON.parse(plain) as ByokSettings
-    if (!parsed.baseUrl || !parsed.apiKey || !parsed.model) return null
-    return parsed
+    const padded = value.replace(/-/g, '+').replace(/_/g, '/')
+    const pad = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4))
+    const binary = atob(padded + pad)
+    const bytes = new Uint8Array(binary.length)
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
+    return bytes
   } catch {
     return null
   }
 }
 
-export async function writeByok(
-  store: CacheStore | undefined,
-  secret: string,
-  login: string,
-  settings: ByokSettings | null,
-): Promise<void> {
-  if (!store) return
-  if (!settings) {
-    await store.put(byokKey(login), '', { expirationTtl: 1 })
-    return
+export function parseByokHeader(value: string | undefined): ByokSettings | null {
+  if (!value || value.length > MAX_HEADER) return null
+  const bytes = fromBase64Url(value)
+  if (!bytes) return null
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<ByokSettings>
+    if (!parsed.baseUrl || !parsed.apiKey || !parsed.model) return null
+    return { baseUrl: parsed.baseUrl, apiKey: parsed.apiKey, model: parsed.model }
+  } catch {
+    return null
   }
-  const encrypted = await encryptString(secret, JSON.stringify(settings))
-  await store.put(byokKey(login), encrypted, { expirationTtl: BYOK_TTL_SECONDS })
+}
+
+export function encodeByokHeader(settings: ByokSettings): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(settings))
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 }
 
 export function parseClefLogins(raw: string | undefined | null): string[] {

@@ -1,24 +1,32 @@
 <script setup lang="ts">
-import type { UnitCategory, UnitView } from '#shared/unit'
+import { compareWaitingUnits, type UnitCategory, type UnitView } from '#shared/unit'
 import { copy } from '~/copy/en'
 import { placeUnit, type InboxSection } from '~/composables/useInbox'
 import type { InboxViewName } from '~/components/inbox/Sidebar.vue'
-import { nextMondayMorning, threeDaysLater, tomorrowMorning } from '~/utils/later'
 
 const inbox = useInbox()
 const media = useMedia()
 const prefs = usePrefs(inbox.updateUnit)
+const localBridge = useLocalBridge()
+const storage = useStorageDevice()
+const noteDisabledReason = computed(() =>
+  storage.device.value
+    ? storage.connected.value
+      ? copy.note.loadingLocal
+      : copy.note.storageOffline
+    : copy.note.requiresLocal,
+)
 const route = useRoute()
 const router = useRouter()
 
 const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'helped']
-const repo = ref('')
+const repo = ref<string[]>([])
 const menu = ref<{ unit: UnitView; x: number; y: number } | null>(null)
 const settingsOpen = ref(false)
 
 const view = computed<InboxViewName>(() => {
   const value = route.query.view
-  if (value === 'later' || value === 'starred' || value === 'ended') return value
+  if (value === 'ended') return value
   return 'home'
 })
 
@@ -40,9 +48,7 @@ function placed(unit: UnitView): InboxSection | 'hidden' {
 
 function onHome(unit: UnitView): boolean {
   const section = placed(unit)
-  return (
-    section === 'mine' || section === 'activity' || section === 'waiting' || section === 'ended'
-  )
+  return section === 'mine' || section === 'waiting' || section === 'ended'
 }
 
 const categoryCounts = computed(() => {
@@ -60,13 +66,9 @@ const categoryCounts = computed(() => {
 })
 
 const homeCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'mine').length)
-const laterCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'later').length)
 const endedCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'ended').length)
-const starredCount = computed(() => inbox.units.value.filter(unit => unit.starred).length)
 
 function inView(unit: UnitView): boolean {
-  if (view.value === 'later') return placed(unit) === 'later'
-  if (view.value === 'starred') return unit.starred
   if (view.value === 'ended') return placed(unit) === 'ended'
   return onHome(unit)
 }
@@ -86,13 +88,14 @@ const repoChips = computed(() => {
 })
 
 const visible = computed(() => {
-  const rows = pool.value.filter(unit => (repo.value ? unit.repo === repo.value : true))
+  const rows = pool.value.filter(unit => repo.value.length === 0 || repo.value.includes(unit.repo))
   rows.sort((first, second) => second.ageMs - first.ageMs)
   return rows
 })
 
 function sectionRows(section: InboxSection): UnitView[] {
   const rows = visible.value.filter(unit => placed(unit) === section)
+  if (section === 'waiting') return rows.sort(compareWaitingUnits)
   if (section === 'ended') {
     return rows.sort(
       (first, second) => Date.parse(second.closedAt ?? '') - Date.parse(first.closedAt ?? ''),
@@ -121,13 +124,13 @@ function writeQuery(patch: Record<string, string | undefined>): void {
 }
 
 function selectView(next: InboxViewName): void {
-  repo.value = ''
+  repo.value = []
   menu.value = null
   writeQuery({ view: next === 'home' ? undefined : next, cat: undefined })
 }
 
 function selectCategory(next: UnitCategory): void {
-  repo.value = ''
+  repo.value = []
   menu.value = null
   writeQuery({
     view: undefined,
@@ -135,8 +138,8 @@ function selectCategory(next: UnitCategory): void {
   })
 }
 
-function selectRepo(name: string): void {
-  repo.value = name
+function selectRepo(names: string[]): void {
+  repo.value = names
 }
 
 function openMenu(unit: UnitView, event: MouseEvent): void {
@@ -147,6 +150,11 @@ function openMenu(unit: UnitView, event: MouseEvent): void {
 function markRead(unit: UnitView): void {
   menu.value = null
   seen.mark(unit)
+}
+
+function markLater(unit: UnitView, at: number): void {
+  menu.value = null
+  later.snooze(unit, at)
 }
 
 function queryRecord(): Record<string, string> {
@@ -160,12 +168,20 @@ function queryRecord(): Record<string, string> {
 const selectedId = ref('')
 let pushedOpen = false
 const seen = useSeen(inbox.updateUnit)
+const later = useLater(inbox.updateUnit)
 const openId = computed(() => (typeof route.query.open === 'string' ? route.query.open : ''))
 const openUnit = computed(() => inbox.units.value.find(unit => unit.id === openId.value) ?? null)
+watch(
+  [() => openUnit.value?.id, storage.session, storage.connected, storage.revision],
+  () => {
+    if (openUnit.value) void prefs.loadNotes(openUnit.value)
+  },
+  { immediate: true },
+)
 
 const flat = computed(() => {
   if (!showHome.value) return visible.value
-  return (['mine', 'activity', 'waiting', 'ended'] as const).flatMap(section =>
+  return (['mine', 'waiting', 'ended'] as const).flatMap(section =>
     showSection(sectionRows(section)) ? sectionRows(section) : [],
   )
 })
@@ -220,14 +236,6 @@ useShortcuts({
     if (unit) selectUnit(unit)
   },
   close: closePreview,
-  star() {
-    const unit = selectedUnit()
-    if (unit) void prefs.setStar(unit, !unit.starred)
-  },
-  later() {
-    const unit = selectedUnit()
-    if (unit) void prefs.setLater(unit, tomorrowMorning())
-  },
   read() {
     const unit = selectedUnit()
     if (unit) seen.mark(unit)
@@ -237,29 +245,29 @@ useShortcuts({
   },
 })
 
-function applyLater(unit: UnitView, preset: string | null): void {
-  menu.value = null
-  if (preset === null) {
-    void prefs.setLater(unit, null)
-    return
-  }
-  if (preset === 'tomorrow') {
-    void prefs.setLater(unit, tomorrowMorning())
-    return
-  }
-  if (preset === 'three-days') {
-    void prefs.setLater(unit, threeDaysLater())
-    return
-  }
-  if (preset === 'monday') {
-    void prefs.setLater(unit, nextMondayMorning())
-    return
-  }
+function addNote(unit: UnitView): void {
+  prefs.addNote(unit)
 }
 
-function toggleStar(unit: UnitView): void {
-  menu.value = null
-  void prefs.setStar(unit, !unit.starred)
+function saveNote(
+  unit: UnitView,
+  payload: { id: string; text: string; version: string | null },
+): void {
+  const existing = prefs.notesOf(unit).find(note => note.id === payload.id)
+  if (!existing) return
+  void prefs.saveNote(unit, { ...existing, text: payload.text, version: payload.version })
+}
+
+function cancelNote(unit: UnitView, noteId: string): void {
+  prefs.cancelNote(unit, noteId)
+}
+
+function moveNote(unit: UnitView, payload: { id: string; anchor: string }): void {
+  void prefs.moveNote(unit, payload.id, payload.anchor)
+}
+
+function deleteNote(unit: UnitView, noteId: string): void {
+  void prefs.deleteNote(unit, noteId)
 }
 
 const intro = ref(true)
@@ -272,6 +280,29 @@ watch(
   { once: true },
 )
 
+watch(
+  () => inbox.viewer.value?.login,
+  (login, previous) => {
+    if (previous && login !== previous) {
+      settingsOpen.value = false
+      void localBridge.reset()
+    }
+    storage.start(login ?? '')
+  },
+  { immediate: true },
+)
+
+function logout() {
+  settingsOpen.value = false
+  storage.reset()
+  void localBridge.reset()
+  void inbox.logout()
+}
+
+onBeforeUnmount(() => {
+  storage.reset()
+  void localBridge.reset()
+})
 onMounted(() => {
   void inbox.load(false)
 })
@@ -290,12 +321,10 @@ onMounted(() => {
         :view="view"
         :category="category"
         :home-count="homeCount"
-        :later-count="laterCount"
-        :starred-count="starredCount"
         :ended-count="endedCount"
         :category-counts="categoryCounts"
         @refresh="inbox.load(true)"
-        @logout="inbox.logout()"
+        @logout="logout"
         @settings="settingsOpen = true"
         @view="selectView"
         @category="selectCategory"
@@ -307,12 +336,10 @@ onMounted(() => {
         :view="view"
         :category="category"
         :home-count="homeCount"
-        :later-count="laterCount"
-        :starred-count="starredCount"
         :ended-count="endedCount"
         :category-counts="categoryCounts"
         @refresh="inbox.load(true)"
-        @logout="inbox.logout()"
+        @logout="logout"
         @settings="settingsOpen = true"
         @view="selectView"
         @category="selectCategory"
@@ -368,27 +395,10 @@ onMounted(() => {
         >
           <UnitCard
             v-for="(unit, index) in sectionRows('mine')"
+            :viewer="inbox.viewer.value.login"
             :key="unit.id"
             :index="index"
             :unit="unit"
-            size="large"
-            :selected="unit.id === selectedId"
-            @select="selectUnit(unit)"
-            @menu="openMenu(unit, $event)"
-          />
-        </Section>
-        <Section
-          v-if="showSection(sectionRows('activity'))"
-          :title="copy.sections.activity"
-          :count="sectionRows('activity').length"
-          layout="activity"
-        >
-          <UnitCard
-            v-for="(unit, index) in sectionRows('activity')"
-            :key="unit.id"
-            :index="index"
-            :unit="unit"
-            size="row"
             :selected="unit.id === selectedId"
             @select="selectUnit(unit)"
             @menu="openMenu(unit, $event)"
@@ -400,16 +410,18 @@ onMounted(() => {
           :count="sectionRows('waiting').length"
           layout="waiting"
         >
-          <UnitCard
-            v-for="(unit, index) in sectionRows('waiting')"
-            :key="unit.id"
-            :index="index"
-            :unit="unit"
-            size="small"
-            :selected="unit.id === selectedId"
-            @select="selectUnit(unit)"
-            @menu="openMenu(unit, $event)"
-          />
+          <TransitionGroup name="waiting">
+            <UnitCard
+              v-for="(unit, index) in sectionRows('waiting')"
+              :viewer="inbox.viewer.value.login"
+              :key="unit.id"
+              :index="index"
+              :unit="unit"
+              :selected="unit.id === selectedId"
+              @select="selectUnit(unit)"
+              @menu="openMenu(unit, $event)"
+            />
+          </TransitionGroup>
         </Section>
         <Section
           v-if="showSection(sectionRows('ended'))"
@@ -420,10 +432,10 @@ onMounted(() => {
         >
           <UnitCard
             v-for="(unit, index) in sectionRows('ended')"
+            :viewer="inbox.viewer.value.login"
             :key="unit.id"
             :index="index"
             :unit="unit"
-            size="small"
             :selected="unit.id === selectedId"
             @select="selectUnit(unit)"
             @menu="openMenu(unit, $event)"
@@ -431,53 +443,17 @@ onMounted(() => {
         </Section>
       </template>
       <Section
-        v-else-if="view === 'later'"
-        :title="copy.nav.later"
-        :count="visible.length"
-        layout="mine"
-        :empty="copy.emptyLater"
-      >
-        <UnitCard
-          v-for="(unit, index) in visible"
-          :key="unit.id"
-          :index="index"
-          :unit="unit"
-          size="large"
-          :selected="unit.id === selectedId"
-          @select="selectUnit(unit)"
-          @menu="openMenu(unit, $event)"
-        />
-      </Section>
-      <Section
-        v-else-if="view === 'starred'"
-        :title="copy.nav.starred"
-        :count="visible.length"
-        layout="mine"
-        :empty="copy.emptyStarred"
-      >
-        <UnitCard
-          v-for="(unit, index) in visible"
-          :key="unit.id"
-          :index="index"
-          :unit="unit"
-          size="large"
-          :selected="unit.id === selectedId"
-          @select="selectUnit(unit)"
-          @menu="openMenu(unit, $event)"
-        />
-      </Section>
-      <Section
         v-else
         :title="copy.sections.ended"
         :count="visible.length"
         layout="ended"
       >
         <UnitCard
+          :viewer="inbox.viewer.value.login"
           v-for="(unit, index) in visible"
           :key="unit.id"
           :index="index"
           :unit="unit"
-          size="small"
           :selected="unit.id === selectedId"
           @select="selectUnit(unit)"
           @menu="openMenu(unit, $event)"
@@ -491,8 +467,7 @@ onMounted(() => {
       :y="menu.y"
       @close="menu = null"
       @read="markRead(menu.unit)"
-      @star="toggleStar(menu.unit)"
-      @later="applyLater(menu.unit, $event)"
+      @later="markLater(menu.unit, $event)"
     />
     <template #preview>
       <PreviewPanel
@@ -500,16 +475,38 @@ onMounted(() => {
         :viewer="inbox.viewer.value?.login ?? ''"
         :mobile="media.isMobile.value"
         :backdrop="media.isMobile.value || media.isOverlay.value"
+        :notes="openUnit ? prefs.notesOf(openUnit) : []"
+        :notes-editable="!!openUnit && prefs.canEditNotesFor(openUnit)"
+        :editable-note-ids="openUnit ? prefs.editableNoteIds(openUnit) : []"
+        :note-disabled-reason="noteDisabledReason"
+        :note-error="prefs.noteError.value"
+        @notes-reload="openUnit && prefs.loadNotes(openUnit)"
+        @device-settings="settingsOpen = true"
         @close="closePreview"
-        @star="openUnit && toggleStar(openUnit)"
-        @later="openUnit && applyLater(openUnit, $event)"
+        @note-add="openUnit && addNote(openUnit)"
+        @note-save="openUnit && saveNote(openUnit, $event)"
+        @note-move="openUnit && moveNote(openUnit, $event)"
+        @note-delete="openUnit && deleteNote(openUnit, $event)"
+        @note-cancel="openUnit && cancelNote(openUnit, $event)"
       />
     </template>
-    <SettingsSheet v-model:open="settingsOpen" />
+    <SettingsSheet
+      v-model:open="settingsOpen"
+      :viewer-login="inbox.viewer.value?.login ?? ''"
+    />
   </InboxShell>
 </template>
 
 <style scoped>
+@media (prefers-reduced-motion: no-preference) {
+  .waiting-move {
+    transition:
+      transform var(--dur-3) var(--ease),
+      background-color var(--dur-1) var(--ease),
+      border-color var(--dur-1) var(--ease);
+  }
+}
+
 .inbox-status {
   display: flex;
   gap: 8px;

@@ -16,29 +16,11 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
       :class="{
         other: !cell.mine,
         primary: cell.primary,
-        dashed: cell.dashed,
-        fade: cell.fade,
+        current: cell.node === 'now',
+        on: focus === cell.lane,
         dim: focus !== null && focus !== cell.lane,
       }"
     >
-      <i
-        v-if="cell.up"
-        class="st-up"
-      />
-      <i
-        v-if="cell.down"
-        class="st-down"
-      />
-      <i
-        v-if="cell.hl"
-        class="st-h st-hl"
-        :class="[`to-${cell.link}`, { cross: cell.cross }]"
-      />
-      <i
-        v-if="cell.hr"
-        class="st-h st-hr"
-        :class="[`to-${cell.link}`, { cross: cell.cross }]"
-      />
       <i
         v-if="cell.node"
         class="st-node"
@@ -53,94 +35,38 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
 <style scoped>
 .st-gutter {
   display: flex;
+  height: 100%;
 }
 
 .st-cell {
   position: relative;
   flex: none;
   width: var(--st-col);
+  height: 100%;
   color: var(--st-ink);
-  transition: opacity 220ms var(--ease);
+  transition: color 220ms var(--ease);
 }
 
 .st-cell.other {
   color: var(--st-ink-other);
 }
 
+.st-cell.on {
+  color: var(--fg);
+}
+
+/* Dim the ink only. Opacity would fade the paper too, and the rail shows through the node. */
 .st-cell.dim {
-  opacity: 0.22;
+  color: color-mix(in oklab, var(--st-ink) 22%, transparent);
+}
+
+.st-cell.other.dim {
+  color: color-mix(in oklab, var(--st-ink-other) 22%, transparent);
 }
 
 .st-cell > i {
   position: absolute;
   display: block;
-}
-
-.st-up,
-.st-down {
-  left: calc(50% - var(--st-w) / 2);
-  width: var(--st-w);
-  background: currentColor;
-}
-
-.st-cell.primary {
-  --st-w: 2px;
-}
-
-.st-up {
-  top: 0;
-  height: var(--st-y);
-}
-
-.st-down {
-  top: var(--st-y);
-  bottom: 0;
-}
-
-.st-cell.fade .st-up {
-  background: linear-gradient(transparent, currentColor);
-}
-
-.st-cell.dashed .st-up,
-.st-cell.dashed .st-down,
-.row-now .st-cell.primary .st-down {
-  background: repeating-linear-gradient(currentColor 0 3px, transparent 3px 7px);
-}
-
-.st-h {
-  top: calc(var(--st-y) - 0.75px);
-  height: 1.5px;
-  background: currentColor;
-}
-
-.st-hl {
-  left: 0;
-  right: 50%;
-}
-
-.st-hr {
-  left: 50%;
-  right: 0;
-}
-
-.st-h.to-mine {
-  color: var(--st-ink);
-}
-
-.st-h.to-other {
-  color: var(--st-ink-other);
-}
-
-.st-h.to-good {
-  color: var(--st-good);
-}
-
-/* A connector bridges over the rails it crosses. */
-.st-h.cross {
-  z-index: 1;
-  box-shadow:
-    0 -2.5px 0 var(--bg),
-    0 2.5px 0 var(--bg);
 }
 
 /* Nodes */
@@ -153,47 +79,113 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
   height: 7px;
   border: 1.5px solid transparent;
   border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 0 2.5px var(--bg);
+  /* Paper under the ink: a translucent fill alone lets the rail show through
+     the dot, which reads as a darker stripe inside it. */
+  background: var(--st-paper, var(--bg));
+  box-shadow: 0 0 0 2.5px var(--st-paper, var(--bg));
   transform: translate(-50%, -50%);
   transition:
     width 300ms var(--ease),
     height 300ms var(--ease),
     border-radius 300ms var(--ease),
     border-color 200ms var(--ease),
-    background-color 200ms var(--ease);
+    background-color 200ms var(--ease),
+    color var(--dur-2) var(--ease);
+}
+
+/* A filled dot keeps an opaque paper base and paints its ink as a solid inner
+   disc, so a translucent rail can never show through the middle. */
+.n-dot {
+  border: 0;
+  background: var(--st-paper, var(--bg));
+}
+
+.n-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  transform-origin: center;
+  animation: st-fill 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
 .n-open {
-  width: 9px;
-  height: 9px;
   border-color: currentColor;
-  background: var(--bg);
+  background: var(--st-paper, var(--bg));
+  animation: st-ring 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@keyframes st-fill {
+  from {
+    transform: scale(0.45);
+  }
+
+  60% {
+    transform: scale(1.28);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes st-ring {
+  from {
+    transform: translate(-50%, -50%) scale(0.45);
+  }
+
+  60% {
+    transform: translate(-50%, -50%) scale(1.28);
+  }
+
+  to {
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .n-minor {
   width: 5px;
   height: 5px;
-  box-shadow: 0 0 0 2px var(--bg);
+  border: 0;
+  background: var(--st-paper, var(--bg));
+  box-shadow: 0 0 0 2.5px var(--st-paper, var(--bg));
+}
+
+.n-minor::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .n-merged {
   width: 9px;
   height: 9px;
+  border: 0;
   background: var(--st-good);
+}
+
+.st-cell.dim .n-merged {
+  background: color-mix(in oklab, var(--st-good) 22%, var(--st-paper, var(--bg)));
 }
 
 .n-join {
   width: 9px;
   height: 9px;
   border-color: var(--st-good);
-  background: var(--bg);
+  background: var(--st-paper, var(--bg));
+}
+
+.st-cell.dim .n-join {
+  border-color: color-mix(in oklab, var(--st-good) 22%, transparent);
 }
 
 .n-closed {
   width: 11px;
   height: 11px;
-  background: var(--bg);
+  background: var(--st-paper, var(--bg));
   box-shadow: none;
 }
 
@@ -220,8 +212,19 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
   width: 7px;
   height: 17px;
   border-radius: 4px;
-  background: var(--bg);
+  background: var(--st-paper, var(--bg));
   box-shadow: none;
+}
+
+/* Paper past the stack, so the hover spread stays off the rail ends. */
+.n-stack {
+  box-shadow:
+    0 -3px 0 var(--st-paper, var(--bg)),
+    0 3px 0 var(--st-paper, var(--bg));
+}
+
+.n-stack {
+  color: color-mix(in oklab, var(--fg) 55%, transparent);
 }
 
 .n-stack b,
@@ -239,7 +242,7 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
 }
 
 .n-stack b:nth-child(1) {
-  top: 18%;
+  top: 14%;
 }
 
 .n-stack b:nth-child(2) {
@@ -247,7 +250,7 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
 }
 
 .n-stack b:nth-child(3) {
-  top: 82%;
+  top: 86%;
 }
 
 .n-group {
@@ -255,7 +258,7 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
   height: 9px;
   border-color: currentColor;
   border-radius: 50%;
-  box-shadow: 0 0 0 2.5px var(--bg);
+  box-shadow: 0 0 0 2.5px var(--st-paper, var(--bg));
 }
 
 .n-group b {
@@ -267,8 +270,8 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
   width: 13px;
   height: 13px;
   border: 2px solid var(--muted);
-  background: var(--bg);
-  box-shadow: 0 0 0 3px var(--bg);
+  background: var(--st-paper, var(--bg));
+  box-shadow: 0 0 0 3px var(--st-paper, var(--bg));
 }
 
 .n-now::before {
@@ -287,24 +290,32 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
   background: var(--accent);
 }
 
-.turn-you .n-now::after {
+.st-cell.dim .n-now {
+  border-color: color-mix(in oklab, var(--muted) 22%, transparent);
+}
+
+.st-cell.dim .n-now::before {
+  background: color-mix(in oklab, var(--muted) 22%, transparent);
+}
+
+.turn-you .st-cell.dim .n-now {
+  border-color: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.turn-you .st-cell.dim .n-now::before {
+  background: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+/*.turn-you .n-now::after {
   content: '';
   position: absolute;
   inset: -2px;
   border: 1.5px solid var(--accent);
   border-radius: 50%;
   animation: st-pulse 2.8s var(--ease) infinite;
-}
+}*/
 
-.n-next {
-  width: 7px;
-  height: 7px;
-  border-color: currentColor;
-  background: var(--bg);
-  opacity: 0.7;
-}
-
-@keyframes st-pulse {
+/*@keyframes st-pulse {
   0% {
     opacity: 0.55;
     transform: scale(1);
@@ -315,5 +326,5 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
     opacity: 0;
     transform: scale(2.2);
   }
-}
+}*/
 </style>

@@ -1,4 +1,4 @@
-import { bindings, defineConfig } from 'cf/config'
+import { bindings, defineConfig, exports as workerExports } from 'cf/config'
 import voidConfig from './void.config.ts'
 
 // Preview adapter only. Production routes stay in void.config.ts.
@@ -16,6 +16,7 @@ export default defineConfig({
     workersDev: cloudflare.workers_dev,
     previewUrls: cloudflare.preview_urls,
     entrypoint: '.output/server/index.mjs',
+    exports: { DeviceRelay: workerExports.durableObject({ storage: 'sqlite' }) },
     assets: {
       notFoundHandling: 'none',
       runWorkerFirst: true,
@@ -23,8 +24,8 @@ export default defineConfig({
     env: {
       // nitro cloudflare-module serves /_nuxt/* via env.ASSETS when run_worker_first is on.
       ASSETS: bindings.assets(),
-      // Preview-only KV (osdash-preview-cache); production uses its own namespace via void.config.ts.
-      CACHE: bindings.kv({ id: '8f2f255a41e143e386864dfae8b188ff' }),
+      DEVICE_RELAY: bindings.durableObject({ worker: cloudflare.name, exportName: 'DeviceRelay' }),
+      DEVICE_RELAY_SCOPE: bindings.text('preview'),
       AI: bindings.ai(),
       GITHUB_CLIENT_ID: bindings.secret(),
       GITHUB_CLIENT_SECRET: bindings.secret(),

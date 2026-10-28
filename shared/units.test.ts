@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { it } from 'vite-plus/test'
 import { expandMissingLinkedPulls } from './timeline'
-import { buildUnitDrafts, toUnit } from './units'
+import { buildUnitDrafts, recentBeats, toUnit } from './units'
 import { judge, type Actor, type Item } from './turn'
 
 const VIEWER = 'octo-dev'
@@ -150,6 +150,7 @@ it('records someone else\u2019s fixing pull request without making it a card', (
     author: user('other'),
     state: 'merged',
     closedAt: '2026-10-03T00:00:00.000Z',
+    closingIssues: [{ ...issue, authorLogin: issue.author.login }],
   })
   const drafts = buildUnitDrafts([issue, other])
   assert.equal(drafts.length, 1)
@@ -185,12 +186,95 @@ it('records a merged pull request by someone else on the viewer pull request car
     author: user('other'),
     state: 'merged',
     createdAt: '2026-10-02T00:00:00.000Z',
+    closingIssues: [closing],
   })
   const drafts = buildUnitDrafts([issue, mine, other])
   assert.equal(drafts.length, 1)
   assert.equal(drafts[0]?.primary.number, 12)
   assert.equal(drafts[0]?.fixedBy?.number, 50)
   assert.equal(drafts[0]?.fixedBy?.createdAt, '2026-10-02T00:00:00.000Z')
+})
+
+it('does not mistake a downstream workaround for an upstream fix', () => {
+  const issue = item('issue', 1329, {
+    repo: 'shikijs/shiki',
+    author: user('hawk90'),
+    timelineLinks: [
+      { event: 'cross-referenced', repo: 'PhyberApex/lightning-talks', number: 942, kind: 'pr' },
+    ],
+    linkedPullRequests: [
+      {
+        repo: 'PhyberApex/lightning-talks',
+        number: 942,
+        url: 'https://github.com/PhyberApex/lightning-talks/pull/942',
+        state: 'merged',
+        author: user('PhyberApex'),
+      },
+    ],
+  })
+  const mine = item('pr', 1340, {
+    repo: issue.repo,
+    closingIssues: [{ ...issue, authorLogin: 'hawk90' }],
+  })
+  const workaround = item('pr', 942, {
+    repo: 'PhyberApex/lightning-talks',
+    author: user('PhyberApex'),
+    state: 'merged',
+    body: 'Upstream tracking: shikijs/shiki#1329. Closes #940',
+    closingIssues: [
+      {
+        repo: 'PhyberApex/lightning-talks',
+        number: 940,
+        url: 'https://github.com/PhyberApex/lightning-talks/issues/940',
+        state: 'closed',
+        title: 'local dependency workaround',
+        authorLogin: 'PhyberApex',
+      },
+    ],
+  })
+  const [draft] = buildUnitDrafts([issue, mine, workaround])
+  assert.ok(draft)
+  assert.equal(draft.fixedBy, null)
+  assert.deepEqual(
+    draft.members.map(item => `${item.repo}#${item.number}`),
+    ['shikijs/shiki#1340', 'shikijs/shiki#1329'],
+  )
+  assert.equal(issue.timelineLinks?.[0]?.number, 942)
+})
+
+it('requires a verified target rather than a merged cross-reference or connected stub', () => {
+  for (const event of ['cross-referenced', 'connected'] as const) {
+    const issue = item('issue', 4, {
+      timelineLinks: [{ event, repo: 'acme/app', number: 50, kind: 'pr' }],
+      linkedPullRequests: [
+        {
+          repo: 'acme/app',
+          number: 50,
+          url: 'https://github.com/acme/app/pull/50',
+          state: 'merged',
+          author: user('other'),
+        },
+      ],
+    })
+    const other = item('pr', 50, { author: user('other'), state: 'merged' })
+    assert.equal(buildUnitDrafts([issue, other])[0]?.fixedBy, null)
+    assert.equal(buildUnitDrafts([issue])[0]?.fixedBy, null)
+  }
+})
+
+it('matches closing targets by repository and number while allowing real cross-repository fixes', () => {
+  const issue = item('issue', 4)
+  const other = item('pr', 50, {
+    repo: 'other/repo',
+    author: user('other'),
+    state: 'merged',
+    closingIssues: [{ ...issue, repo: 'other/repo', authorLogin: issue.author.login }],
+  })
+  assert.equal(buildUnitDrafts([issue, other])[0]?.fixedBy, null)
+  other.closingIssues = [{ ...issue, authorLogin: issue.author.login }]
+  const fix = buildUnitDrafts([issue, other])[0]?.fixedBy
+  assert.equal(fix?.repo, 'other/repo')
+  assert.deepEqual(fix?.closes, ['acme/app#4'])
 })
 
 it('ignores an open competing pull request on the viewer pull request card', () => {
@@ -325,4 +409,55 @@ it('ignores the viewer and dropped bots when dating the latest other activity', 
   })
   const unit = toUnit(buildUnitDrafts([pull])[0]!, judge(pull, NOW), NOW)
   assert.equal(unit.lastOtherActivityAt, '2026-10-16T00:00:00.000Z')
+})
+
+it('previews the newest beats and keeps structural events off the card', () => {
+  const pull = item('pr', 30, {
+    activities: [
+      { kind: 'create', actor: user(VIEWER), at: '2026-10-01T00:00:00.000Z' },
+      { kind: 'push', actor: user(VIEWER), at: '2026-10-02T00:00:00.000Z' },
+      {
+        kind: 'review',
+        actor: user('maintainer'),
+        at: '2026-10-03T00:00:00.000Z',
+        reviewState: 'CHANGES_REQUESTED',
+      },
+      { kind: 'comment', actor: user('maintainer'), at: '2026-10-04T00:00:00.000Z' },
+    ],
+  })
+  const beats = recentBeats([pull])
+  assert.deepEqual(
+    beats.map(beat => beat.what),
+    ['requested changes', 'commented'],
+  )
+  assert.deepEqual(
+    beats.map(beat => beat.node),
+    ['minor', 'dot'],
+  )
+  assert.deepEqual(
+    beats.map(beat => beat.wants),
+    [false, false],
+  )
+  assert.equal(beats.at(-1)?.actor, 'maintainer')
+})
+
+it('marks the beat that asks the viewer to act', () => {
+  const pull = item('pr', 31, {
+    activities: [
+      {
+        kind: 'review',
+        actor: user('maintainer'),
+        at: '2026-10-05T00:00:00.000Z',
+        reviewState: 'CHANGES_REQUESTED',
+      },
+    ],
+  })
+  const beats = recentBeats([pull])
+  assert.equal(beats.length, 1)
+  assert.equal(beats[0]?.wants, true)
+  assert.equal(beats[0]?.node, 'dot')
+})
+
+it('shows no beats when nothing but creation happened', () => {
+  assert.deepEqual(recentBeats([item('issue', 32)]), [])
 })

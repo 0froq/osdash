@@ -25,7 +25,7 @@ const RESPONSE_TTL_SECONDS = 10 * 60
 export type { TimelinePayload } from '../shared/story'
 
 function responseKey(login: string, unitId: string, hash: string): string {
-  return `tlresp:v2:${login.toLowerCase()}:${unitId}:${hash}`
+  return `tlresp:v4:${login.toLowerCase()}:${unitId}:${hash}`
 }
 
 export function reviewCommentsCacheKey(
@@ -35,7 +35,7 @@ export function reviewCommentsCacheKey(
   updatedAt: string | undefined,
 ): string {
   const base = `${cacheViewerLogin(login)}:${repo}#${number}`
-  return updatedAt ? `revcomments:v1:${base}:${updatedAt}` : `revcomments:v1:${base}`
+  return updatedAt ? `revcomments:v2:${base}:${updatedAt}` : `revcomments:v2:${base}`
 }
 
 function ciKey(login: string, repo: string, sha: string): string {
@@ -48,7 +48,9 @@ export function membersHash(unit: Unit): string {
       `${member.kind}:${member.repo}#${member.number}:${member.updatedAt ?? ''}:${member.headSha ?? ''}`,
   )
   if (unit.fixedBy)
-    members.push(`fix:${unit.fixedBy.repo}#${unit.fixedBy.number}:${unit.fixedBy.state}`)
+    members.push(
+      `fix:${unit.fixedBy.repo}#${unit.fixedBy.number}:${unit.fixedBy.state}:${unit.fixedBy.closes.join(',')}`,
+    )
   return members.join('|')
 }
 

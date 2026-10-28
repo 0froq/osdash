@@ -25,3 +25,6 @@ node_modules
 temp
 .data
 server/middleware/__void-dev-trigger.ts
+public/downloads/
+# Harness cache created with a literal, unexpanded home path.
+/~/

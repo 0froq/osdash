@@ -77,11 +77,11 @@ function item(): Item {
 it('includes the viewer login in events and review-comment keys', () => {
   assert.equal(
     eventsCacheKey('Octo-Dev', 'private/repo', 7, UPDATED),
-    `events:v2:octo-dev:private/repo#7:${UPDATED}`,
+    `events:v3:octo-dev:private/repo#7:${UPDATED}`,
   )
   assert.equal(
     reviewCommentsCacheKey('Octo-Dev', 'private/repo', 7, UPDATED),
-    `revcomments:v1:octo-dev:private/repo#7:${UPDATED}`,
+    `revcomments:v2:octo-dev:private/repo#7:${UPDATED}`,
   )
   assert.notEqual(
     eventsCacheKey('alice', 'private/repo', 7, UPDATED),
@@ -125,7 +125,7 @@ it('writes timeline events under the viewer key only', async () => {
     globalThis.fetch = original
   }
   const aliceKey = eventsCacheKey('alice', 'private/repo', 7, UPDATED)
-  const eventKeys = [...store.data.keys()].filter(key => key.startsWith('events:v2:'))
+  const eventKeys = [...store.data.keys()].filter(key => key.startsWith('events:v3:'))
   assert.deepEqual(eventKeys, [aliceKey])
   assert.match(store.data.get(aliceKey) ?? '', /alice-private/)
   assert.equal(store.data.has(`events:v2:private/repo#7:${UPDATED}`), false)

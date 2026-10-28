@@ -1,13 +1,9 @@
 import { createError, readBody } from 'h3'
-import { readInboxCache } from '../inbox-response'
-import { workerEnv } from '../bindings'
-import { devMock, mockMarkSeen, mockUnitsNow } from '../mock-state'
-import { writeSeen, type SeenMark } from '../user-state'
+import { devMock } from '../mock-state'
+import { forgetThreads, markThreadsRead } from '../notifications'
 
-type SeenBody = {
-  id?: string
-  at?: string
-  items?: SeenMark[]
+type ReadBody = {
+  threadIds?: string[]
 }
 
 export default defineEventHandler(async event => {
@@ -15,28 +11,15 @@ export default defineEventHandler(async event => {
   if (!user && !devMock(event))
     throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
 
-  const body = (await readBody(event)) as SeenBody
-  const marks: SeenMark[] = []
-  if (Array.isArray(body.items)) {
-    for (const item of body.items) {
-      if (item && typeof item.id === 'string' && typeof item.at === 'string') marks.push(item)
-    }
-  } else if (typeof body.id === 'string' && typeof body.at === 'string') {
-    marks.push({ id: body.id, at: body.at })
-  }
-  if (marks.length === 0) {
-    throw createError({ statusCode: 400, statusMessage: 'id and at are required' })
-  }
-
-  const nowMs = Date.now()
-  if (devMock(event)) {
-    const seen = mockMarkSeen(marks, mockUnitsNow(nowMs), nowMs)
-    return { ok: true as const, seen }
-  }
-
+  const body = (await readBody(event)) as ReadBody
+  const threadIds = Array.isArray(body.threadIds)
+    ? body.threadIds.filter(id => typeof id === 'string' && id.length > 0 && id.length <= 32)
+    : []
+  if (threadIds.length === 0) return { ok: true as const }
+  if (devMock(event)) return { ok: true as const }
   if (!user) throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
-  const store = workerEnv(event).CACHE
-  const cached = await readInboxCache(store, user.login, nowMs)
-  const seen = await writeSeen(store, user.login, marks, cached?.units ?? [], nowMs)
-  return { ok: true as const, seen }
+
+  await markThreadsRead(user.token, threadIds)
+  await forgetThreads(user.login, threadIds, undefined, Date.now())
+  return { ok: true as const }
 })

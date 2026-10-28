@@ -34,7 +34,6 @@ export default defineNuxtConfig({
         name: 'osdash',
         compatibility_date: '2026-10-19',
         compatibility_flags: ['nodejs_compat', 'nodejs_als'],
-        kv_namespaces: [{ binding: 'CACHE', id: 'local-osdash-cache' }],
       },
     },
   },

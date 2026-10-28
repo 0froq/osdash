@@ -12,11 +12,12 @@ defineProps<{
 
 <template>
   <p class="card-meta">
-    <UnreadDot v-if="unread" />
+    <KindIcon
+      :kind="issue ? 'issue' : 'pr'"
+      :unread="unread"
+    />
     <span class="card-meta-repo">{{ repo }}</span>
-    <span class="card-number">
-      <template v-if="issue">{{ copy.issuePrefix }} </template>#{{ number }}
-    </span>
+    <span class="card-number">#{{ number }}</span>
     <span class="card-meta-time">{{ time }}</span>
   </p>
 </template>
@@ -41,7 +42,10 @@ defineProps<{
 }
 
 .card-number {
+  display: inline-flex;
   flex: 0 0 auto;
+  gap: 4px;
+  align-items: center;
   white-space: nowrap;
 }
 

@@ -1,23 +1,32 @@
 <script setup lang="ts">
 import { withMockQuery } from '#shared/mock-mode'
+import { encodeByokHeader, parseByokHeader } from '#server/byok'
 import { copy } from '~/copy/en'
 
+defineProps<{ viewerLogin: string }>()
 const open = defineModel<boolean>('open', { required: true })
 const { mock } = useMockMode()
 
 type SettingsResponse = {
-  configured: boolean
-  baseUrl: string
-  model: string
   clefBuiltIn: boolean
 }
 
+const BYOK_KEY = 'osdash.byok'
 const baseUrl = ref('')
 const model = ref('')
 const apiKey = ref('')
 const clefBuiltIn = ref(false)
-const saving = ref(false)
 const message = ref('')
+
+function stored(): { baseUrl: string; model: string; apiKey: string } | null {
+  if (typeof localStorage === 'undefined') return null
+  return parseByokHeader(localStorage.getItem(BYOK_KEY) ?? undefined)
+}
+
+function store(value: { baseUrl: string; model: string; apiKey: string } | null): void {
+  if (value === null) localStorage.removeItem(BYOK_KEY)
+  else localStorage.setItem(BYOK_KEY, encodeByokHeader(value))
+}
 
 const dialog = ref<HTMLDialogElement>()
 
@@ -34,38 +43,41 @@ watch(open, shown => {
 
 async function load(): Promise<void> {
   message.value = ''
+  const saved = stored()
+  baseUrl.value = saved?.baseUrl ?? ''
+  model.value = saved?.model ?? ''
   apiKey.value = ''
   try {
     const body = await $fetch<SettingsResponse>(withMockQuery('/api/settings', mock.value))
-    baseUrl.value = body.baseUrl
-    model.value = body.model
     clefBuiltIn.value = body.clefBuiltIn
   } catch {
     message.value = copy.settings.loadFailed
   }
 }
 
-async function save(clear = false): Promise<void> {
-  saving.value = true
+function save(clear = false): void {
   message.value = ''
-  try {
-    await $fetch(withMockQuery('/api/settings', mock.value), {
-      method: 'PUT',
-      body: clear
-        ? { clear: true }
-        : { baseUrl: baseUrl.value, model: model.value, apiKey: apiKey.value },
-    })
-    message.value = clear ? copy.settings.cleared : copy.settings.saved
+  if (clear) {
+    store(null)
+    baseUrl.value = ''
+    model.value = ''
     apiKey.value = ''
-    if (clear) {
-      baseUrl.value = ''
-      model.value = ''
-    }
-  } catch {
-    message.value = copy.settings.saveFailed
-  } finally {
-    saving.value = false
+    message.value = copy.settings.cleared
+    return
   }
+  const previous = stored()
+  const next = {
+    baseUrl: baseUrl.value.trim(),
+    model: model.value.trim(),
+    apiKey: apiKey.value.trim() || previous?.apiKey || '',
+  }
+  if (!next.baseUrl || !next.model || !next.apiKey) {
+    message.value = copy.settings.saveFailed
+    return
+  }
+  store(next)
+  apiKey.value = ''
+  message.value = copy.settings.saved
 }
 </script>
 
@@ -82,6 +94,11 @@ async function save(clear = false): Promise<void> {
       @submit.prevent
     >
       <h2>{{ copy.settings.title }}</h2>
+      <LocalConnectionSettings
+        v-if="open"
+        :viewer-login="viewerLogin"
+      />
+      <h3>{{ copy.settings.classifier }}</h3>
       <p class="settings-note">{{ copy.settings.intro }}</p>
       <p
         v-if="clefBuiltIn"
@@ -118,13 +135,11 @@ async function save(clear = false): Promise<void> {
       <p class="settings-actions">
         <button
           type="button"
-          :disabled="saving"
           @click="save(false)"
           >{{ copy.settings.save }}</button
         >
         <button
           type="button"
-          :disabled="saving"
           @click="save(true)"
           >{{ copy.settings.clear }}</button
         >
@@ -171,7 +186,9 @@ async function save(clear = false): Promise<void> {
 }
 
 .settings-dialog {
-  width: min(440px, calc(100% - 32px));
+  width: min(480px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   padding: 0;
   border: 0;
   border-radius: 14px;

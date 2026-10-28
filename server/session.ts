@@ -3,7 +3,7 @@ import { SESSION_TTL_SECONDS } from './session-store'
 
 export const SESSION_COOKIE = 'osdash_session'
 export type { SessionUser } from './session-store'
-export { createSession, destroySession, readSession } from './session-store'
+export { createSession, readSession } from './session-store'
 
 export function setSessionCookie(event: H3Event, sessionId: string): void {
   setCookie(event, SESSION_COOKIE, sessionId, {

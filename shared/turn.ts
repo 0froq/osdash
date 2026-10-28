@@ -32,6 +32,8 @@ export const RECENT_MS = 14 * DAY_MS
 export type Actor = {
   typename: string
   login: string
+  avatarUrl?: string
+  url?: string
 }
 
 export type ActivityKind = 'create' | 'comment' | 'review' | 'push'

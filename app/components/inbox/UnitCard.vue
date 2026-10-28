@@ -3,11 +3,11 @@ import type { UnitView } from '#shared/unit'
 import { copy } from '~/copy/en'
 import { boardLabel, markLabel, stateLabel, tagLabel } from '~/utils/category'
 import { issueStatus, reasonText } from '~/utils/reason'
-import { absoluteDay, relativeAge, waitingAge } from '~/utils/time'
+import { absoluteDay, relativeAge } from '~/utils/time'
 
 const props = defineProps<{
   unit: UnitView
-  size: 'large' | 'row' | 'small'
+  viewer: string
   selected?: boolean
   index?: number
 }>()
@@ -22,21 +22,13 @@ const line = computed(() => {
   return reasonText(props.unit.reasonCode, props.unit.reasonActor)
 })
 
-const metaTime = computed(() =>
-  props.size === 'small' ? waitingAge(props.unit.ageMs) : relativeAge(props.unit.ageMs),
-)
-
 const endedWhen = computed(() =>
   props.unit.closedAt ? absoluteDay(props.unit.closedAt) : relativeAge(props.unit.ageMs),
 )
 
-const time = computed(() => (props.unit.ended ? endedWhen.value : metaTime.value))
+const time = computed(() => (props.unit.ended ? endedWhen.value : relativeAge(props.unit.ageMs)))
+
 const issueOnly = computed(() => props.unit.kind === 'issue-only')
-const tone = computed(() =>
-  props.size === 'small' && !props.unit.ended && props.unit.tone !== 'none'
-    ? props.unit.tone
-    : undefined,
-)
 
 const status = computed(() => {
   if (props.unit.ended) return stateLabel(props.unit.state)
@@ -57,44 +49,36 @@ const hasNotes = computed(
 <template>
   <article
     class="unit-card"
-    :class="[size, { issue: issueOnly, selected }]"
+    :class="{ issue: issueOnly, selected, mine: unit.myTurn, unread: unit.unread }"
     :data-unit="unit.id"
     :style="{ '--i': Math.min(index ?? 0, 10) }"
     @click="emit('select')"
     @contextmenu.prevent="emit('menu', $event)"
   >
-    <template v-if="size === 'small'">
-      <p class="unit-id">
-        <UnreadDot v-if="unit.unread" />
-        <span class="unit-repo">{{ unit.repo }}</span>
-        <span class="unit-number"
-          ><template v-if="issueOnly">{{ copy.issuePrefix }} </template>#{{ unit.number }}</span
+    <div class="card-info">
+      <span class="card-kicker">
+        <KindIcon
+          :kind="issueOnly ? 'issue' : 'pr'"
+          :unread="unit.unread"
+        />
+        <span>{{ unit.repo }}</span>
+        <span>#{{ unit.number }}</span>
+      </span>
+      <h3 class="card-title">
+        <button
+          class="card-open"
+          type="button"
+          :aria-pressed="Boolean(selected)"
+          @click.stop="emit('select')"
+          ><span class="card-mark">{{ unit.title }}</span></button
         >
-      </p>
-      <h3 class="unit-title">{{ unit.title }}</h3>
-      <p class="unit-status">{{ status }}</p>
-      <p
-        class="unit-age"
-        :class="tone"
-        >{{ time }}</p
-      >
-    </template>
-    <template v-else>
-      <CardMeta
-        :repo="unit.repo"
-        :number="unit.number"
-        :issue="issueOnly"
-        :time="time"
-        :unread="unit.unread"
-      />
-      <h3 class="card-title">{{ unit.title }}</h3>
-      <p
-        class="card-reason"
-        :class="{ mine: size === 'large' && unit.myTurn }"
-        >{{ line }}</p
+      </h3>
+      <p class="card-meta"
+        ><span class="card-status">{{ status }}</span
+        ><span class="card-when">{{ time }}</span></p
       >
       <p
-        v-if="size === 'large' && hasNotes"
+        v-if="hasNotes"
         class="card-notes"
       >
         <span v-if="issueOnly && !unit.fixedBy">{{ copy.noPr }}</span>
@@ -128,91 +112,161 @@ const hasNotes = computed(
           >{{ copy.related(issue.number) }}</span
         >
       </p>
-    </template>
+    </div>
+    <CardTimeline
+      class="card-rail"
+      :unit="unit"
+      :viewer="viewer"
+    />
   </article>
 </template>
 
 <style scoped>
 .unit-card {
   position: relative;
+  display: grid;
+  /* Only the information column contributes to the card's height. */
+  /* Match the panel's 404px content width (460px minus 28px on each side),
+     plus this column's 16px inset and 1px divider. Leave room for the title. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, min(421px, 58%));
+  align-items: start;
+  width: 100%;
   min-width: 0;
-  padding: 14px 12px;
-  border-radius: var(--radius-row);
+  gap: 7px 32px;
+  margin-inline: -14px;
+  padding: 16px 20px 16px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background-color var(--dur-1) var(--ease);
+  /* At rest a sheet is only a hairline. The shadow is reserved for the sheet
+     under the pointer, so a list of ten never looks like ten lifted cards. */
+  box-shadow: 0 0 0 1px var(--line);
+  transition:
+    background-color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease);
 }
 
-.unit-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 12px;
-  left: 12px;
-  height: 1px;
-  background: var(--line);
-  transition: opacity var(--dur-1) var(--ease);
+.unit-card {
+  --st-paper: var(--bg);
 }
 
-.unit-card:first-of-type::before {
-  display: none;
+.unit-card.mine {
+  background: var(--card);
+  --st-paper: var(--card);
 }
 
-.unit-card:hover::before,
-.unit-card:hover + .unit-card::before,
-.unit-card.selected::before,
-.unit-card.selected + .unit-card::before {
-  opacity: 0;
+.unit-card.unread {
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
-.unit-card:hover {
-  background: var(--soft);
+.unit-card:not(.mine) {
+  padding-block: 13px;
 }
 
-.unit-card.selected,
-.unit-card.selected:hover {
-  background: var(--soft-2);
-  box-shadow: inset 2px 0 0 var(--fg);
+.card-info {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
 }
 
-[data-intro] .unit-card {
-  animation: row-in var(--dur-3) var(--ease) both;
-  animation-delay: calc(var(--i, 0) * 24ms);
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+
+.card-rail {
+  contain: size;
+  align-self: stretch;
+  min-height: 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
+}
+
+.unit-card:not(.mine):hover {
+  background: color-mix(in oklab, var(--fg) 2.5%, transparent);
+  --st-paper: color-mix(in oklab, var(--fg) 2.5%, var(--bg));
+}
+
+.unit-card:hover,
+.unit-card:has(.card-open:focus-visible) {
+  box-shadow:
+    0 1px 1px color-mix(in oklab, var(--fg) 6%, transparent),
+    0 14px 30px -20px color-mix(in oklab, var(--fg) 34%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--fg) 24%, var(--line));
+}
+
+.unit-card.selected {
+  box-shadow:
+    0 1px 1px color-mix(in oklab, var(--fg) 7%, transparent),
+    0 14px 30px -20px color-mix(in oklab, var(--fg) 36%, transparent),
+    0 0 0 1px var(--fg);
+}
+
+.card-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.03em;
 }
 
 .card-title {
-  display: -webkit-box;
-  margin-top: 6px;
-  overflow: hidden;
-  font-size: 15.5px;
-  line-height: 1.4;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.32;
+  letter-spacing: -0.005em;
   overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-wrap: pretty;
 }
 
-.card-reason {
-  margin-top: 4px;
-  color: color-mix(in oklab, var(--fg) 80%, transparent);
-  font-size: 14px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
+.unit-card:not(.mine) .card-title {
+  font-size: 17px;
 }
 
-.card-reason.mine {
+.card-status,
+.card-when {
+  white-space: nowrap;
+}
+
+.card-status {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.unit-card.mine .card-status {
   color: var(--accent);
 }
 
-.card-notes {
-  margin-top: 6px;
+.card-when {
   color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
+  font-family: var(--font-meta);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 
-.card-notes > * + *::before {
-  content: '·';
-  margin: 0 6px;
+/* Project-specific context stays below the demo's contribution column. */
+.card-notes {
+  display: flex;
+  grid-column: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.card-notes > * {
+  max-width: 100%;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow-wrap: anywhere;
 }
 
 .card-fixed:hover {
@@ -221,108 +275,36 @@ const hasNotes = computed(
   text-underline-offset: 3px;
 }
 
-.unit-card.small {
-  display: grid;
-  grid-template-areas: 'id title status age';
-  grid-template-columns: 180px minmax(0, 1fr) auto 3.5em;
-  column-gap: 14px;
-  align-items: center;
-  padding: 11px 12px;
+.card-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
 
-.unit-id {
-  display: flex;
-  grid-area: id;
-  gap: 6px;
-  align-items: center;
-  min-width: 0;
-  color: var(--muted);
-  font-family: var(--font-meta);
-  font-size: 11.5px;
+.card-open:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
 }
 
-.unit-repo {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.unit-number {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-.unit-title {
-  grid-area: title;
-  min-width: 0;
-  overflow: hidden;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.unit-status {
-  grid-area: status;
-  max-width: 220px;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 12.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.unit-age {
-  grid-area: age;
-  font-family: var(--font-meta);
-  color: var(--muted);
-  font-size: 11.5px;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.unit-age.yellow {
-  color: var(--warn);
-}
-
-.unit-age.red {
-  color: var(--accent);
-}
-
-@media (max-width: 760px) {
+@media (max-width: 780px) {
   .unit-card {
-    padding: 14px 4px;
+    column-gap: 16px;
+    margin-inline: 0;
+    padding: 15px 16px 14px;
   }
 
-  .unit-card::before {
-    right: 4px;
-    left: 4px;
+  .card-title,
+  .unit-card:not(.mine) .card-title {
+    font-size: 16px;
   }
 
-  .unit-card.small {
-    grid-template-areas:
-      'id status age'
-      'title title title';
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    row-gap: 4px;
-    padding: 14px 4px;
-  }
-
-  .unit-age {
-    min-width: 3em;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .unit-card {
-    animation: none;
-  }
-}
-
-@keyframes row-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
+  .card-rail {
+    padding-left: 12px;
   }
 }
 </style>

@@ -13,7 +13,7 @@ import { copy } from '~/copy/en'
  * which are always key lines, so folding never changes the rails.
  */
 
-export type StoryTag = 'claim' | 'maintainer'
+export type StoryTag = 'maintainer'
 export type StoryTurn = 'you' | 'waiting' | 'done'
 
 export type StoryLine = {
@@ -21,6 +21,10 @@ export type StoryLine = {
   at: number
   item: StoryKey
   actor: string
+  /** GitHub login behind the name, when the line names a person. */
+  login: string | null
+  avatar: string | null
+  profile: string | null
   self: boolean
   key: boolean
   reason: boolean
@@ -28,9 +32,14 @@ export type StoryLine = {
   detail: string | null
   chips: string[]
   quote: string | null
+  body: string | null
   tags: StoryTag[]
   tone: 'plain' | 'good' | 'bad'
   url: string | null
+  /** The other issue or PR named by a mention, when one is known. */
+  ref: { repo: string; number: number; url: string } | null
+  /** A label named by this line, painted in its GitHub colour. */
+  label: { name: string; color: string } | null
   start: boolean
   end: 'merged' | 'closed' | null
   /** Issues a PR branches from, on its opened line. */
@@ -39,11 +48,9 @@ export type StoryLine = {
   joins: StoryKey[]
 }
 
-export type StoryFold = { id: string; lines: StoryLine[]; summary: string }
+export type StoryFold = { id: string; lines: StoryLine[]; summary: string; lane: StoryKey }
 
 export type StoryBlock = { type: 'line'; line: StoryLine } | { type: 'fold'; fold: StoryFold }
-
-export type StoryNext = { who: string; text: string }
 
 export type StoryCard = {
   kind: UnitKind
@@ -64,7 +71,10 @@ export type Story = {
   blocks: StoryBlock[]
   lanes: StoryItem[][]
   turn: StoryTurn
-  next: StoryNext[]
+  /** The open item containing the reason event, or the card's primary item. */
+  nowItem: StoryKey
+  /** Presentation only. These paths are not events or promised outcomes. */
+  tail: { open: StoryKey[]; converge: StoryKey[] }
 }
 
 type Source =
@@ -117,6 +127,17 @@ function sourcesOf(entries: readonly TimelineEntry[], items: readonly StoryItem[
   })
 }
 
+/** An item cannot be mentioned before it exists. */
+function placeOpened(lines: StoryLine[]): StoryLine[] {
+  const openedAt = new Map<StoryKey, number>()
+  for (const line of lines) if (line.start) openedAt.set(line.item, line.at)
+  return lines.map(line => {
+    const opened = openedAt.get(line.item)
+    if (line.start || opened === undefined || line.at >= opened) return line
+    return { ...line, at: opened }
+  })
+}
+
 function checksOf(group: CiGroup | UnitEvent): { failed: string[]; passed: number; total: number } {
   const events = group.kind === 'ci-group' ? group.events : [group]
   return {
@@ -155,9 +176,9 @@ function eventVerb(event: UnitEvent, viewer: string): Pick<StoryLine, 'verb' | '
     case 'ci':
       return { verb: event.ci?.name ?? '', tone: 'plain', detail: null }
     case 'labeled':
-      return { verb: s.labeled(event.label?.name ?? ''), tone: 'plain', detail: null }
+      return { verb: s.addedLabel, tone: 'plain', detail: null }
     case 'unlabeled':
-      return { verb: s.unlabeled(event.label?.name ?? ''), tone: 'plain', detail: null }
+      return { verb: s.removedLabel, tone: 'plain', detail: null }
     case 'assigned':
       return { verb: s.assigned(login(event.targetLogin)), tone: 'plain', detail: null }
     case 'unassigned':
@@ -165,9 +186,9 @@ function eventVerb(event: UnitEvent, viewer: string): Pick<StoryLine, 'verb' | '
     case 'review-requested':
       return { verb: s.reviewRequested(login(event.targetLogin)), tone: 'plain', detail: null }
     case 'cross-ref':
-      return { verb: s.crossRef(event.ref?.number ?? 0), tone: 'plain', detail: null }
+      return { verb: s.crossRef(), tone: 'plain', detail: null }
     case 'connected':
-      return { verb: s.connected(event.ref?.number ?? 0), tone: 'plain', detail: null }
+      return { verb: s.connected(), tone: 'plain', detail: null }
     case 'renamed':
       return { verb: s.renamed, tone: 'plain', detail: event.rename?.to ?? null }
     case 'merged':
@@ -189,6 +210,9 @@ function blankLine(id: string, at: number, item: StoryKey): StoryLine {
     at,
     item,
     actor: '',
+    login: null,
+    avatar: null,
+    profile: null,
     self: false,
     key: false,
     reason: false,
@@ -196,14 +220,25 @@ function blankLine(id: string, at: number, item: StoryKey): StoryLine {
     detail: null,
     chips: [],
     quote: null,
+    body: null,
     tags: [],
     tone: 'plain',
     url: null,
+    ref: null,
+    label: null,
     start: false,
     end: null,
     fork: [],
     joins: [],
   }
+}
+
+/** Bots, mentions and everything else fold apart, and each rail folds on its own. */
+function foldKind(line: StoryLine, sources: ReadonlyMap<string, Source>): string {
+  const source = sources.get(line.id)
+  if (source?.type === 'event' && isBot(source.event.actor)) return 'bot'
+  if (source?.type === 'event' && source.event.kind === 'cross-ref') return 'mention'
+  return 'rest'
 }
 
 function summaryOf(lines: readonly StoryLine[], sources: ReadonlyMap<string, Source>): string {
@@ -273,60 +308,6 @@ function summaryOf(lines: readonly StoryLine[], sources: ReadonlyMap<string, Sou
 function turnOf(card: StoryCard): StoryTurn {
   if (card.ended) return 'done'
   return card.myTurn ? 'you' : 'waiting'
-}
-
-function nextOf(card: StoryCard, primary: StoryItem): StoryNext[] {
-  const n = copy.story.next
-  const number = primary.number
-  const actor = card.reasonActor ?? n.reviewer
-  switch (card.reasonCode) {
-    case 'changes-requested':
-      return [
-        { who: n.you, text: n.push(number) },
-        { who: actor, text: n.reviewAgain },
-      ]
-    case 'ci-failed':
-    case 'ci-lint-failed':
-      return [{ who: n.you, text: n.fixCheck(number) }]
-    case 'cla-failed':
-      return [{ who: n.you, text: n.signCla(number) }]
-    case 'coderabbit':
-      return [{ who: n.you, text: n.answerBot }]
-    case 'mentioned':
-    case 'commented':
-    case 'asked-pr-or-rebase':
-      return [{ who: n.you, text: n.reply(number) }]
-    case 'claimed-open-pr':
-      return [{ who: n.you, text: n.openPr(number) }]
-    case 'claim-pending':
-      return [{ who: n.maintainers, text: n.confirmClaim(number) }]
-    case 'approved':
-      return [{ who: n.maintainers, text: n.merge(number) }]
-    case 'pushed':
-      return [{ who: n.you, text: n.reviewCommits }]
-    case 'review-dismissed':
-      return [{ who: actor, text: n.reviewAgain }]
-    case 'opened-waiting':
-    case 'replied-waiting':
-    case 'asked-waiting':
-    case 'pushed-waiting':
-      return card.category === 'reported'
-        ? [
-            { who: n.maintainers, text: n.reply(number) },
-            { who: n.anyone, text: n.openClosingPr(number) },
-          ]
-        : [{ who: n.maintainers, text: n.reply(number) }]
-    case 'already-fixed':
-    case 'workaround':
-    case 'merged':
-    case 'closed':
-    case 'clef':
-      return []
-    default: {
-      const exhaustive: never = card.reasonCode
-      return exhaustive
-    }
-  }
 }
 
 function reasonLine(
@@ -459,6 +440,7 @@ export function buildStory(
       const item = source.item
       const line = blankLine(`opened:${item.key}`, at, item.key)
       line.actor = item.authorLogin
+      line.login = item.authorLogin || null
       line.self =
         Boolean(item.authorLogin) && item.authorLogin.toLowerCase() === viewer.toLowerCase()
       line.verb = s.opened(item.kind, item.number)
@@ -503,15 +485,33 @@ export function buildStory(
 
     const event = source.event
     if (absorbed.has(event.id)) continue
+    if (!railKeys.has(itemKey)) continue
+    // A PR that closes an issue is mentioned from both timelines. Keep it on the opened line.
+    if (
+      event.kind === 'cross-ref' &&
+      event.ref &&
+      railKeys.has(`${event.ref.repo}#${event.ref.number}`) &&
+      (byKey.get(itemKey)?.closes.includes(`${event.ref.repo}#${event.ref.number}`) ||
+        byKey.get(`${event.ref.repo}#${event.ref.number}`)?.closes.includes(itemKey))
+    )
+      continue
     const item = byKey.get(itemKey)
     const line = blankLine(event.id, at, itemKey)
     const bot = isBot(event.actor)
     line.actor = event.actor.login
+    line.login = event.actor.login === 'ghost' ? null : event.actor.login
+    line.avatar = event.actor.avatarUrl ?? null
+    line.profile = event.actor.url ?? null
     line.self = isSelf(event.actor, viewer)
     line.url = event.url ?? null
+    if (event.ref?.url)
+      line.ref = { repo: event.ref.repo, number: event.ref.number, url: event.ref.url }
+    if (event.label) line.label = event.label
     Object.assign(line, eventVerb(event, viewer))
-    if (event.kind === 'comment' || event.kind === 'review' || event.kind === 'review-comment')
+    if (event.kind === 'comment' || event.kind === 'review' || event.kind === 'review-comment') {
       line.quote = event.excerpt ?? null
+      line.body = event.body ?? null
+    }
 
     switch (event.kind) {
       case 'merged':
@@ -545,9 +545,6 @@ export function buildStory(
           line.tone = 'bad'
         } else if (bot) {
           line.key = false
-        } else if (line.self && event.claim) {
-          line.key = true
-          line.tags.push('claim')
         } else if (line.self && issueOnly) {
           line.key = true
         } else if (!line.self && isMaintainerAssociation(event.association)) {
@@ -569,30 +566,47 @@ export function buildStory(
     reason.key = true
   }
 
+  const ordered = placeOpened(lines).sort((left, right) => left.at - right.at)
   const blocks: StoryBlock[] = []
-  let pending: StoryLine[] = []
+  const runs = new Map<string, StoryLine[]>()
   const flush = () => {
-    if (pending.length === 1) blocks.push({ type: 'line', line: pending[0]! })
-    else if (pending.length > 1)
-      blocks.push({
-        type: 'fold',
-        fold: {
-          id: `fold:${pending[0]!.id}`,
-          lines: pending,
-          summary: summaryOf(pending, bySource),
-        },
-      })
-    pending = []
+    const groups = [...runs.values()].sort((left, right) => left[0]!.at - right[0]!.at)
+    for (const group of groups) {
+      if (group.length === 1) blocks.push({ type: 'line', line: group[0]! })
+      else
+        blocks.push({
+          type: 'fold',
+          fold: {
+            id: `fold:${group[0]!.id}`,
+            lines: group,
+            summary: summaryOf(group, bySource),
+            lane: group[0]!.item,
+          },
+        })
+    }
+    runs.clear()
   }
-  for (const line of lines) {
+  for (const line of ordered) {
     if (line.key) {
       flush()
       blocks.push({ type: 'line', line })
-    } else {
-      pending.push(line)
+      continue
     }
+    const run = `${line.item}:${foldKind(line, bySource)}`
+    const group = runs.get(run) ?? []
+    group.push(line)
+    runs.set(run, group)
   }
   flush()
+
+  const active = card.ended ? [] : rails.filter(item => item.state === 'open')
+  const closing =
+    primary.kind === 'pr' && primary.state === 'open' && primary.closingEvidence === 'explicit'
+      ? active.filter(
+          item =>
+            item.kind === 'issue' && item.link === 'closing' && primary.closes.includes(item.key),
+        )
+      : []
 
   return {
     items: [...items],
@@ -602,7 +616,16 @@ export function buildStory(
     blocks,
     lanes: lanesOf(rails, lines),
     turn: turnOf(card),
-    next: nextOf(card, primary),
+    nowItem:
+      primary.kind === 'pr'
+        ? primary.key
+        : reason && active.some(item => item.key === reason.item)
+          ? reason.item
+          : primary.key,
+    tail: {
+      open: active.map(item => item.key),
+      converge: closing.length ? [primary.key, ...closing.map(item => item.key)] : [],
+    },
   }
 }
 
@@ -668,7 +691,7 @@ export type StoryRow =
     }
   | { type: 'fold'; id: string; fold: StoryFold; open: boolean }
   | { type: 'now'; id: 'now' }
-  | { type: 'next'; id: string; next: StoryNext }
+  | { type: 'future'; id: 'future' }
 
 export type StoryNode =
   | 'open'
@@ -680,7 +703,6 @@ export type StoryNode =
   | 'stack'
   | 'group'
   | 'now'
-  | 'next'
   | null
 
 export type StoryCell = {
@@ -698,6 +720,8 @@ export type StoryCell = {
   primary: boolean
   /** Rail starts above the first loaded event. */
   fade: boolean
+  /** A dashed, conditional connector. Never styled as an actual merge. */
+  projected: boolean
 }
 
 export function storyRows(story: Story, open: ReadonlySet<string>): StoryRow[] {
@@ -730,8 +754,7 @@ export function storyRows(story: Story, open: ReadonlySet<string>): StoryRow[] {
       }),
     )
   }
-  if (story.turn !== 'done') rows.push({ type: 'now', id: 'now' })
-  story.next.forEach((next, index) => rows.push({ type: 'next', id: `next:${index}`, next }))
+  if (story.turn !== 'done') rows.push({ type: 'now', id: 'now' }, { type: 'future', id: 'future' })
   return rows
 }
 
@@ -739,7 +762,8 @@ function lineNode(row: Extract<StoryRow, { type: 'line' }>): StoryNode {
   if (row.line.end === 'closed') return 'closed'
   if (row.line.end === 'merged') return 'merged'
   if (row.line.start) return 'open'
-  return row.minor ? 'minor' : 'dot'
+  if (row.minor) return row.line.body ? 'minor' : 'open'
+  return 'dot'
 }
 
 export function storyGrid(
@@ -765,6 +789,7 @@ export function storyGrid(
     mine: true,
     primary: false,
     fade: false,
+    projected: false,
   })
 
   if (spine) {
@@ -780,7 +805,7 @@ export function storyGrid(
         const item = story.items.find(i => i.key === row.line.item)
         cell.mine = item ? self(item) : true
       } else if (row.type === 'fold') cell.node = row.open ? 'group' : 'stack'
-      else cell.node = row.type
+      else if (row.type === 'now') cell.node = 'now'
       return [cell]
     })
   }
@@ -796,7 +821,10 @@ export function storyGrid(
         ((row.line.item === item.key && row.line.end) || row.line.joins.includes(item.key)),
     )
     const start = startRow >= 0 ? startRow : 0
-    const end = endRow >= 0 ? endRow : item.role === 'primary' ? lastRow : nowRow
+    const lastKnown = rows.findLastIndex(row => row.type === 'line' && row.line.item === item.key)
+    let end = Math.max(start, lastKnown)
+    if (story.tail.open.includes(item.key)) end = lastRow
+    if (endRow >= 0) end = endRow
     spans.set(item.key, { start, end })
   }
   const laneOf = (key: StoryKey) =>
@@ -812,7 +840,11 @@ export function storyGrid(
       if (!item) return cell
       const span = spans.get(item.key)!
       cell.up = r > span.start || (r === 0 && !item.createdAt)
-      cell.down = r < span.end
+      cell.down =
+        r < span.end ||
+        (row.type === 'future' &&
+          story.tail.converge.length > 0 &&
+          !story.tail.converge.includes(item.key))
       cell.fade = r === span.start && !item.createdAt
       cell.dashed = r > nowRow
       cell.mine = self(item)
@@ -821,15 +853,22 @@ export function storyGrid(
       if (row.type === 'line' && row.line.joins.includes(item.key)) cell.node = 'join'
       if (row.type === 'fold' && row.fold.lines.some(line => line.item === item.key))
         cell.node = row.open ? 'group' : 'stack'
-      if (row.type === 'now' && item.role === 'primary') cell.node = 'now'
-      if (row.type === 'next' && item.role === 'primary') cell.node = 'next'
+      if (row.type === 'now' && item.key === story.nowItem) cell.node = 'now'
       return cell
     })
-    if (row.type === 'line') {
-      const from = laneOf(row.line.item)
-      const source = story.items.find(i => i.key === row.line.item)
-      const tone = row.line.joins.length ? 'good' : source && self(source) ? 'mine' : 'other'
-      for (const target of [...row.line.fork, ...row.line.joins]) {
+    if (row.type === 'line' || row.type === 'future') {
+      const projected = row.type === 'future'
+      const fromKey = row.type === 'line' ? row.line.item : story.primary.key
+      const targets =
+        row.type === 'line' ? [...row.line.fork, ...row.line.joins] : story.tail.converge
+      const from = laneOf(fromKey)
+      const source = story.items.find(i => i.key === fromKey)
+      let tone: StoryCell['link'] = 'other'
+      if (row.type === 'line') {
+        if (row.line.joins.length) tone = 'good'
+        else if (source && self(source)) tone = 'mine'
+      }
+      for (const target of targets) {
         const to = laneOf(target)
         if (from < 0 || to < 0 || to === from) continue
         const lo = Math.min(from, to)
@@ -840,9 +879,131 @@ export function storyGrid(
           if (l < hi) cell.hr = true
           if (l > lo && l < hi && (cell.up || cell.down) && !cell.node) cell.cross = true
           cell.link = tone
+          cell.projected = projected
         }
       }
     }
     return cells
   })
+}
+
+export type RailStroke = {
+  key: string
+  lane: number
+  /** 1-based grid row where this stroke's box starts. */
+  row: number
+  span: number
+  y0: string
+  y1: string
+  /** bottom: run to the box bottom. extend: stop y1 past the box. same: one row, from y0 to y1. */
+  end: 'bottom' | 'extend' | 'same'
+  dashed: boolean
+  fade: boolean
+  tail: boolean
+  mine: boolean
+  shift: string
+}
+
+export function rowNodeY(row: StoryRow, futureY = '16px'): string {
+  if (row.type === 'now') return '19px'
+  if (row.type === 'fold') return '14px'
+  if (row.type === 'future') return futureY
+  if (row.type === 'line' && row.minor) return '11px'
+  return '14px'
+}
+
+/**
+ * One stroke per continuous run of a lane. Colour does not change along it.
+ * The future tail is the same rail, only dashed, and it starts at the Now node.
+ */
+export function railStrokes(
+  rows: readonly StoryRow[],
+  grid: readonly (readonly StoryCell[])[],
+  futureY = '16px',
+): RailStroke[] {
+  const strokes: RailStroke[] = []
+  const lanes = grid[0]?.length ?? 0
+
+  const emit = (
+    lane: number,
+    run: { a: number; b: number; dashed: boolean; mine: boolean; fade: boolean; fromTop: boolean },
+    end: 'node' | 'bottom',
+  ) => {
+    const y0 = run.fromTop ? '0px' : rowNodeY(rows[run.a]!, futureY)
+    const y1 = rowNodeY(rows[run.b]!, futureY)
+    if (run.a === run.b && end === 'node' && y0 === y1) return
+    const last = grid[run.b]![lane]!
+    const same = run.a === run.b
+    strokes.push({
+      key: `${lane}:${run.a}:${run.dashed ? 'd' : 's'}`,
+      lane,
+      row: run.a + 1,
+      span: end === 'bottom' || same ? run.b - run.a + 1 : run.b - run.a,
+      y0,
+      y1,
+      end: end === 'bottom' ? 'bottom' : same ? 'same' : 'extend',
+      dashed: run.dashed,
+      fade: run.fade,
+      tail: run.dashed && last.node === null && !last.projected,
+      mine: run.mine,
+      shift: run.dashed && grid[run.a]![lane]!.node === 'now' ? '10px' : '0px',
+    })
+  }
+
+  for (let lane = 0; lane < lanes; lane += 1) {
+    let run: {
+      a: number
+      b: number
+      dashed: boolean
+      mine: boolean
+      fade: boolean
+      fromTop: boolean
+    } | null = null
+    const close = (end: 'node' | 'bottom') => {
+      if (!run) return
+      emit(lane, run, end)
+      run = null
+    }
+    for (let r = 0; r < grid.length; r += 1) {
+      const cell = grid[r]![lane]!
+      if (!cell.up && !cell.down) {
+        const through: boolean = run ? grid[run.b]![lane]!.down : false
+        close(through ? 'bottom' : 'node')
+        continue
+      }
+      if (!run) {
+        run = {
+          a: r,
+          b: r,
+          dashed: cell.dashed,
+          mine: cell.mine,
+          fade: cell.fade,
+          fromTop: cell.up,
+        }
+        continue
+      }
+      if (cell.dashed !== run.dashed) {
+        if (!run.dashed && cell.dashed) {
+          const at: number = run.b
+          const mine: boolean = run.mine
+          close('node')
+          run = { a: at, b: r, dashed: true, mine, fade: false, fromTop: false }
+        } else {
+          close('bottom')
+          run = {
+            a: r,
+            b: r,
+            dashed: cell.dashed,
+            mine: cell.mine,
+            fade: cell.fade,
+            fromTop: cell.up,
+          }
+        }
+        continue
+      }
+      run.b = r
+    }
+    close(run && grid[run.b]![lane]!.down ? 'bottom' : 'node')
+  }
+  return strokes
 }

@@ -1,6 +1,5 @@
 import { createError, sendRedirect, type H3Event } from 'h3'
-import { bindingString, workerEnv } from '../../bindings'
-import { writeCache } from '../../cache'
+import { bindingString } from '../../bindings'
 import { oauthAuthorizeUrl } from '../../auth/github-oauth'
 import { parseCallbackOrigin, resolveOAuthStart, signOAuthState } from '../../auth/oauth-state'
 import { getRequestOrigin } from '../../request-origin'
@@ -17,30 +16,14 @@ export default defineEventHandler(async event => {
   if (!start.ok) {
     throw createError({ statusCode: 400, statusMessage: 'OAuth return origin is not allowed' })
   }
-
-  let state: string
-  switch (start.mode) {
-    case 'fixed': {
-      const sessionSecret = bindingString(event, 'SESSION_SECRET')
-      if (!sessionSecret) {
-        throw createError({ statusCode: 503, statusMessage: 'OAuth is not configured' })
-      }
-      state = await signOAuthState(sessionSecret, {
-        origin: start.returnOrigin,
-        exp: Date.now() + STATE_TTL_MS,
-      })
-      break
-    }
-    case 'legacy': {
-      state = crypto.randomUUID()
-      await writeCache(workerEnv(event).CACHE, `oauth:v1:${state}`, '1', 600, Date.now())
-      break
-    }
-    default: {
-      const unreachable: never = start
-      throw new Error(`unexpected oauth start ${String(unreachable)}`)
-    }
+  const sessionSecret = bindingString(event, 'SESSION_SECRET')
+  if (!sessionSecret) {
+    throw createError({ statusCode: 503, statusMessage: 'OAuth is not configured' })
   }
+  const state = await signOAuthState(sessionSecret, {
+    origin: start.returnOrigin,
+    exp: Date.now() + STATE_TTL_MS,
+  })
   return sendRedirect(event, oauthAuthorizeUrl(clientId, start.redirectUri, state), 302)
 })
 

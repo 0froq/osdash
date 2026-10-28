@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { MenuItem } from '@froq/ui/vue'
+import { Menu } from '@froq/ui'
 import { copy } from '~/copy/en'
 
-defineProps<{
+const props = defineProps<{
   name: string
   avatarUrl: string | null
   pending: boolean
@@ -14,116 +16,92 @@ const emit = defineEmits<{
 }>()
 
 const open = ref(false)
-const root = ref<HTMLElement>()
-const { theme, ready, setTheme, onThemeKey } = useTheme()
+const { theme, ready, setTheme } = useTheme()
 
-function openSettings(): void {
-  open.value = false
-  emit('settings')
+const items = computed<MenuItem[]>(() => [
+  {
+    value: 'refresh',
+    label: props.pending ? copy.menu.refreshing : copy.menu.refresh,
+    disabled: props.pending,
+  },
+  { value: 'theme-light', label: copy.menu.light, separatorBefore: true },
+  { value: 'theme-dark', label: copy.menu.dark },
+  { value: 'settings', label: copy.settings.title, separatorBefore: true },
+  { value: 'logout', label: copy.menu.logout },
+])
+
+function select(item: MenuItem): void {
+  if (item.value === 'refresh') emit('refresh')
+  else if (item.value === 'settings') emit('settings')
+  else if (item.value === 'logout') emit('logout')
+  else if (item.value === 'theme-light') setTheme('light')
+  else if (item.value === 'theme-dark') setTheme('dark')
 }
+
+/**
+ * The library's Menu does not turn the layer's dismiss event into a close, so
+ * Escape has to close it here. The listener only runs while the sheet is open.
+ */
+function onKey(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || !open.value) return
+  open.value = false
+}
+
+onMounted(() => window.addEventListener('keydown', onKey, true))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
 
 function letter(name: string): string {
   const trimmed = name.trim()
   return trimmed.length > 0 ? trimmed.slice(0, 1).toUpperCase() : '?'
 }
-
-function onDocumentPointer(event: PointerEvent): void {
-  const target = event.target
-  if (!(target instanceof Node) || root.value?.contains(target)) return
-  open.value = false
-}
-
-onMounted(() => {
-  document.addEventListener('pointerdown', onDocumentPointer)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onDocumentPointer)
-})
 </script>
 
 <template>
-  <div
-    ref="root"
-    class="viewer-menu"
-  >
-    <button
-      class="viewer-button"
-      type="button"
-      :aria-label="copy.avatarLabel(name)"
-      :aria-expanded="open"
-      @click="open = !open"
+  <div class="viewer-menu">
+    <Menu
+      v-model="open"
+      class="osdash-menu"
+      :label="copy.avatarLabel(name)"
+      :items="items"
+      side="top"
+      align="start"
+      @select="select"
     >
-      <img
-        v-if="avatarUrl"
-        class="avatar"
-        :src="avatarUrl"
-        alt=""
-      />
-      <span
-        v-else
-        class="avatar"
-        aria-hidden="true"
-        >{{ letter(name) }}</span
-      >
-      <span class="viewer-name">{{ name }}</span>
-    </button>
-    <PopMenu
-      v-if="open"
-      class="menu-pop"
-    >
-      <button
-        class="menu-item pop-item"
-        type="button"
-        role="menuitem"
-        :disabled="pending"
-        @click="emit('refresh')"
-      >
-        {{ pending ? copy.menu.refreshing : copy.menu.refresh }}
-      </button>
-      <div
-        class="menu-theme"
-        role="radiogroup"
-        :aria-label="copy.menu.theme"
-        @keydown="onThemeKey"
-      >
+      <template #trigger>
         <button
+          class="viewer-button"
           type="button"
-          role="radio"
-          :aria-checked="ready ? theme === 'light' : undefined"
-          :tabindex="theme === 'dark' ? -1 : 0"
-          @click="setTheme('light')"
+          :aria-label="copy.avatarLabel(name)"
         >
-          {{ copy.menu.light }}
+          <img
+            v-if="avatarUrl"
+            class="avatar"
+            :src="avatarUrl"
+            alt=""
+          />
+          <span
+            v-else
+            class="avatar"
+            aria-hidden="true"
+            >{{ letter(name) }}</span
+          >
+          <span class="viewer-name">{{ name }}</span>
         </button>
-        <button
-          type="button"
-          role="radio"
-          :aria-checked="ready ? theme === 'dark' : undefined"
-          :tabindex="theme === 'light' ? -1 : 0"
-          @click="setTheme('dark')"
+      </template>
+      <template #item="{ item }">
+        <span
+          :aria-current="
+            ready &&
+            ((item.value === 'theme-light' && theme === 'light') ||
+              (item.value === 'theme-dark' && theme === 'dark'))
+              ? 'true'
+              : undefined
+          "
+          >{{ item.label }}</span
         >
-          {{ copy.menu.dark }}
-        </button>
-      </div>
-      <button
-        class="menu-item pop-item"
-        type="button"
-        role="menuitem"
-        @click="openSettings"
-      >
-        {{ copy.settings.title }}
-      </button>
-      <button
-        class="menu-item pop-item"
-        type="button"
-        role="menuitem"
-        @click="emit('logout')"
-      >
-        {{ copy.menu.logout }}
-      </button>
-      <p class="menu-shortcuts">{{ copy.shortcutsLabel }} {{ copy.shortcuts }}</p>
-    </PopMenu>
+      </template>
+    </Menu>
+    <p class="menu-shortcuts">{{ copy.shortcutsLabel }} {{ copy.shortcuts }}</p>
   </div>
 </template>
 
@@ -176,48 +154,6 @@ img.avatar {
   white-space: nowrap;
 }
 
-.menu-pop {
-  --pop-origin: bottom left;
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  min-width: 208px;
-}
-
-.menu-theme {
-  display: flex;
-  gap: 2px;
-  margin: 4px 6px;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-}
-
-.menu-theme button {
-  flex: 1;
-  min-height: 26px;
-  border: 0;
-  border-radius: 4px;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 12.5px;
-  transition:
-    background-color var(--dur-1) var(--ease),
-    color var(--dur-1) var(--ease);
-}
-
-.menu-theme button:hover {
-  color: var(--fg);
-}
-
-.menu-theme button[aria-checked='true'] {
-  background: var(--soft-2);
-  color: var(--fg);
-}
-
 .menu-shortcuts {
   margin: 0;
   padding: 8px 10px 6px;
@@ -225,11 +161,5 @@ img.avatar {
   font-family: var(--font-meta);
   font-size: 11.5px;
   line-height: 1.5;
-}
-
-@media (max-width: 760px) {
-  .menu-shortcuts {
-    display: none;
-  }
 }
 </style>

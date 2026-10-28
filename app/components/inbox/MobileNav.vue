@@ -11,8 +11,6 @@ defineProps<{
   view: InboxViewName
   category: UnitCategory | null
   homeCount: number
-  laterCount: number
-  starredCount: number
   endedCount: number
   categoryCounts: Record<UnitCategory, number>
 }>()
@@ -53,24 +51,6 @@ const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'hel
       >
         {{ copy.nav.home }}
         <span class="nav-count">{{ homeCount }}</span>
-      </button>
-      <button
-        class="nav-tab"
-        :class="{ current: view === 'later' }"
-        type="button"
-        @click="emit('view', 'later')"
-      >
-        {{ copy.nav.later }}
-        <span class="nav-count">{{ laterCount }}</span>
-      </button>
-      <button
-        class="nav-tab"
-        :class="{ current: view === 'starred' }"
-        type="button"
-        @click="emit('view', 'starred')"
-      >
-        {{ copy.nav.starred }}
-        <span class="nav-count">{{ starredCount }}</span>
       </button>
       <button
         class="nav-tab"
@@ -147,14 +127,6 @@ const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'hel
     width: auto;
     min-height: 40px;
     padding: 6px;
-  }
-
-  .mobile-bar .menu-pop {
-    --pop-origin: top right;
-    top: calc(100% + 4px);
-    right: 0;
-    bottom: auto;
-    left: auto;
   }
 
   .tab-row,

@@ -11,6 +11,11 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['shared/**/*.test.ts', 'server/**/*.test.ts', 'app/utils/**/*.test.ts'],
+    include: [
+      'shared/**/*.test.ts',
+      'server/**/*.test.ts',
+      'app/utils/**/*.test.ts',
+      'local/**/*.test.ts',
+    ],
   },
 })

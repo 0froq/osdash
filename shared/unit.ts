@@ -49,6 +49,8 @@ export type Unit = {
     authorLogin: string
     state: ItemState
     createdAt?: string
+    /** Targets verified against the fixing PR's closingIssuesReferences. */
+    closes: string[]
   } | null
   myTurn: boolean
   ended: boolean
@@ -64,6 +66,8 @@ export type Unit = {
   ageMs: number
   firstReplyMs: number | null
   links: { item: string; comment: string | null; ci: string | null }
+  /** Newest few beats, built once with the unit and cached with it. */
+  beats: UnitBeat[]
   members: Array<{
     repo: string
     number: number
@@ -82,8 +86,49 @@ export type Unit = {
 }
 
 /** Merged with per-user state on each GET. Not stored in the board cache. */
+/** A note the viewer wrote on a card, placed on the story by time. */
+export type UnitNote = {
+  id: string
+  /** Client-only file fingerprint captured when editing starts. */
+  version?: string | null
+  /** Client-only state. Cleared after the device acknowledges a save. */
+  unsaved?: boolean
+  /**
+   * ISO time the note sits at. Notes ride between story events by this stamp,
+   * so a note never depends on a row id that later data may drop.
+   */
+  anchor: string
+  text: string
+  at: string
+}
+
+/**
+ * One recent beat of a card's story, small enough to sit on the card itself.
+ * Built from the same activities the preview turns into rows, so the card never
+ * shows something the preview would contradict.
+ */
+export type UnitBeat = {
+  at: string
+  actor: string
+  /** Already phrased for display, e.g. "requested changes". */
+  what: string
+  /** Mirrors the preview rail's node vocabulary. */
+  node: 'dot' | 'open' | 'minor' | 'merged' | 'closed'
+  /** True when this beat is what asks something of the viewer. */
+  wants: boolean
+}
+
 export type UnitView = Unit & {
   unread: boolean
-  starred: boolean
-  laterUntil: string | null
+  /** GitHub notification thread ids for this card's members. */
+  notificationThreadIds: string[]
+  notes: UnitNote[]
+}
+
+/** Unread first, then newest activity first within each read state. */
+export function compareWaitingUnits(
+  first: Pick<UnitView, 'unread' | 'ageMs'>,
+  second: Pick<UnitView, 'unread' | 'ageMs'>,
+): number {
+  return Number(second.unread) - Number(first.unread) || first.ageMs - second.ageMs
 }

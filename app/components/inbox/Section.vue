@@ -75,12 +75,12 @@ const bodyId = useId()
 <style scoped>
 .section {
   min-width: 0;
-  margin-top: 44px;
+  margin-top: 30px;
 }
 
 .section-head {
   display: flex;
-  gap: 8px;
+  gap: 9px;
   align-items: baseline;
   margin: 0;
 }
@@ -94,16 +94,22 @@ const bodyId = useId()
   text-align: left;
 }
 
+/* A section head is a caption, not a heading: mono, small, spaced. It names the
+   group without competing with the serif titles inside the cards. */
 .section-title {
-  color: var(--fg);
-  font-size: 13px;
-  font-weight: 500;
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 9.5px;
+  font-weight: 400;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .section-count {
-  color: var(--muted);
+  color: var(--faint);
   font-family: var(--font-meta);
-  font-size: 12px;
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
 }
 
 .section-chevron {
@@ -128,12 +134,24 @@ const bodyId = useId()
 .section-panel {
   display: grid;
   grid-template-rows: 1fr;
-  margin: 8px -12px 0;
-  transition: grid-template-rows var(--dur-2) var(--ease);
+  /* Keep card borders and shadows inside the collapse clipping box. */
+  margin: -4px -32px -32px;
+  transition:
+    grid-template-rows var(--dur-2) var(--ease),
+    margin-bottom var(--dur-2) var(--ease);
+}
+
+/* Cards are separate sheets, so they need air between them. */
+.section-body {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 32px 32px;
 }
 
 .section-panel.collapsed {
   grid-template-rows: 0fr;
+  margin-bottom: 0;
 }
 
 .section-inner {
@@ -143,11 +161,6 @@ const bodyId = useId()
 }
 
 @media (max-width: 760px) {
-  .section-panel {
-    margin-right: -4px;
-    margin-left: -4px;
-  }
-
   .section-toggle {
     min-height: 36px;
   }

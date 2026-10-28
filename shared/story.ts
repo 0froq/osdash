@@ -31,6 +31,8 @@ export type StoryItem = {
   link: 'closing' | 'mention' | null
   /** Pull requests only. Issue keys from this PR's own closingIssuesReferences and connected events. */
   closes: StoryKey[]
+  /** Missing on older cached payloads. Inferred targets cannot drive a projected convergence. */
+  closingEvidence?: 'explicit' | 'inferred'
 }
 
 export type TimelinePayload = {
@@ -91,6 +93,7 @@ export function storyItems(unit: StoryUnit): StoryItem[] {
     role: 'primary',
     link: null,
     closes: primaryMember?.closes ?? [],
+    closingEvidence: primaryMember?.closes ? 'explicit' : 'inferred',
   })
 
   const closingKeys = unit.issues
@@ -112,6 +115,7 @@ export function storyItems(unit: StoryUnit): StoryItem[] {
       role: 'history',
       link: null,
       closes: member?.closes ?? closingKeys,
+      closingEvidence: member?.closes ? 'explicit' : 'inferred',
     })
   }
 
@@ -148,7 +152,8 @@ export function storyItems(unit: StoryUnit): StoryItem[] {
       closedAt: null,
       role: 'fixed-by',
       link: null,
-      closes: unit.kind === 'issue-only' ? [primaryKey] : closingKeys,
+      closes: unit.fixedBy.closes,
+      closingEvidence: 'explicit',
     })
   }
 

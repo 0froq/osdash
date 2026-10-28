@@ -1,5 +1,4 @@
 import { createError, getQuery } from 'h3'
-import { workerEnv } from '../bindings'
 import { readInboxCache } from '../inbox-response'
 import { mockTimeline } from '../mock'
 import { devMock } from '../mock-state'
@@ -20,8 +19,7 @@ export default defineEventHandler(async event => {
   const user = event.context.osdashUser
   if (!user) throw createError({ statusCode: 401, statusMessage: 'Sign in required' })
 
-  const store = workerEnv(event).CACHE
-  const inbox = await readInboxCache(store, user.login, nowMs)
+  const inbox = await readInboxCache(undefined, user.login, nowMs)
   const unit = inbox?.units.find(entry => entry.id === id) ?? null
   if (!unit) throw createError({ statusCode: 404, statusMessage: 'Card not found' })
 
@@ -29,7 +27,7 @@ export default defineEventHandler(async event => {
     token: user.token,
     login: user.login,
     unit,
-    store,
+    store: undefined,
     nowMs,
     fresh: query.refresh === '1',
   })

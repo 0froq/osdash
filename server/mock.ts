@@ -12,7 +12,6 @@ import { storyItems } from '../shared/story'
 import type { TimelinePayload } from './timeline-response'
 import { buildUnitDrafts, toUnit } from '../shared/units'
 import type { Unit } from '../shared/unit'
-import type { SeenState } from './user-state'
 import {
   type Activity,
   type Actor,
@@ -20,7 +19,6 @@ import {
   type CheckConclusion,
   type Item,
   type ReviewState,
-  DAY_MS,
   judge,
 } from '../shared/turn'
 
@@ -53,10 +51,6 @@ function person(login: string): Person {
 
 function bot(login: string): Person {
   return { login, type: 'Bot' }
-}
-
-export function mockSeen(nowMs: number): SeenState {
-  return { baselineAt: new Date(nowMs - 30 * DAY_MS).toISOString(), at: {} }
 }
 
 function closingOf(issue: Item) {
@@ -362,7 +356,7 @@ function mockThreads(nowMs: number): Thread[] {
     }),
   )
 
-  thread(
+  const issue880 = thread(
     {
       kind: 'issue',
       repo: 'unjs/h3',
@@ -385,6 +379,21 @@ function mockThreads(nowMs: number): Thread[] {
         e.xref(2 * 24, 'pi0', 'unjs/h3', 901, 'pr', 'fix: isolate event.context per request'),
       ],
     }),
+  )
+
+  thread(
+    {
+      kind: 'pr',
+      repo: 'unjs/h3',
+      number: 901,
+      title: 'fix: isolate event.context per request',
+      author: user('pi0'),
+      state: 'merged',
+      agoH: 2 * 24 + 2,
+      closedAt: at(2 * 24),
+      closingIssues: [closingOf(issue880)],
+    },
+    e => ({ events: [e.merged(2 * 24, 'pi0')] }),
   )
 
   thread(

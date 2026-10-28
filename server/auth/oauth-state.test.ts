@@ -54,13 +54,15 @@ it('allows preview, production, and local origins only', () => {
   assert.equal(isAllowedReturnOrigin(`${PREVIEW}/api/auth/callback`), false)
 })
 
-it('keeps the request origin when the callback origin is unset', () => {
+it('signs against the request origin when the callback origin is unset', () => {
   const start = resolveOAuthStart('https://osdash.froq.me', undefined)
   assert.deepEqual(start, {
     ok: true,
-    mode: 'legacy',
+    mode: 'fixed',
     redirectUri: 'https://osdash.froq.me/api/auth/callback',
+    returnOrigin: 'https://osdash.froq.me',
   })
+  assert.equal(resolveOAuthStart('https://evil.example', undefined).ok, false)
   assert.deepEqual(parseCallbackOrigin(undefined), { status: 'unset' })
 })
 

@@ -6,8 +6,6 @@ type ShortcutHandlers = {
   move: (id: string) => void
   open: () => void
   close: () => void
-  star: () => void
-  later: () => void
   read: () => void
   home: () => void
 }
@@ -51,16 +49,6 @@ export function useShortcuts(handlers: ShortcutHandlers) {
     if (event.key === 'Enter' || event.key === 'o') {
       event.preventDefault()
       handlers.open()
-      return
-    }
-    if (event.key === 's') {
-      event.preventDefault()
-      handlers.star()
-      return
-    }
-    if (event.key === 'l') {
-      event.preventDefault()
-      handlers.later()
       return
     }
     if (event.key === 'e') {

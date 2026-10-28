@@ -11,7 +11,8 @@ declare module 'h3' {
   interface H3EventContext {
     cloudflare?: {
       env?: {
-        CACHE?: CacheStore
+        DEVICE_RELAY?: import('../shared/device-relay').RelayNamespace
+        DEVICE_RELAY_SCOPE?: string
         AI?: AiBinding
         GITHUB_CLIENT_ID?: string
         GITHUB_CLIENT_SECRET?: string
@@ -27,6 +28,7 @@ declare module 'h3' {
       }
     }
     osdashUser?: {
+      id?: string
       login: string
       token: string
       name?: string

@@ -1,7 +1,8 @@
 import type { H3Event } from 'h3'
 
 export type WorkerBindings = {
-  CACHE?: import('./cache').CacheStore
+  DEVICE_RELAY?: import('../shared/device-relay').RelayNamespace
+  DEVICE_RELAY_SCOPE?: string
   AI?: import('./claim-classifier-clef').AiBinding
   GITHUB_CLIENT_ID?: string
   GITHUB_CLIENT_SECRET?: string

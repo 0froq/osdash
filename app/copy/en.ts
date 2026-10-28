@@ -26,8 +26,6 @@ export const copy = {
   },
   nav: {
     home: 'Home',
-    later: 'Later',
-    starred: 'Starred',
     kinds: 'Kinds',
   },
   categories: {
@@ -68,26 +66,45 @@ export const copy = {
     logout: 'Log out',
     open: 'Open menu',
     markRead: 'Mark as read',
-    star: 'Star',
-    unstar: 'Unstar',
     later: 'Later',
-    clearLater: 'Clear later',
+    laterHour: 'In 1 hour',
+    laterTonight: 'Tonight',
+    laterTomorrow: 'Tomorrow',
+    laterWeek: 'Next week',
   },
-  laterPresets: {
-    tomorrow: 'Tomorrow morning',
-    threeDays: 'In 3 days',
-    nextMonday: 'Next Monday',
-  },
-  emptyLater: 'Nothing saved for later',
-  emptyStarred: 'No starred cards',
   repos: {
+    label: 'Repository',
+    all: 'All',
     showAll: 'Show all',
     showLess: 'Show less',
+    invert: 'Invert',
+  },
+  note: {
+    add: 'Add a note',
+    placeholder: 'Write a note',
+    save: 'Save',
+    cancel: 'Cancel',
+    remove: 'Delete note',
+    move: 'Move note',
+    edit: 'Edit',
+    at: 'at',
+    current: 'Current position',
+    label: 'Note',
+    unsaved: 'Unsaved',
+    requiresLocal:
+      'Bind a storage device to your GitHub account to use notes. Existing cloud notes are read-only.',
+    storageOffline:
+      'Your storage device is offline. Start os- serve on that device. Changes are not queued.',
+    loadingLocal: 'Local notes are loading. Check the connection if editing stays unavailable.',
+    legacyReadOnly:
+      'Existing cloud notes remain read-only. New notes are saved only in your local workspace.',
+    reloadLocal: 'Reload local notes',
+    deviceSettings: 'Device settings',
   },
   preview: {
     empty: 'Select a card to see its timeline',
     close: 'Close',
-    openGithub: 'Open on GitHub ↗',
+    openGithub: 'Open on GitHub',
     source: 'Source ↗',
     truncated: 'Older activity was not loaded',
     loading: 'Loading timeline',
@@ -102,6 +119,8 @@ export const copy = {
     now: 'Now',
     expandAll: 'Expand all',
     collapseAll: 'Collapse all',
+    readComment: 'Read comment',
+    readLess: 'Hide comment',
     foldLabel(count: number, open: boolean): string {
       return `${open ? 'Hide' : 'Show'} ${count} events`
     },
@@ -111,10 +130,11 @@ export const copy = {
     related: 'Related',
     kind: { pr: 'PR', issue: 'issue' },
     state: { open: 'open', closed: 'closed', merged: 'merged' },
-    tag: { claim: 'claim', maintainer: 'maintainer' },
+    tag: { maintainer: 'maintainer' },
     on(number: number): string {
       return `on #${number}`
     },
+    openedItem: 'opened',
     opened(kind: 'pr' | 'issue', number: number): string {
       return `opened ${kind === 'pr' ? 'PR' : 'issue'} #${number}`
     },
@@ -150,17 +170,13 @@ export const copy = {
     reviewRequested(login: string): string {
       return `requested review from ${login}`
     },
-    labeled(name: string): string {
-      return `added label ${name}`
+    addedLabel: 'added',
+    removedLabel: 'removed',
+    crossRef(): string {
+      return 'mentioned this in'
     },
-    unlabeled(name: string): string {
-      return `removed label ${name}`
-    },
-    crossRef(number: number): string {
-      return `mentioned this in #${number}`
-    },
-    connected(number: number): string {
-      return `linked #${number}`
+    connected(): string {
+      return 'linked'
     },
     renamed: 'renamed the title',
     checksPassed(count: number): string {
@@ -245,7 +261,7 @@ export const copy = {
       reviewCommits: 'review the new commits',
     },
   },
-  shortcuts: 'j / k move · Enter / o open · Esc close · s star · l later · e read · g h home',
+  shortcuts: 'j / k move · Enter / o open · Esc close · e read · g h home',
   shortcutsLabel: 'Shortcuts',
   openedFor(age: string): string {
     return `Opened ${age}`
@@ -334,8 +350,54 @@ export const copy = {
   avatarLabel(name: string): string {
     return `${name} menu`
   },
+  localConnection: {
+    title: 'Storage device',
+    optional:
+      'Bind one storage device to your GitHub account. Every signed-in browser uses its files while it is online.',
+    online: 'Storage device online',
+    offline: 'Storage device offline. Start os- serve there. Writes are not queued.',
+    name: 'Device name',
+    refreshStatus: 'Refresh device status',
+    unlink: 'Unlink storage device',
+    unlinkWarning:
+      'Unlink this device from your account? Its local files are kept, but other browsers lose access.',
+    confirmUnlink: 'Confirm unlink',
+    keepDevice: 'Keep device',
+    unlinkFailed: 'Could not confirm unlinking. Refresh device status before retrying.',
+    disconnected: 'Not connected',
+    connecting: 'Waiting for this device…',
+    connected: 'Paired with this browser tab',
+    signedOut: 'Sign in with GitHub before connecting this device.',
+    setup: 'Run the local bridge',
+    install:
+      'Install on the machine that will store your notes, then open this site there for initial binding. Requires curl and Node 24.21.0 or Node 26+:',
+    workspace: 'Change to your chosen workspace directory, then run:',
+    account: 'GitHub account',
+    source: 'View source on GitHub',
+    instructions:
+      'The command starts a background service, so Terminal can close. Paste its one-use code below within five minutes. Other computers only need to sign in afterward.',
+    permissions:
+      'Initial binding needs local network permission on the storage machine. Other browsers use the account relay and do not need local pairing.',
+    scope:
+      'Your files stay on the storage device. Cloudflare stores binding metadata and relays note content without persisting note bodies. GitHub tokens are never sent to the device.',
+    pairingCode: 'Pairing code',
+    connect: 'Bind this storage device',
+    disconnect: 'Forget local setup permission',
+    cancel: 'Cancel connection',
+    refresh: 'Read configuration again',
+    locale: 'Language',
+    notesDirectory: 'Notes directory setting',
+    configured: 'Workspace ready',
+    notConfigured: 'Not configured',
+    configFailed: 'Could not read local configuration. Check that the bridge is still running.',
+    troubleshooting:
+      'Check os- status and browser local network permission. Run os- restart for a new pairing code. The code only works on the storage machine.',
+    lifetime:
+      'Storage runs in the background and starts after OS login. Use os- stop to stop it and disable automatic startup. Unlink to revoke remote access. Local setup permission expires after eight hours.',
+  },
   settings: {
-    title: 'Classifier',
+    title: 'Settings',
+    classifier: 'Classifier',
     intro:
       'The built-in classifier is only enabled for some accounts. You can add your own OpenAI-compatible endpoint for turns the rules cannot decide.',
     enabled: 'Site classifier is enabled',
@@ -353,7 +415,8 @@ export const copy = {
   login: {
     tagline: 'See where your PRs and issues stand',
     action: 'Sign in with GitHub',
-    scope: 'Requests read:user only. Reads public data. Does not comment or merge for you.',
+    scope:
+      'Requests read:user and notifications. Marks a card read on GitHub too. Does not comment or merge for you.',
     readOnly: 'Read-only',
   },
 }
