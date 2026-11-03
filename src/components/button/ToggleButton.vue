@@ -95,15 +95,21 @@ function toggle(): void {
     :aria-label="label || (auto ? `${offText} / ${onText}` : undefined)"
     @click="toggle"
   >
-    <template v-if="auto"
+    <span
+      v-if="auto"
+      class="ui-toggle-button-label"
       >{{ diff.head
       }}<WordSwap
         :on="pressed"
         :off-label="diff.off"
         :on-label="diff.on"
-      />{{ diff.tail }}</template
+      />{{ diff.tail }}</span
     >
-    <slot v-else />
+    <span
+      v-else
+      class="ui-toggle-button-label"
+      ><slot
+    /></span>
   </button>
 </template>
 
@@ -138,6 +144,11 @@ function toggle(): void {
 
 .ui-toggle-button:active:not(:disabled) {
   translate: 0 1px;
+}
+
+/* The label lives in a normal inline flow so spaces around a swapped word survive. */
+.ui-toggle-button-label {
+  display: inline;
 }
 
 .ui-toggle-button:disabled {
