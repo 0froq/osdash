@@ -51,7 +51,7 @@ Pagination 渲染带标签的 `<nav>`，并显示一个页码窗口：包含首�
 
 URL 与标签回调应是没有副作用的渲染函数；URL 回调需返回有效的非空地址。路由适配放在 `control` 插槽中，不进入库。禁用条目应保留原生禁用按钮，不要仅给仍可跳转的链接加 `aria-disabled`。
 
-未声明属性会应用到 `<nav>`。Pagination 使用 UI 库 token，不依赖字体、路由或业务数据。在调用方引入 `style.css`，并将组件放在带有 `class="ui"` 的元素内。
+未声明属性会应用到 `<nav>`。Pagination 使用 UI 库 token，不依赖字体、路由或业务数据。在调用方引入 `tokens.css`，并将组件放在带有 `class="ui"` 的元素内。
 
 ## 用法
 
@@ -59,7 +59,7 @@ URL 与标签回调应是没有副作用的渲染函数；URL 回调需返回有
 <script setup lang="ts">
 import { Pagination } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const page = ref(3)
 const pages = 24

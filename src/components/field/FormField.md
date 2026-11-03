@@ -18,7 +18,7 @@ props:
     description: Consumer-provided error text; a nonempty value marks the control invalid.
   - name: required
     type: boolean
-    default: "false"
+    default: 'false'
     description: Visible required marker and native/ARIA required control props.
 slots:
   - name: default
@@ -37,7 +37,7 @@ Use the built-in label on TextInput/NumberInput for simple fields. Do not wrap t
 <script setup lang="ts">
 import { FormField } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const title = ref('')
 const error = ref<string>()
@@ -58,7 +58,7 @@ const error = ref<string>()
           class="ui-field-control"
           type="text"
           name="title"
-        >
+        />
       </template>
     </FormField>
   </div>

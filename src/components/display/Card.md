@@ -18,7 +18,7 @@ Card is a simple `<div>` container with header, body, and footer slots. It has n
 ```vue
 <script setup lang="ts">
 import { Badge, Button, Card } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 </script>
 
 <template>
@@ -30,9 +30,7 @@ import '@froq/ui/style.css'
       <h2>Observations</h2>
       <p>Small observations, collected over time.</p>
       <template #footer>
-        <Button type="button">
-          Read notes
-        </Button>
+        <Button type="button"> Read notes </Button>
       </template>
     </Card>
   </div>

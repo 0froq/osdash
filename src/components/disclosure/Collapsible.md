@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: A controlled disclosure with a persistent, accessible panel.
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: Whether the panel is open.
 props:
   - name: label
@@ -13,7 +13,7 @@ props:
     description: Text for the built-in trigger. A custom trigger slot supplies its own content.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Prevent user-triggered toggling.
 slots:
   - name: trigger
@@ -36,7 +36,7 @@ The built-in trigger places a hairline after the label. Hover grows an accent fa
 <script setup lang="ts">
 import { Collapsible } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 </script>
@@ -48,9 +48,7 @@ const open = ref(false)
       label="Installation details"
     >
       <template #trigger="{ open: isOpen, props }">
-        <button v-bind="props">
-          {{ isOpen ? 'Hide' : 'Show' }} installation details
-        </button>
+        <button v-bind="props"> {{ isOpen ? 'Hide' : 'Show' }} installation details </button>
       </template>
       <template #default="{ open: isOpen }">
         <p>{{ isOpen ? 'Panel is open.' : 'Panel is closed.' }}</p>

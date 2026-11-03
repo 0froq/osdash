@@ -1,6 +1,6 @@
 ---
 title: Select
-designStatus: ai-draft
+designStatus: reviewed
 description: 支持原生和自定义外观的单选下拉框。
 model:
   type: string
@@ -9,11 +9,11 @@ model:
 props:
   - name: native
     type: boolean
-    default: "true"
+    default: 'true'
     description: 使用原生 select；设为 false 使用紧凑的自定义下拉框。
   - name: hideLabel
     type: boolean
-    default: "false"
+    default: 'false'
     description: 隐藏可见标签，仍保留无障碍名称。
   - name: accent
     type: string
@@ -33,7 +33,7 @@ props:
     description: 表单字段名，两种模式均支持。
   - name: framed
     type: boolean
-    default: "false"
+    default: 'false'
     description: Full outline and token background; inherits the host font.
   - name: label
     type: string
@@ -76,7 +76,7 @@ const tone = ref('plain')
 
 原生选择框共用一个距右侧 12 px 的箭头，右侧 34 px padding 为箭头留位。箭头忽略指针事件，鼠标、键盘、触摸和辅助技术交互仍由原生 select 处理。可选 `framed`（boolean，默认 false）显示完整边框和 token 背景，并继承宿主字体；默认样式保留下划线。两种外观只读取现有 UI token。
 
-自定义模式的触发按钮默认无边框，`framed` 可加边框。下拉框为直角细边框、无阴影、无行间隙的紧凑列表。hover 使用淡 accent 背景；选中项使用 accent 实底和 `--ui-bg` 文字。选中和禁用是独立状态。方向键、文字搜索、Enter/Space、Esc 及点击外部关闭由 Reka UI 处理。下拉内容即使通过 portal 渲染，也保留在控件的 token 作用域内。减少动态效果设置会禁用触发按钮的颜色过渡。
+自定义模式的触发按钮默认无边框，`framed` 可加边框。列表与 Menu 相同：`--ui-line` 细线、圆角 0、无阴影、11px `--ui-font-meta`。高亮行是下划线，没有填充，也没有 accent 竖条。选中行保持 `--ui-fg` 文字，并在起始侧槽位放 5px accent 圆点。选中和禁用是独立状态。方向键、文字搜索、Enter/Space、Esc 及点击外部关闭由 Reka UI 处理。下拉内容即使通过 portal 渲染，也保留在控件的 token 作用域内。减少动态效果设置会禁用触发按钮的颜色过渡。见[语言](/docs/language)。
 
 ```vue
 <Select

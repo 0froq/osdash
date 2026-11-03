@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: 锚定在触发按钮或外部元素上的非模态浮层面板。
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: 浮层是否打开。
 props:
   - name: reference
@@ -23,7 +23,7 @@ props:
     description: 未提供 trigger 插槽时的按钮文案，默认使用 label。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁用触发按钮。
   - name: side
     type: "'top' | 'right' | 'bottom' | 'left'"
@@ -35,7 +35,7 @@ props:
     description: 相对触发按钮的首选对齐方式；发生碰撞时位置可能调整。
   - name: sideOffset
     type: number
-    default: "8"
+    default: '8'
     description: 触发按钮与内容之间的像素距离。
   - name: portalTo
     type: string | HTMLElement
@@ -53,7 +53,7 @@ Popover 是锚定在触发按钮上的非模态面板。trigger 插槽必须最�
 
 默认情况下，内容会 Teleport 到最近的消费者 `class="ui"` 元素；找不到时则以内联方式渲染。在服务端只渲染触发按钮，打开后才会在客户端显示浮层内容。自定义 `portalTo` 目标必须已经存在，并由消费者提供主题和 UI token。Reka UI 的 CSS 变量不属于本库 token 契约。
 
-Popover 不是菜单、tooltip 或模态对话框。复杂内容及其业务行为应留在调用方。在调用方引入 `style.css`，并提供 `.ui` 祖先元素，以供库样式和默认 portal 目标使用。
+Popover 不是菜单、tooltip 或模态对话框。复杂内容及其业务行为应留在调用方。在调用方引入 `tokens.css`，并提供 `.ui` 祖先元素，以供库样式和默认 portal 目标使用。
 
 ## 用法
 
@@ -65,7 +65,7 @@ Popover 不是菜单、tooltip 或模态对话框。复杂内容及其业务行�
 <script setup lang="ts">
 import { Button, Popover } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 </script>
@@ -82,9 +82,7 @@ const open = ref(false)
       </template>
       <template #default="{ close }">
         <p>本文档仍是草稿。</p>
-        <Button @click="close">
-          知道了
-        </Button>
+        <Button @click="close"> 知道了 </Button>
       </template>
     </Popover>
   </div>

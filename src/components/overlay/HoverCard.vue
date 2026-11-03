@@ -4,31 +4,44 @@ import { computed, onBeforeUnmount, useSlots, useTemplateRef } from 'vue'
 import { usePortalTarget } from '../../vue'
 
 defineOptions({ inheritAttrs: false })
-const props = withDefaults(defineProps<{
-  label: string
-  href: string
-  disabled?: boolean
-  openDelay?: number
-  closeDelay?: number
-  side?: 'top' | 'right' | 'bottom' | 'left'
-  align?: 'start' | 'center' | 'end'
-  sideOffset?: number
-  portalTo?: string | HTMLElement
-}>(), { disabled: false, openDelay: 700, closeDelay: 300, side: 'bottom', align: 'start', sideOffset: 8 })
-defineSlots<{ trigger?: () => unknown, default: () => unknown }>()
+const props = withDefaults(
+  defineProps<{
+    label: string
+    href: string
+    disabled?: boolean
+    openDelay?: number
+    closeDelay?: number
+    side?: 'top' | 'right' | 'bottom' | 'left'
+    align?: 'start' | 'center' | 'end'
+    sideOffset?: number
+    portalTo?: string | HTMLElement
+  }>(),
+  {
+    disabled: false,
+    openDelay: 700,
+    closeDelay: 300,
+    side: 'bottom',
+    align: 'start',
+    sideOffset: 8,
+  },
+)
+defineSlots<{ trigger?: () => unknown; default: () => unknown }>()
 const model = defineModel<boolean>({ default: false })
 const slots = useSlots()
 const scope = useTemplateRef<HTMLElement>('scope')
 const target = usePortalTarget(scope)
-const openDelay = computed(() => Number.isFinite(props.openDelay) ? Math.max(0, props.openDelay) : 700)
-const closeDelay = computed(() => Number.isFinite(props.closeDelay) ? Math.max(0, props.closeDelay) : 300)
+const openDelay = computed(() =>
+  Number.isFinite(props.openDelay) ? Math.max(0, props.openDelay) : 700,
+)
+const closeDelay = computed(() =>
+  Number.isFinite(props.closeDelay) ? Math.max(0, props.closeDelay) : 300,
+)
 let alive = true
 onBeforeUnmount(() => {
   alive = false
 })
 function update(value: boolean) {
-  if (alive && !props.disabled)
-    model.value = value
+  if (alive && !props.disabled) model.value = value
 }
 </script>
 
@@ -71,3 +84,37 @@ function update(value: boolean) {
     </HoverCardRoot>
   </div>
 </template>
+
+<style scoped>
+.ui-overlay-scope {
+  display: contents;
+}
+
+.ui-hover-card-trigger {
+  color: var(--ui-fg);
+  text-decoration-color: var(--ui-line);
+  text-underline-offset: 4px;
+}
+
+.ui-hover-card-trigger:focus-visible {
+  outline: 1px solid var(--ui-accent);
+  outline-offset: 4px;
+}
+
+.ui-hover-card-content {
+  box-sizing: border-box;
+  z-index: 1001;
+  width: min(22rem, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 16px;
+  overflow-y: auto;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+  font-family: var(--ui-font-text);
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: none;
+}
+</style>

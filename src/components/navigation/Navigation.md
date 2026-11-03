@@ -26,7 +26,7 @@ By default, links use each item's `href`. Clicking an item without an `href` sel
 
 Navigation does not provide copy, route URLs, or scroll tracking. The consuming application supplies item labels and URLs, maps router state to `v-model`, and implements any scroll spy. For router links, use the slot adapter to remove `href` and `onClick` from the supplied props, bind the remaining props, pass the item's URL as `to`, and update the model from the confirmed route.
 
-The component does not add the `.ui` scope class. Import `style.css` in the caller and place Navigation inside an element with `class="ui"`.
+The component does not add the `.ui` scope class. Import `tokens.css` in the caller and place Navigation inside an element with `class="ui"`.
 
 ## Usage
 
@@ -34,7 +34,7 @@ The component does not add the `.ui` scope class. Import `style.css` in the call
 <script setup lang="ts">
 import { Navigation } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const active = ref('guide')
 const items = [

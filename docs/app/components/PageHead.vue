@@ -5,38 +5,66 @@ const props = defineProps<{
   lede?: string
   /** A title long enough to wrap, set smaller than a single word. */
   long?: boolean
-  /** Section heads own their inset, typography and metadata layout. */
-  variant?: 'poster' | 'section'
+  /** Poster and section heads introduce a collection. Article heads use the reading layout. */
+  variant?: 'poster' | 'section' | 'article'
+  heading?: 1 | 2
+  to?: string
 }>()
 
 const mark = computed(() => {
   const text = props.title ?? ''
   const found = text.match(/^(.*?)([.。])$/)
-  if (found)
-    return { body: found[1] ?? '', stop: found[2] ?? '' }
+  if (found) return { body: found[1] ?? '', stop: found[2] ?? '' }
   return { body: text, stop: text ? '.' : '' }
 })
 </script>
 
 <template>
-  <section
-    v-if="title || lede || kicker || $slots.kicker || $slots.meta"
+  <header
+    v-if="title || lede || kicker || $slots.kicker || $slots.meta || $slots.actions"
     class="l-page-head"
-    :class="{ 'is-section': variant === 'section' }"
+    :class="{ 'is-section': variant === 'section', 'is-article': variant === 'article' }"
   >
-    <h1
-      v-if="title"
-      class="l-page-title"
-      :class="{ 'is-long': long }"
+    <p
+      v-if="variant === 'article' && (kicker || $slots.kicker)"
+      class="l-kicker"
     >
-      {{ mark.body }}<span
-        v-if="mark.stop"
-        class="l-mark"
-      >{{ mark.stop }}</span>
-    </h1>
-    <div class="l-page-foot">
+      <slot name="kicker">{{ kicker }}</slot>
+    </p>
+    <div class="l-title-row">
+      <component
+        :is="heading === 2 ? 'h2' : 'h1'"
+        v-if="title"
+        class="l-page-title"
+        :class="{ 'is-long': long }"
+      >
+        <NuxtLink
+          v-if="to"
+          :to="to"
+          >{{ title }}</NuxtLink
+        >
+        <template v-else-if="variant === 'article'">{{ title }}</template>
+        <template v-else
+          >{{ mark.body
+          }}<span
+            v-if="mark.stop"
+            class="l-mark"
+            >{{ mark.stop }}</span
+          ></template
+        >
+      </component>
+      <div
+        v-if="$slots.actions"
+        class="l-actions"
+        ><slot name="actions"
+      /></div>
+    </div>
+    <div
+      v-if="variant !== 'article' || lede || $slots.meta"
+      class="l-page-foot"
+    >
       <p
-        v-if="kicker || $slots.kicker"
+        v-if="variant !== 'article' && (kicker || $slots.kicker)"
         class="l-kicker"
       >
         <slot name="kicker">
@@ -56,7 +84,7 @@ const mark = computed(() => {
         <slot name="meta" />
       </p>
     </div>
-  </section>
+  </header>
 </template>
 
 <style scoped>
@@ -67,9 +95,72 @@ const mark = computed(() => {
   padding: 0 var(--pad) clamp(32px, 6vh, 64px);
 }
 
-.l-page-head.is-section {
+.l-title-row {
+  min-width: 0;
+}
+
+.l-page-head.is-article {
+  display: block;
   min-height: 0;
-  padding: 112px 0 28px;
+  padding: 0;
+}
+
+.is-article > .l-kicker {
+  margin-bottom: 12px;
+}
+
+.is-article .l-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Article heads have no actions, so the row is a plain block and the title takes the full
+   measure of the column. */
+.is-article .l-title-row:not(:has(.l-actions)) {
+  display: block;
+}
+
+.is-article .l-page-title {
+  min-width: 0;
+  margin: 0;
+  font-size: calc(clamp(36px, 4vw, 56px) * var(--title-scale));
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.is-article h2.l-page-title {
+  font-size: calc(clamp(30px, 2.8vw, 40px) * var(--title-scale));
+}
+
+.is-article .l-page-foot {
+  display: block;
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+}
+
+.is-article .l-lede {
+  max-width: 36rem;
+}
+
+.is-article .l-lede + .l-meta,
+.is-article .l-kicker + .l-meta {
+  margin-top: 12px;
+}
+
+.l-actions {
+  flex-shrink: 0;
+}
+
+.l-page-head.is-section {
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+  min-height: 0;
+  padding: 28px 0;
 }
 
 .is-section .l-page-title.is-long {
@@ -107,11 +198,11 @@ const mark = computed(() => {
   color: var(--ui-accent);
 }
 
-:lang(zh) .l-page-title {
+:is(:lang(zh), :lang(ja)) .l-page-title {
   letter-spacing: 0;
 }
 
-:lang(zh) .l-page-title.is-long {
+:is(:lang(zh), :lang(ja)) .l-page-title.is-long {
   line-height: 1.15;
 }
 

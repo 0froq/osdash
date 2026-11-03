@@ -32,15 +32,15 @@ props:
     description: Placeholder for the text input.
   - name: multiple
     type: boolean
-    default: "false"
+    default: 'false'
     description: Allow selection of multiple options.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Disable the input and selection controls.
   - name: ignoreFilter
     type: boolean
-    default: "false"
+    default: 'false'
     description: Skip local option filtering; the consumer manages remote filtering and request races.
   - name: name
     type: string
@@ -49,7 +49,7 @@ props:
     type: "'ltr' | 'rtl'"
     description: Text and interaction direction; defaults to the Reka UI direction context, then ltr.
   - name: portalTo
-    type: "string | HTMLElement"
+    type: 'string | HTMLElement'
     description: Teleport target. Defaults to the nearest ancestor with class ui; without one, content renders inline on the client.
 slots:
   - name: option
@@ -68,7 +68,9 @@ A narrow TypeScript single-value model must include `''` to represent clearing, 
 
 The `name` prop submits the selected identifier(s), not the search text. Undeclared native attributes are applied to the input; `class` and `style` are applied to the outer field wrapper. An `id` passed as an undeclared attribute is overwritten by the component's generated input ID, which is linked to the visible label. A native `required` attribute validates that the search input contains text, not that an option is selected. Use `Select`, `RadioGroup`, or consumer-owned validation when selection-required validation is needed.
 
-By default, the option list is teleported to the nearest consumer ancestor with class `.ui`; without one, it renders inline on the client. Import `style.css` and provide the `.ui` scope. A custom `portalTo` target must exist and provide the consumer's theme and UI tokens.
+By default, the option list is teleported to the nearest consumer ancestor with class `.ui`; without one, it renders inline on the client. Import `tokens.css` and provide the `.ui` scope. A custom `portalTo` target must exist and provide the consumer's theme and UI tokens.
+
+The list matches Menu and Select: a hairline (`--ui-line`), radius 0, no shadow, and 11px `--ui-font-meta`. A highlighted row is underlined, with no fill and no accent bar. The checked option keeps `--ui-fg` and a 5px accent dot in the start gutter. The `option` slot replaces the label only; it does not draw that mark. See [Language](/docs/language).
 
 Form submission through `name` requires the component to be inside a form. Single selection submits `name=value`; multiple selection submits indexed fields such as `name[0]=value`, and an empty array contributes no selected fields. An input `form` attribute does not associate the hidden selection fields with an external form. Native form reset does not synchronize the Vue models; the consumer must reset them too. A forwarded `readonly` attribute only prevents text editing; it does not lock option selection. Use `disabled` to prevent all interaction. Clearing selection also closes the popup.
 
@@ -78,7 +80,7 @@ Form submission through `name` requires the component to be inside a form. Singl
 <script setup lang="ts">
 import { Combobox } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const country = ref('ca')
 const search = ref('')
@@ -104,12 +106,10 @@ const countries = [
       placeholder="Search countries"
       name="country"
     >
-      <template #option="{ option, selected }">
-        {{ selected ? '✓ ' : '' }}{{ option.label }}
+      <template #option="{ option }">
+        {{ option.label }}
       </template>
-      <template #empty>
-        No matching countries
-      </template>
+      <template #empty> No matching countries </template>
     </Combobox>
   </div>
 </template>

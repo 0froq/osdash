@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: A short text hint shown beside a focusable trigger.
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: Whether the tooltip is open.
 props:
   - name: text
@@ -13,11 +13,11 @@ props:
     description: Short, non-interactive tooltip text.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Suppress tooltip interactions without disabling the trigger or preventing parent model updates.
   - name: delayDuration
     type: number
-    default: "500"
+    default: '500'
     description: Delay in milliseconds, clamped to zero or above; non-finite values fall back to 500.
   - name: side
     type: "'top' | 'right' | 'bottom' | 'left'"
@@ -29,10 +29,10 @@ props:
     description: Preferred alignment against the trigger.
   - name: sideOffset
     type: number
-    default: "8"
+    default: '8'
     description: Distance in pixels between the trigger and tooltip content.
   - name: portalTo
-    type: "string | HTMLElement"
+    type: 'string | HTMLElement'
     description: Teleport target. Defaults to the closest consumer element with class ui, or renders inline when none exists.
 slots:
   - name: default
@@ -51,7 +51,7 @@ Undeclared attributes are forwarded to the tooltip content, not the trigger. By 
 <script setup lang="ts">
 import { Tooltip } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 </script>
@@ -66,9 +66,7 @@ const open = ref(false)
       :side-offset="8"
       :delay-duration="500"
     >
-      <button type="button">
-        Copy
-      </button>
+      <button type="button"> Copy </button>
     </Tooltip>
   </div>
 </template>

@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { nextTick, ref, useTemplateRef } from 'vue'
+import Button from '../button/Button.vue'
 import Alert from './Alert.vue'
 
 const visible = ref(true)
-const restore = useTemplateRef<HTMLButtonElement>('restore')
+const restore = useTemplateRef<InstanceType<typeof Button>>('restore')
 async function dismiss() {
   visible.value = false
   await nextTick()
-  restore.value?.focus()
+  restore.value?.$el.focus()
 }
 </script>
 
@@ -20,13 +21,11 @@ async function dismiss() {
   >
     Nothing has been published. You can continue editing.
   </Alert>
-  <button
+  <Button
     v-else
     ref="restore"
-    class="ui-button"
-    type="button"
     @click="visible = true"
   >
     Show notification
-  </button>
+  </Button>
 </template>

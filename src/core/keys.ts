@@ -4,8 +4,7 @@ export function wrap(index: number, length: number): number {
 
 /** Where a roving-tabindex group goes for a key press, or `undefined` when the key is not ours. */
 export function targetIndex(key: string, current: number, length: number): number | undefined {
-  if (length === 0)
-    return undefined
+  if (length === 0) return undefined
   switch (key) {
     case 'ArrowRight':
     case 'ArrowDown':

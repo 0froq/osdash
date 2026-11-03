@@ -28,11 +28,11 @@ props:
     description: 阅读及键盘方向；默认使用 Reka UI 方向上下文，无上下文时为 ltr。
   - name: loop
     type: boolean
-    default: "true"
+    default: 'true'
     description: 方向键焦点移动是否在首尾启用循环。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁用整个按钮组。
 slots:
   - name: option
@@ -55,7 +55,7 @@ ToggleGroup 渲染可见标签和由该标签命名的按钮组。单选模式�
 <script setup lang="ts">
 import { ToggleGroup } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const alignment = ref('left')
 const emphasis = ref<string[]>(['italic'])

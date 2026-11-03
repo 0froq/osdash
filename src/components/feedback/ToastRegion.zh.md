@@ -13,7 +13,7 @@ props:
     description: viewport 地标的非空无障碍名称；支持替换 {hotkey}。
   - name: duration
     type: number
-    default: "5000"
+    default: '5000'
     description: Toast 默认自动关闭时长，单位毫秒；单个 Toast 的 duration 可覆盖。
   - name: hotkey
     type: string[]
@@ -45,7 +45,7 @@ Region 的默认插槽仍包含普通子内容，并参与 SSR 渲染；ToastVie
 <script setup lang="ts">
 import { Toast, ToastRegion } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const messages = ref([
   {

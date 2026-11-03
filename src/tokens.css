@@ -7,15 +7,24 @@
   --ui-faint: light-dark(#cfccc3, #32312d);
   --ui-line: light-dark(rgb(26 25 23 / 12%), rgb(242 240 234 / 10%));
   --ui-accent: light-dark(#e8431f, #ff6242);
+  --ui-danger: light-dark(#cb4d50, #f28885);
+  --ui-caution: light-dark(#dbb800, #dbb800);
+  --ui-info: light-dark(#009392, #26c2c1);
+  --ui-success: light-dark(#38964d, #73c07f);
   --ui-font-display:
-    'Instrument Serif', 'Iowan Old Style', georgia, 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', serif;
+    'Instrument Serif', 'Iowan Old Style', georgia, 'Songti SC', 'Noto Serif SC',
+    'Source Han Serif SC', serif;
   --ui-font-text:
-    'Geist Variable', 'Geist', ui-sans-serif, system-ui, -apple-system, 'PingFang SC', 'Hiragino Sans GB',
-    'Noto Sans SC', sans-serif;
-  --ui-font-meta: 'Geist Mono Variable', 'Geist Mono', ui-monospace, sfmono-regular, menlo, monospace;
+    'Geist Variable', 'Geist', ui-sans-serif, system-ui, -apple-system, 'PingFang SC',
+    'Hiragino Sans GB', 'Noto Sans SC', sans-serif;
+  --ui-font-meta:
+    'Geist Mono Variable', 'Geist Mono', ui-monospace, sfmono-regular, menlo, monospace;
   --ui-ease: cubic-bezier(0.16, 1, 0.3, 1);
   --ui-dur: 0.35s;
-  --ui-radius: 2px;
+  --ui-radius-sm: 1px;
+  --ui-radius-md: 2px;
+  --ui-radius-lg: 10px;
+  --ui-radius: var(--ui-radius-md);
 }
 
 .ui[data-theme='light'],
@@ -26,4 +35,47 @@
 .ui[data-theme='dark'],
 [data-theme='dark'] .ui {
   color-scheme: dark;
+}
+
+/* A thin accent line for every scroller inside the scope. Firefox gets scrollbar-width and
+   scrollbar-color; WebKit and Blink get a 4px track with a 1px line drawn down its centre. */
+.ui,
+.ui * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-accent) transparent;
+}
+
+.ui *::-webkit-scrollbar,
+.ui::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.ui *::-webkit-scrollbar-track,
+.ui::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ui *::-webkit-scrollbar-thumb,
+.ui::-webkit-scrollbar-thumb {
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(
+    to right,
+    transparent 1.5px,
+    var(--ui-accent) 1.5px,
+    var(--ui-accent) 2.5px,
+    transparent 2.5px
+  );
+}
+
+.ui *::-webkit-scrollbar-thumb:horizontal,
+.ui::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(
+    to bottom,
+    transparent 1.5px,
+    var(--ui-accent) 1.5px,
+    var(--ui-accent) 2.5px,
+    transparent 2.5px
+  );
 }

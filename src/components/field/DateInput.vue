@@ -18,6 +18,51 @@ const { wrapperAttrs, controlAttrs } = useControlAttrs()
       v-model="model"
       class="ui-field-control"
       type="date"
-    >
+    />
   </label>
 </template>
+
+<style scoped>
+.ui-field-control[aria-invalid='true'] {
+  color: var(--ui-accent);
+  border-bottom-color: var(--ui-accent);
+}
+
+.ui-field {
+  display: grid;
+  gap: 8px;
+  max-width: 20rem;
+}
+
+.ui-field-label {
+  color: var(--ui-muted);
+  font-family: var(--ui-font-meta);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ui-field-control {
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--ui-line);
+  border-radius: 0;
+  appearance: none;
+  background: none;
+  color: var(--ui-fg);
+  font: inherit;
+  font-family: var(--ui-font-text);
+  font-size: 16px;
+}
+
+.ui-field-control:focus {
+  border-bottom-color: var(--ui-accent);
+  outline: none;
+}
+
+.ui-field-control:disabled {
+  color: var(--ui-muted);
+  cursor: not-allowed;
+}
+</style>

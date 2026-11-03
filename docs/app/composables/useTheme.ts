@@ -12,15 +12,14 @@ export function useTheme(): {
   const theme = useState<Theme>('theme', () => 'light')
   const ready = useState('theme-ready', () => false)
   const hooked = useState('theme-hooked', () => false)
-  const next = computed(() => theme.value === 'dark' ? 'light' : 'dark')
+  const next = computed(() => (theme.value === 'dark' ? 'light' : 'dark'))
 
   function apply(value: Theme, persist: boolean): void {
     const root = document.documentElement
     root.dataset.theme = value
     root.classList.toggle('dark', value === 'dark')
     theme.value = value
-    if (persist)
-      localStorage.setItem(KEY, value)
+    if (persist) localStorage.setItem(KEY, value)
   }
 
   if (import.meta.client && !hooked.value) {
@@ -28,9 +27,8 @@ export function useTheme(): {
     onMounted(() => {
       theme.value = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
       ready.value = true
-      matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
-        if (!localStorage.getItem(KEY))
-          apply(event.matches ? 'dark' : 'light', false)
+      matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+        if (!localStorage.getItem(KEY)) apply(event.matches ? 'dark' : 'light', false)
       })
     })
   }

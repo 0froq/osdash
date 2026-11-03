@@ -22,13 +22,12 @@ usePaperOgImage({
         long
       >
         <template #meta>
-          <NuxtLink
-            class="l-cta"
+          <CtaLink
             :to="link('/')"
             @click.prevent="clearError({ redirect: link('/') })"
           >
             {{ t('notFound.back') }}
-          </NuxtLink>
+          </CtaLink>
         </template>
       </PageHead>
     </div>

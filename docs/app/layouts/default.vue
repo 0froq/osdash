@@ -1,31 +1,57 @@
 <script setup lang="ts">
-import { Banner, Paper } from '@froq/ui'
+import { Banner, Paper, UiDevtools } from '@froq/ui'
 
 const { t } = useI18n()
 const link = useSiteLink()
+provideSectionNavigation()
+
+// Sticky chrome (banner + header) height, so sticky sidebars can sit below it.
+const chrome = useTemplateRef<HTMLElement>('chrome')
+const chromeHeight = ref(0)
+onMounted(() => {
+  const el = chrome.value
+  if (!el) return
+  const observer = new ResizeObserver(() => {
+    chromeHeight.value = el.offsetHeight
+  })
+  observer.observe(el)
+  onBeforeUnmount(() => observer.disconnect())
+})
 </script>
 
 <template>
-  <Paper class="l-site ui">
+  <Paper
+    class="l-site ui"
+    :style="{ '--chrome-h': `${chromeHeight}px` }"
+  >
     <a
       class="l-skip"
       href="#main"
-    >{{ t('site.skip') }}</a>
-    <Banner :label="t('site.noticeLabel')">
-      {{ t('site.wip') }}
-      <template #actions>
-        <NuxtLink :to="link('/components')">
-          {{ t('site.noticeAction') }}
-        </NuxtLink>
-      </template>
-    </Banner>
+      >{{ t('site.skip') }}</a
+    >
     <div class="l-page">
-      <SiteHeader />
+      <div
+        ref="chrome"
+        class="l-chrome"
+      >
+        <Paper fixed>
+          <Banner :label="t('site.noticeLabel')">
+            {{ t('site.wip') }}
+            <template #actions>
+              <NuxtLink :to="link('/components')">
+                {{ t('site.noticeAction') }}
+              </NuxtLink>
+            </template>
+          </Banner>
+          <SiteHeader />
+        </Paper>
+      </div>
       <main id="main">
         <slot />
       </main>
       <SiteFooter />
     </div>
+    <UiDevtools />
   </Paper>
 </template>
 
@@ -51,6 +77,22 @@ const link = useSiteLink()
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   transition: color 0.6s var(--ui-ease);
+}
+
+.l-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+}
+
+/* Fade from the paper into the page below. */
+.l-chrome::after {
+  content: '';
+  position: absolute;
+  inset: 100% 0 auto;
+  height: 32px;
+  background: linear-gradient(to bottom, var(--ui-bg), transparent);
+  pointer-events: none;
 }
 
 .l-page {

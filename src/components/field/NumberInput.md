@@ -32,7 +32,7 @@ Undeclared native attributes and listeners are applied to the input, while `clas
 <script setup lang="ts">
 import { NumberInput } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const quantity = ref<number | undefined>()
 </script>

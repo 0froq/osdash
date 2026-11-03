@@ -1,6 +1,6 @@
 ---
 title: Button
-designStatus: ai-draft
+designStatus: stable
 description: 采用统一轻量表面样式的原生按钮。
 props:
   - name: type
@@ -23,9 +23,7 @@ import { Button } from '@froq/ui'
 
 <template>
   <div class="ui">
-    <Button type="button">
-      保存
-    </Button>
+    <Button type="button"> 保存 </Button>
   </div>
 </template>
 ```

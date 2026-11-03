@@ -1,17 +1,12 @@
 {
   "name": "docs",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "lint": "nuxt prepare && eslint . --cache",
-    "lint:fix": "nuxt prepare && eslint . --cache --fix",
     "typecheck": "nuxt typecheck"
-  },
-  "peerDependencies": {
-    "nuxt": "catalog:prod"
   },
   "dependencies": {
     "@fontsource-variable/geist": "catalog:prod",
@@ -24,12 +19,12 @@
     "vue": "catalog:prod"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "catalog:dev",
-    "@nuxt/eslint": "catalog:dev",
-    "eslint": "catalog:dev",
-    "eslint-plugin-format": "catalog:dev",
+    "@x18n/devtools": "catalog:dev",
     "nuxtseo-devtools-host": "catalog:dev",
     "typescript": "catalog:dev",
     "vue-tsc": "catalog:dev"
+  },
+  "peerDependencies": {
+    "nuxt": "catalog:prod"
   }
 }

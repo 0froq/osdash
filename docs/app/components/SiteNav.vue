@@ -6,11 +6,13 @@ const { site } = useAppConfig()
 const { t } = useI18n()
 const { href, current } = useSectionHref()
 
-const items = computed(() => site.nav.map(item => ({
-  value: item.to,
-  label: t(item.label),
-  href: item.external ? item.to : href(item.to),
-})))
+const items = computed(() =>
+  site.nav.map(item => ({
+    value: item.to,
+    label: t(item.label),
+    href: item.external ? item.to : href(item.to),
+  })),
+)
 const active = computed(() => site.nav.find(item => !item.external && current(item.to))?.to ?? '')
 const isExternal = (value: string) => site.nav.some(item => item.to === value && item.external)
 
@@ -30,7 +32,8 @@ function routerLinkProps({ href: _href, onClick: _onClick, ...attrs }: Navigatio
         v-if="isExternal(item.value)"
         :href="item.href"
         :class="linkProps.class"
-      >{{ item.label }}</a>
+        >{{ item.label }}</a
+      >
       <NuxtLink
         v-else
         v-bind="routerLinkProps(linkProps)"

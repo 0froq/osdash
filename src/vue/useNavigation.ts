@@ -8,10 +8,16 @@ export function useNavigation(active: Ref<string>) {
   }
 
   function activate(event: MouseEvent, item: NavigationItem): void {
-    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
       return
-    if (!item.href)
-      event.preventDefault()
+    if (!item.href) event.preventDefault()
     active.value = item.value
   }
 

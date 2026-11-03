@@ -1,5 +1,13 @@
 import type { Ref } from 'vue'
-import type { InkMark, LayerColors, MixColors, PaperLayer, PenAnchors, PenLayer, PenOptions } from '../core/signature/types'
+import type {
+  InkMark,
+  LayerColors,
+  MixColors,
+  PaperLayer,
+  PenAnchors,
+  PenLayer,
+  PenOptions,
+} from '../core/signature/types'
 import { onBeforeUnmount, onMounted, readonly, shallowReactive } from 'vue'
 import { createInkWash } from '../core/signature/paper'
 import { createPenStroke } from '../core/signature/pen'
@@ -45,8 +53,16 @@ export interface PaperSignatureState {
 }
 
 /** One page-level signature. The caller owns layout, text, colors and visibility. */
-export function usePaperSignature(root: Ref<HTMLElement | undefined>, options: PaperSignatureOptions) {
-  const state = shallowReactive<PaperSignatureState>({ paper: false, bloom: false, stroke: false, hand: false })
+export function usePaperSignature(
+  root: Ref<HTMLElement | undefined>,
+  options: PaperSignatureOptions,
+) {
+  const state = shallowReactive<PaperSignatureState>({
+    paper: false,
+    bloom: false,
+    stroke: false,
+    hand: false,
+  })
   let paper: PaperLayer | null = null
   let pen: PenLayer | null = null
   const timers: ReturnType<typeof setTimeout>[] = []
@@ -59,11 +75,9 @@ export function usePaperSignature(root: Ref<HTMLElement | undefined>, options: P
 
   onMounted(async () => {
     const el = root.value
-    if (!el)
-      return
+    if (!el) return
     await Promise.all([document.fonts.ready, settled(el)])
-    if (!alive)
-      return
+    if (!alive) return
     const settings = options.settings?.() ?? {}
     const { mark, finalMark, rule } = options.anchors()
     const bloom = settings.bloom ?? true
@@ -79,36 +93,37 @@ export function usePaperSignature(root: Ref<HTMLElement | undefined>, options: P
     }
     state.paper = !!paper
     state.bloom = !!paper && bloom
-    if (state.bloom)
-      timers.push(setTimeout(() => paper?.bloom(), 250))
+    if (state.bloom) timers.push(setTimeout(() => paper?.bloom(), 250))
     if (line) {
-      timers.push(setTimeout(() => {
-        const anchors = (): PenAnchors => {
-          const next = options.anchors()
-          return { ...next, hand: (settings.hand ?? true) ? next.hand : null }
-        }
-        pen = createPenStroke({
-          root: el,
-          anchors,
-          mixColors: options.mixColors,
-          onReady: (hand) => {
-            state.stroke = true
-            state.hand = hand
-          },
-          colors: options.colors(),
-          wet: (x, y) => paper?.wet(x, y) ?? 0,
-          flowing: () => paper?.flowing() ?? false,
-          onArrive: state.bloom && finalMark ? () => paper?.soak(finalMark) : undefined,
-          animate: options.animate,
-          tremor: options.tremor,
-          roundJoins: options.roundJoins,
-          fadeRoute: options.fadeRoute,
-          continuePastHand: options.continuePastHand,
-          labels: options.labels,
-          marks: options.marks,
-        })
-        state.stroke = !!pen
-      }, 900))
+      timers.push(
+        setTimeout(() => {
+          const anchors = (): PenAnchors => {
+            const next = options.anchors()
+            return { ...next, hand: (settings.hand ?? true) ? next.hand : null }
+          }
+          pen = createPenStroke({
+            root: el,
+            anchors,
+            mixColors: options.mixColors,
+            onReady: hand => {
+              state.stroke = true
+              state.hand = hand
+            },
+            colors: options.colors(),
+            wet: (x, y) => paper?.wet(x, y) ?? 0,
+            flowing: () => paper?.flowing() ?? false,
+            onArrive: state.bloom && finalMark ? () => paper?.soak(finalMark) : undefined,
+            animate: options.animate,
+            tremor: options.tremor,
+            roundJoins: options.roundJoins,
+            fadeRoute: options.fadeRoute,
+            continuePastHand: options.continuePastHand,
+            labels: options.labels,
+            marks: options.marks,
+          })
+          state.stroke = !!pen
+        }, 900),
+      )
     }
   })
 

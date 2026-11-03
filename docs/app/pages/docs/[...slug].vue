@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { Sidebar as UiSidebar } from '@froq/ui'
+
 definePageMeta({
-  key: (route) => {
+  key: route => {
     const parts = route.path.split('/').filter(Boolean)
     const at = parts.indexOf('docs')
     return at === -1 ? route.path : `/${parts.slice(0, at + 1).join('/')}`
@@ -10,7 +12,9 @@ definePageMeta({
 const route = useRoute()
 const { site } = useAppConfig()
 const { t, locale } = useI18n()
+
 const link = useSiteLink()
+const current = useSidebarCurrent()
 const contentPath = useContentPath()
 
 const rest = computed(() => {
@@ -31,8 +35,7 @@ const { data } = await useAsyncData(
   },
 )
 const doc = computed(() => data.value?.doc)
-if (!doc.value)
-  throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: true })
+if (!doc.value) throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: true })
 
 function toPublic(path: string): string {
   const root = data.value?.root ?? contentPath('/docs')
@@ -43,31 +46,43 @@ function toPublic(path: string): string {
 const titles = computed(() => {
   const map = new Map<string, string>()
   for (const item of data.value?.all ?? []) {
-    if (item.title)
-      map.set(toPublic(item.path), item.title)
+    if (item.title) map.set(toPublic(item.path), item.title)
   }
   return map
 })
 
-const groups = computed(() => site.docs.map(group => ({
-  label: t(group.label),
-  items: group.items.map(to => ({
-    to,
-    title: titles.value.get(to) ?? to.split('/').pop() ?? to,
+const groups = computed(() =>
+  site.docs.map(group => ({
+    label: t(group.label),
+    items: group.items.map(to => ({
+      to,
+      title: titles.value.get(to) ?? to.split('/').pop() ?? to,
+    })),
   })),
-})))
+)
 
-const navGroups = computed(() => groups.value.map(group => ({
-  label: group.label,
-  items: group.items.map(item => ({ label: item.title, to: item.to })),
-})))
+const sidebarGroups = computed(() =>
+  toSidebarGroups(
+    groups.value.map(group => ({
+      label: group.label,
+      items: group.items.map(item => ({ label: item.title, to: item.to })),
+    })),
+    link,
+  ),
+)
 
-const pages = computed(() => groups.value.flatMap(group => group.items.map(item => ({
-  ...item,
-  group: group.label,
-}))))
-const herePath = computed(() => doc.value ? toPublic(doc.value.path) : '')
-const indexDoc = computed(() => (data.value?.all ?? []).find(item => toPublic(item.path) === '/docs'))
+const pages = computed(() =>
+  groups.value.flatMap(group =>
+    group.items.map(item => ({
+      ...item,
+      group: group.label,
+    })),
+  ),
+)
+const herePath = computed(() => (doc.value ? toPublic(doc.value.path) : ''))
+const indexDoc = computed(() =>
+  (data.value?.all ?? []).find(item => toPublic(item.path) === '/docs'),
+)
 const indexEntry = computed(() => pages.value.find(item => item.to === '/docs'))
 const index = computed(() => pages.value.findIndex(item => item.to === herePath.value))
 const prev = computed(() => pages.value[index.value - 1])
@@ -81,11 +96,23 @@ useContentOgImage(doc, 'docs', {
 </script>
 
 <template>
-  <SectionLayout :banner="!rest">
+  <SectionLayout :head="!rest">
     <template #nav>
-      <Sidebar :groups="navGroups" />
+      <UiSidebar
+        :groups="sidebarGroups"
+        :current="current"
+      >
+        <template #link="{ item, props: linkProps }">
+          <NuxtLink
+            v-bind="routerLinkProps(linkProps)"
+            :to="item.href!"
+          >
+            {{ item.label }}
+          </NuxtLink>
+        </template>
+      </UiSidebar>
     </template>
-    <template #banner>
+    <template #head>
       <PageHead
         v-if="indexDoc"
         :title="indexDoc.title"
@@ -97,39 +124,41 @@ useContentOgImage(doc, 'docs', {
           <NuxtLink :to="link('/docs')">
             {{ t('docs.label') }}
           </NuxtLink>
-          <template v-if="indexEntry">
-            / {{ indexEntry.group }}
-          </template>
+          <template v-if="indexEntry"> / {{ indexEntry.group }} </template>
         </template>
       </PageHead>
     </template>
-    <DocBody v-if="doc">
-      <ContentRenderer
-        :value="doc"
-        class="l-md"
-      />
-    </DocBody>
-    <nav
-      v-if="prev || next"
-      class="l-section is-pager"
+    <DocPage
+      v-if="doc"
+      :title="rest ? doc.title : undefined"
+      :lede="rest ? doc.description : undefined"
+      :kicker="rest ? doc.kicker : undefined"
+      :value="doc"
     >
-      <p class="l-label">
-        <NuxtLink
-          v-if="prev"
-          :to="link(prev.to)"
+      <template #footer>
+        <nav
+          v-if="prev || next"
+          class="l-section is-pager"
         >
-          ← {{ prev.title }}
-        </NuxtLink>
-      </p>
-      <NuxtLink
-        v-if="next"
-        class="l-body l-entry"
-        :to="link(next.to)"
-      >
-        <span class="l-kicker">{{ t('docs.next') }}</span>
-        <span class="l-entry-title">{{ next.title }}</span>
-      </NuxtLink>
-    </nav>
+          <p class="l-label">
+            <NuxtLink
+              v-if="prev"
+              :to="link(prev.to)"
+            >
+              ← {{ prev.title }}
+            </NuxtLink>
+          </p>
+          <NuxtLink
+            v-if="next"
+            class="l-body l-entry"
+            :to="link(next.to)"
+          >
+            <span class="l-kicker">{{ t('docs.next') }}</span>
+            <span class="l-entry-title">{{ next.title }}</span>
+          </NuxtLink>
+        </nav>
+      </template>
+    </DocPage>
   </SectionLayout>
 </template>
 
@@ -139,8 +168,7 @@ useContentOgImage(doc, 'docs', {
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   gap: var(--gap);
   align-items: baseline;
-  padding-top: clamp(96px, 18vh, 200px);
-  padding-bottom: clamp(96px, 16vh, 180px);
+  padding-bottom: clamp(48px, 8vh, 96px);
 }
 
 .l-label {
@@ -189,7 +217,7 @@ useContentOgImage(doc, 'docs', {
   transition: color 0.3s;
 }
 
-:lang(zh) .l-entry-title {
+:is(:lang(zh), :lang(ja)) .l-entry-title {
   letter-spacing: 0;
 }
 

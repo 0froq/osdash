@@ -49,18 +49,18 @@ props:
     type: string
     description: Optional caller-supplied YYYY-MM-DD marker; no local-today value is inferred by the component.
   - name: isDateDisabled
-    type: "(date: string) => boolean"
+    type: '(date: string) => boolean'
     description: Callback that disables a Gregorian date string.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Disable the trigger and clearing; the displayed popup is closed while disabled.
   - name: readonly
     type: boolean
-    default: "false"
+    default: 'false'
     description: Allow browsing but prevent selection and clearing.
   - name: weekStartsOn
-    type: "0 | 1 | 2 | 3 | 4 | 5 | 6"
+    type: '0 | 1 | 2 | 3 | 4 | 5 | 6'
     description: First weekday, from Sunday (0) through Saturday (6); defaults from the locale.
   - name: dir
     type: "'ltr' | 'rtl'"
@@ -72,7 +72,7 @@ props:
     type: string
     description: Optional HTML form ID for the hidden date input.
   - name: portalTo
-    type: "string | HTMLElement"
+    type: 'string | HTMLElement'
     description: Teleport target. Defaults to the nearest ancestor with class ui; without one, content renders inline on the client.
 slots:
   - name: day
@@ -89,7 +89,7 @@ Selecting a day closes the popover, including selecting the same day again. The 
 
 Opening the popover moves focus into the calendar, targeting a day marked `data-focused`, then the first enabled button (typically a month-navigation button), with the calendar root as a final fallback. Calendar arrow keys move between days; Enter/Space select; Tab follows native focus order through the calendar and close button. Escape and outside interaction close the popover through Reka UI. Closing from the picker returns focus to its trigger; outside dismissal leaves focus with the outside target. The component does not provide range selection, month/year dropdowns, extra paging keys, or swipe gestures.
 
-By default, the popover is teleported to the nearest consumer ancestor with class `.ui`; without one, it renders inline on the client. A custom `portalTo` target must exist and provide the consumer's theme and UI tokens. Import `style.css` and provide the `.ui` scope in the consumer.
+By default, the popover is teleported to the nearest consumer ancestor with class `.ui`; without one, it renders inline on the client. A custom `portalTo` target must exist and provide the consumer's theme and UI tokens. Import `tokens.css` and provide the `.ui` scope in the consumer.
 
 ## Usage
 
@@ -99,7 +99,7 @@ Clearing returns focus to the trigger before the clear button becomes disabled. 
 <script setup lang="ts">
 import { DatePicker } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const deliveryDate = ref('')
 const open = ref(false)

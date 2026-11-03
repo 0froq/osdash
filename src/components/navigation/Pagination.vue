@@ -3,18 +3,26 @@ import type { PaginationControlProps } from '../../vue'
 import { computed } from 'vue'
 import { currentPage, pageCount, paginationEntries } from '../../core'
 
-const props = withDefaults(defineProps<{
-  label: string
-  pages: number
-  previousLabel: string
-  nextLabel: string
-  pageLabel: (page: number) => string
-  siblingCount?: number
-  disabled?: boolean
-  href?: (page: number) => string
-}>(), { siblingCount: 1, disabled: false })
+const props = withDefaults(
+  defineProps<{
+    label: string
+    pages: number
+    previousLabel: string
+    nextLabel: string
+    pageLabel: (page: number) => string
+    siblingCount?: number
+    disabled?: boolean
+    href?: (page: number) => string
+  }>(),
+  { siblingCount: 1, disabled: false },
+)
 defineSlots<{
-  control?: (scope: { page: number, kind: 'page' | 'previous' | 'next', tag: 'a' | 'button', props: PaginationControlProps }) => unknown
+  control?: (scope: {
+    page: number
+    kind: 'page' | 'previous' | 'next'
+    tag: 'a' | 'button'
+    props: PaginationControlProps
+  }) => unknown
 }>()
 const model = defineModel<number>({ default: 1 })
 const count = computed(() => pageCount(props.pages))
@@ -23,14 +31,14 @@ const entries = computed(() => paginationEntries(current.value, count.value, pro
 const previous = computed(() => Math.max(1, current.value - 1))
 const next = computed(() => Math.min(Math.max(1, count.value), current.value + 1))
 
-function disabled(page: number, kind: 'page' | 'previous' | 'next'): boolean {
+function isDisabled(page: number, kind: 'page' | 'previous' | 'next'): boolean {
   return props.disabled || !count.value || (kind !== 'page' && page === current.value)
 }
 function tag(page: number, kind: 'page' | 'previous' | 'next'): 'a' | 'button' {
-  return props.href && !disabled(page, kind) ? 'a' : 'button'
+  return props.href && !isDisabled(page, kind) ? 'a' : 'button'
 }
 function controlProps(page: number, kind: 'page' | 'previous' | 'next'): PaginationControlProps {
-  const blocked = disabled(page, kind)
+  const blocked = isDisabled(page, kind)
   const isLink = tag(page, kind) === 'a'
   return {
     'class': 'ui-pagination-control',
@@ -38,14 +46,23 @@ function controlProps(page: number, kind: 'page' | 'previous' | 'next'): Paginat
     'href': isLink ? props.href?.(page) : undefined,
     'disabled': blocked || undefined,
     'aria-disabled': blocked || undefined,
-    'aria-label': kind === 'previous' ? props.previousLabel : kind === 'next' ? props.nextLabel : props.pageLabel(page),
+    'aria-label':
+      kind === 'previous'
+        ? props.previousLabel
+        : kind === 'next'
+          ? props.nextLabel
+          : props.pageLabel(page),
     'aria-current': kind === 'page' && page === current.value ? 'page' : undefined,
-    'onClick': (event) => {
+    'onClick': event => {
       if (blocked) {
         event.preventDefault()
         return
       }
-      if (event.defaultPrevented || (isLink && (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)))
+      if (
+        event.defaultPrevented ||
+        (isLink &&
+          (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey))
+      )
         return
       model.value = page
     },
@@ -86,7 +103,8 @@ function controlProps(page: number, kind: 'page' | 'previous' | 'next'): Paginat
           v-if="typeof entry !== 'number'"
           class="ui-pagination-gap"
           aria-hidden="true"
-        >…</span>
+          >…</span
+        >
         <slot
           v-else
           name="control"
@@ -122,3 +140,66 @@ function controlProps(page: number, kind: 'page' | 'previous' | 'next'): Paginat
     </ul>
   </nav>
 </template>
+
+<style scoped>
+.ui-pagination {
+  color: var(--ui-muted);
+  font-family: var(--ui-font-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ui-pagination-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:deep(.ui-pagination-control),
+.ui-pagination-gap {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+
+:deep(.ui-pagination-control) {
+  cursor: pointer;
+}
+
+:deep(.ui-pagination-control:hover:not(:disabled)) {
+  color: var(--ui-fg);
+  border-color: var(--ui-line);
+}
+
+:deep(.ui-pagination-control[aria-current]) {
+  border-color: var(--ui-line);
+  background: var(--ui-faint);
+  color: var(--ui-fg);
+  box-shadow: inset 0 -2px var(--ui-accent);
+}
+
+:deep(.ui-pagination-control:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+:deep(.ui-pagination-control:focus-visible) {
+  outline: 1px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+</style>

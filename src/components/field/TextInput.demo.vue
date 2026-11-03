@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import Button from '../button/Button.vue'
 import TextInput from './TextInput.vue'
 
 const name = ref('')
@@ -15,14 +16,12 @@ const disabled = ref(false)
     placeholder="Your name"
     :disabled="disabled"
   />
-  <button
-    type="button"
-    class="ui-button"
+  <Button
     :aria-pressed="disabled"
     @click="disabled = !disabled"
   >
     Toggle disabled
-  </button>
+  </Button>
   <p class="demo-readout">
     {{ name || 'empty' }}
   </p>

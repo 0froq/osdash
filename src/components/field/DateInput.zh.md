@@ -23,7 +23,7 @@ DateInput 渲染带标签的原生 `type="date"` 控件。模型是 `YYYY-MM-DD`
 <script setup lang="ts">
 import { DateInput } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const date = ref('2026-09-30')
 </script>

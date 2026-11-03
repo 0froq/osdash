@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: 支持单项或多项展开的折叠面板组。
 model:
   type: string[]
-  default: "[]"
+  default: '[]'
   description: 已展开条目的 value 数组。
 props:
   - name: items
@@ -13,11 +13,11 @@ props:
     description: 条目数组，value 必须稳定且唯一，并含有 label；每项可设为禁用。
   - name: multiple
     type: boolean
-    default: "false"
+    default: 'false'
     description: 是否允许同时展开多个条目。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁用所有条目的切换。
 slots:
   - name: default
@@ -34,7 +34,7 @@ Accordion 为条目列表组合 Collapsible 面板。`v-model` 是已展开条�
 <script setup lang="ts">
 import { Accordion } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const openItems = ref<string[]>([])
 const items = [

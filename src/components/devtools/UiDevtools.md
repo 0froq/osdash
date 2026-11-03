@@ -33,7 +33,7 @@ localised. Place it inside an element with `class="ui"`.
 ```vue
 <script setup lang="ts">
 import { UiDevtools } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 </script>
 
 <template>

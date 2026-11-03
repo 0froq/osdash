@@ -8,7 +8,7 @@ model:
   description: The value of the chosen option.
 props:
   - name: options
-    type: "ChoiceOption<T>[]"
+    type: 'ChoiceOption<T>[]'
     required: true
     description: The words. Each option has a value and a label, and may be disabled.
   - name: label
@@ -16,11 +16,11 @@ props:
     description: Visible label that names the group.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Disable the entire group.
 ---
 
-Choice is one selection among words, not a stack of boxes. The chosen word sits in the foreground. The others stay muted. An accent stop rests just after the chosen word and moves when the selection changes. If the reader prefers reduced motion, the stop jumps instead of traveling.
+Choice is one selection among words, not a stack of boxes. The chosen word sits in the foreground above an accent rule. The others stay muted. The rule slides to the next word when the selection changes, stretching across the gap and settling under the new word. If the reader prefers reduced motion, the rule jumps instead of traveling.
 
 The custom button radio group is a single tab stop. Arrow keys, Home, and End move the selection; disabled options are skipped. Modified keys are not consumed. If the current value is missing or disabled, the first enabled option becomes the Tab entry point without changing the model. When every option is disabled, none is tabbable. The `disabled` prop disables the whole group.
 

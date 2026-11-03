@@ -12,8 +12,6 @@ const open = ref(false)
     label="Installation details"
   >
     <p>Content stays mounted when this panel closes.</p>
-    <Button @click="open = false">
-      Close from inside
-    </Button>
+    <Button @click="open = false"> Close from inside </Button>
   </Collapsible>
 </template>

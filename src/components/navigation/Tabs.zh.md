@@ -42,7 +42,7 @@ Tabs 为每项渲染一个标签和一个面板。`items` 的 value 必须唯一
 <script setup lang="ts">
 import { Tabs } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const active = ref('overview')
 const items = [

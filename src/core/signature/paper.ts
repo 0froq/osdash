@@ -147,10 +147,16 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
 
   const canvas = document.createElement('canvas')
   canvas.setAttribute('aria-hidden', 'true')
-  Object.assign(canvas.style, { position: 'fixed', inset: '0', width: '100%', height: '100%', zIndex: '0', pointerEvents: 'none' })
+  Object.assign(canvas.style, {
+    position: 'fixed',
+    inset: '0',
+    width: '100%',
+    height: '100%',
+    zIndex: '0',
+    pointerEvents: 'none',
+  })
   const glContext = canvas.getContext('webgl2', { alpha: false, antialias: false })
-  if (!glContext)
-    return null
+  if (!glContext) return null
   const gl: WebGL2RenderingContext = glContext
   document.body.prepend(canvas)
   const viewport = createCanvasViewport(canvas, document.body, 1.5)
@@ -162,8 +168,7 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
 
   function compile(type: number, src: string): WebGLShader {
     const sh = gl.createShader(type)
-    if (!sh)
-      throw new Error('shader')
+    if (!sh) throw new Error('shader')
     gl.shaderSource(sh, src)
     gl.compileShader(sh)
     if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS))
@@ -171,8 +176,7 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
     return sh
   }
   const prog = gl.createProgram()
-  if (!prog)
-    throw new Error('program')
+  if (!prog) throw new Error('program')
   gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT))
   gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG))
   gl.bindAttribLocation(prog, 0, 'p')
@@ -192,8 +196,7 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
     count: u('uCount'),
   }
   function setColors(theme: LayerColors): void {
-    if (destroyed)
-      return
+    if (destroyed) return
     gl.uniform3fv(U.paper, hexToRgb(theme.paper))
     gl.uniform3fv(U.accent, hexToRgb(theme.accent))
     gl.uniform1f(U.dark, theme.dark ? 1 : 0)
@@ -223,15 +226,27 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
   function spawn(x: number, y: number, size: number, opts: WashOptions = {}): Bloom {
     const { strength = 1, tau = 0.8, life = 14, hold = false } = opts
     if (blooms.length >= MAX)
-      blooms.splice(blooms.findIndex(b => !b.hold), 1)
-    const b: Bloom = { x, y: y + window.scrollY, size, strength, tau, life, hold, born: performance.now(), seed: Math.random() * 100 }
+      blooms.splice(
+        blooms.findIndex(b => !b.hold),
+        1,
+      )
+    const b: Bloom = {
+      x,
+      y: y + window.scrollY,
+      size,
+      strength,
+      tau,
+      life,
+      hold,
+      born: performance.now(),
+      seed: Math.random() * 100,
+    }
     blooms.push(b)
     dirty = true
     return b
   }
   function add(x: number, y: number, size: number, opts?: BloomOptions): void {
-    if (destroyed)
-      return
+    if (destroyed) return
     spawn(x, y, size, opts)
   }
 
@@ -241,40 +256,49 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
     for (const m of marks) {
       if (!m.probe) {
         m.probe = document.createElement('i')
-        Object.assign(m.probe.style, { display: 'inline-block', width: '0', height: '0', verticalAlign: 'baseline' })
+        Object.assign(m.probe.style, {
+          display: 'inline-block',
+          width: '0',
+          height: '0',
+          verticalAlign: 'baseline',
+        })
         m.el.append(m.probe)
       }
       const style = getComputedStyle(m.el)
       const ctx = document.createElement('canvas').getContext('2d')
-      if (!ctx)
-        continue
+      if (!ctx) continue
       ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
       // SSR slot anchors may be the first child. Element text excludes those comments.
       const t = ctx.measureText(m.el.textContent || '.')
       m.glyph = {
         cx: (t.actualBoundingBoxRight - t.actualBoundingBoxLeft) / 2,
         cy: (t.actualBoundingBoxDescent - t.actualBoundingBoxAscent) / 2,
-        r: Math.max(t.actualBoundingBoxRight + t.actualBoundingBoxLeft, t.actualBoundingBoxAscent + t.actualBoundingBoxDescent) / 2,
+        r:
+          Math.max(
+            t.actualBoundingBoxRight + t.actualBoundingBoxLeft,
+            t.actualBoundingBoxAscent + t.actualBoundingBoxDescent,
+          ) / 2,
       }
     }
   }
-  function centre(m: Mark): { x: number, y: number, r: number } {
+  function centre(m: Mark): { x: number; y: number; r: number } {
     const glyph = m.glyph
     const probe = m.probe
-    if (!glyph || !probe)
-      return { x: 0, y: 0, r: 0 }
-    return { x: m.el.getBoundingClientRect().left + glyph.cx, y: probe.getBoundingClientRect().top + glyph.cy, r: glyph.r }
+    if (!glyph || !probe) return { x: 0, y: 0, r: 0 }
+    return {
+      x: m.el.getBoundingClientRect().left + glyph.cx,
+      y: probe.getBoundingClientRect().top + glyph.cy,
+      r: glyph.r,
+    }
   }
   let armed = false
   function bloom(): void {
-    if (destroyed)
-      return
+    if (destroyed) return
     armed = true
   }
   // Bloom a mark right away, e.g. when another layer's pen lands on it
   function soak(el: HTMLElement | null | undefined): void {
-    if (destroyed || !el)
-      return
+    if (destroyed || !el) return
     let m = marks.find(item => item.el === el)
     if (!m) {
       m = toMark(el)
@@ -284,52 +308,65 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
     m.now = true
     dirty = true
   }
-  const seen = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      const m = marks.find(item => item.el === entry.target)
-      if (m && entry.isIntersecting)
-        m.visible = true
-    }
-  }, { threshold: 1 })
+  const seen = new IntersectionObserver(
+    entries => {
+      for (const entry of entries) {
+        const m = marks.find(item => item.el === entry.target)
+        if (m && entry.isIntersecting) m.visible = true
+      }
+    },
+    { threshold: 1 },
+  )
   marks.forEach(m => seen.observe(m.el))
 
   // Resting the pointer lets colour bleed from the tip; a press drops a bead of colour
-  let tip: { x: number, y: number, still: number, paper: boolean } | null = null
+  let tip: { x: number; y: number; still: number; paper: boolean } | null = null
   let dwellBloom: Bloom | null = null
   const onPaper = (event: Event): boolean => {
     const target = event.target
     return !(target instanceof Element && target.closest('a, button, summary'))
   }
   if (dwellAfter > 0) {
-    window.addEventListener('pointermove', (event) => {
-      const x = event.clientX
-      const y = event.clientY
-      if (!tip || Math.hypot(x - tip.x, y - tip.y) > 4) {
-        tip = { x, y, still: performance.now(), paper: onPaper(event) }
+    window.addEventListener(
+      'pointermove',
+      event => {
+        const x = event.clientX
+        const y = event.clientY
+        if (!tip || Math.hypot(x - tip.x, y - tip.y) > 4) {
+          tip = { x, y, still: performance.now(), paper: onPaper(event) }
+          dwellBloom = null
+        }
+      },
+      { passive: true, signal },
+    )
+    document.addEventListener(
+      'mouseleave',
+      () => {
+        tip = null
         dwellBloom = null
-      }
-    }, { passive: true, signal })
-    document.addEventListener('mouseleave', () => {
-      tip = null
-      dwellBloom = null
-    }, { signal })
+      },
+      { signal },
+    )
   }
   if (click) {
-    window.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0 || !onPaper(event))
-        return
-      spawn(event.clientX, event.clientY, 22 + Math.random() * 16, { strength: 1, tau: reduced ? 0.001 : 0.6 })
-    }, { passive: true, signal })
+    window.addEventListener(
+      'pointerdown',
+      event => {
+        if (event.button !== 0 || !onPaper(event)) return
+        spawn(event.clientX, event.clientY, 22 + Math.random() * 16, {
+          strength: 1,
+          tau: reduced ? 0.001 : 0.6,
+        })
+      },
+      { passive: true, signal },
+    )
   }
 
   function dwell(now: number): void {
-    if (!tip || !tip.paper || reduced || dwellAfter <= 0)
-      return
+    if (!tip || !tip.paper || reduced || dwellAfter <= 0) return
     const held = (now - tip.still) / 1000
-    if (held < dwellAfter)
-      return
-    if (!dwellBloom)
-      dwellBloom = spawn(tip.x, tip.y, 6, { strength: 0.75, tau: 1.6, life: 12 })
+    if (held < dwellAfter) return
+    if (!dwellBloom) dwellBloom = spawn(tip.x, tip.y, 6, { strength: 0.75, tau: 1.6, life: 12 })
     dwellBloom.size = Math.min(58, 6 + (held - dwellAfter) * 9)
     dwellBloom.born = Math.min(dwellBloom.born, now)
     dwellBloom.life = 12 + held
@@ -344,12 +381,10 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
     for (const b of blooms) {
       const t = (now - b.born) / 1000
       const alpha = b.hold ? 1 : 1 - smoothstep(b.life, b.life + 8, t)
-      if (alpha <= 0)
-        continue
+      if (alpha <= 0) continue
       const radius = Math.max(b.size * (1 - Math.exp(-t / b.tau)), 1)
       const d = Math.hypot(x - b.x, y - b.y) / radius
-      if (d > 1.05)
-        continue
+      if (d > 1.05) continue
       cover += b.strength * alpha * (1 - smoothstep(0.82, 1.02, d))
     }
     return Math.min(1, cover)
@@ -357,19 +392,17 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
 
   function flowing(): boolean {
     const now = performance.now()
-    return blooms.some((b) => {
+    return blooms.some(b => {
       const t = (now - b.born) / 1000
       const alpha = b.hold ? 1 : 1 - smoothstep(b.life, b.life + 8, t)
-      if (alpha <= 0)
-        return false
+      if (alpha <= 0) return false
       const growing = 1 - Math.exp(-t / b.tau) < 0.98
       return growing || !b.hold
     })
   }
 
   function frame(now: number): void {
-    if (destroyed)
-      return
+    if (destroyed) return
     resize()
     dwell(now)
 
@@ -379,7 +412,11 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
         m.visibleAt ||= now
         if (m.now || now - m.visibleAt > 450) {
           const c = centre(m)
-          m.bloom = spawn(c.x, c.y, c.r * 1.2, { strength: 3, tau: reduced ? 0.001 : 1.1, hold: true })
+          m.bloom = spawn(c.x, c.y, c.r * 1.2, {
+            strength: 3,
+            tau: reduced ? 0.001 : 1.1,
+            hold: true,
+          })
         }
       }
       if (m.bloom) {
@@ -403,8 +440,7 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
         continue
       }
       const grow = 1 - Math.exp(-t / b.tau)
-      if (grow < 0.999 || alpha < 1)
-        animating = true
+      if (grow < 0.999 || alpha < 1) animating = true
       A.set([b.x, b.y, b.size * grow, b.seed], n * 4)
       B.set([b.strength, alpha, 0, 0], n * 4)
       n++
@@ -420,29 +456,30 @@ export function createInkWash(options: PaperOptions): PaperLayer | null {
       gl.drawArrays(gl.TRIANGLES, 0, 3)
       dirty = false
     }
-    if (!destroyed)
-      raf = requestAnimationFrame(frame)
+    if (!destroyed) raf = requestAnimationFrame(frame)
   }
 
   function destroy(): void {
-    if (destroyed)
-      return
+    if (destroyed) return
     destroyed = true
     cancelAnimationFrame(raf)
     ac.abort()
     seen.disconnect()
-    for (const m of marks)
-      m.probe?.remove()
+    for (const m of marks) m.probe?.remove()
     canvas.remove()
     gl.getExtension('WEBGL_lose_context')?.loseContext()
   }
 
   resize()
   measureMarks()
-  window.addEventListener('resize', () => {
-    resize()
-    measureMarks()
-  }, { signal })
+  window.addEventListener(
+    'resize',
+    () => {
+      resize()
+      measureMarks()
+    },
+    { signal },
+  )
   raf = requestAnimationFrame(frame)
 
   return { bloom, soak, add, wet, flowing, setColors, destroy }

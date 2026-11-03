@@ -24,7 +24,7 @@ EmptyState renders a `<section>` named by its visible `<h2>`, with optional desc
 ```vue
 <script setup lang="ts">
 import { Button, EmptyState } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 </script>
 
 <template>
@@ -34,9 +34,7 @@ import '@froq/ui/style.css'
       description="Save a document to find it here later."
     >
       <template #actions>
-        <Button type="button">
-          Explore documents
-        </Button>
+        <Button type="button"> Explore documents </Button>
       </template>
     </EmptyState>
   </div>

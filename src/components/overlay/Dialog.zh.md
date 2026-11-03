@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: 受控开关并可配置关闭方式的模态对话框。
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: 对话框是否打开。
 props:
   - name: title
@@ -24,25 +24,29 @@ props:
     description: 未提供 trigger 插槽时显示的触发按钮文字，默认使用 title。
   - name: showTrigger
     type: boolean
-    default: "true"
+    default: 'true'
     description: 是否渲染内置触发器及 trigger 插槽；为 false 时两者都不渲染。
   - name: returnFocus
     type: HTMLElement
     description: 关闭后接收焦点的可选可聚焦元素，优先于捕获到的打开前焦点。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁用触发按钮；父组件仍可通过模型打开对话框。
   - name: dismissible
     type: boolean
-    default: "true"
+    default: 'true'
     description: 是否显示内置关闭按钮并允许 Escape 或点击外部关闭。
   - name: closeOnOutside
     type: boolean
-    default: "true"
+    default: 'true'
     description: dismissible 为 true 时，是否允许外部交互关闭对话框。
+  - name: closeOnScrollOutside
+    type: boolean
+    default: 'false'
+    description: dismissible 和 closeOnOutside 均为 true 时，在遮罩上滚轮或触摸滑动会关闭对话框。对话框内部滚动不会关闭。
   - name: portalTo
-    type: "string | HTMLElement"
+    type: 'string | HTMLElement'
     description: Teleport 目标。默认使用最近的 ui 类祖先；找不到时客户端内联渲染。
 slots:
   - name: trigger
@@ -64,6 +68,8 @@ Dialog 使用初始关闭的受控布尔 `v-model`，可用于由消费端控制
 
 `showTrigger="false"` 时，焦点恢复优先使用有效的 `returnFocus`，其次尝试捕获到的打开前元素。目标必须仍连接在文档中、未禁用、未处于 hidden 或 inert 子树内，并具有布局；两者都无效时，组件不会猜测页面级后备焦点。显示内置触发器时，默认焦点返回由 Reka UI 处理。声明的 `openAutoFocus` 与 `closeAutoFocus` 事件会同步接收可取消的 DOM `Event`，需同步调用 `preventDefault()`。若外部候选焦点都不合适，可用 `@close-auto-focus.prevent` 接管焦点恢复。`dismissible` 控制内置关闭按钮以及 Escape/外部关闭。`dismissible="false"` 时 `closeOnOutside` 不起作用。dismissible 为 true 时，将 `closeOnOutside` 设为 false 会阻止外部关闭，但保留关闭按钮和 Escape。插槽的 `close()` 和父组件更新模型始终可以关闭对话框。
 
+开启 `closeOnScrollOutside` 后，在遮罩上滚轮或触摸滑动就会关闭，即使模态滚动锁阻止了页面实际滚动。对话框内部滚动不会关闭。该选项要求 `dismissible` 与 `closeOnOutside` 均为 true，默认关闭。
+
 未声明的属性会绑定到 Reka 的 `DialogContent`，不会绑定到 trigger 或外层 scope。未提供 `description` 时，组件会从透传属性中移除 `aria-describedby`，避免引用不存在的描述。trigger 插槽必须使用单个原生 button，或确实能透传属性和 button ref 的组件；不要用 div 或链接伪装按钮。
 
 默认情况下，对话框会 portal 到最近的消费端 `.ui` 祖先。找不到目标时，客户端会内联渲染。SSR 时仅在 `showTrigger` 为 true 时渲染内置触发器，portal 内容不会渲染。自定义 `portalTo` 目标必须存在，并提供消费端所需的设计 token 和主题。Dialog 根节点不会自行添加 `.ui`；作用域及 portal 目标的样式由消费端提供。
@@ -76,7 +82,7 @@ Dialog 使用初始关闭的受控布尔 `v-model`，可用于由消费端控制
 <script setup lang="ts">
 import { Dialog } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 </script>

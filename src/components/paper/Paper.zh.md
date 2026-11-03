@@ -5,12 +5,16 @@ description: 浅色是纤维，深色是颗粒。每一档都可以关掉。
 props:
   - name: light
     type: boolean
-    default: "true"
+    default: 'true'
     description: 页面为浅色时画纤维。
   - name: dark
     type: boolean
-    default: "true"
+    default: 'true'
     description: 页面为深色时画颗粒。
+  - name: fixed
+    type: boolean
+    default: 'false'
+    description: 把纹理钉在视口上，用于页面滚动时保持不动的 sticky 或 fixed 面板。
 slots:
   - name: default
     description: 纹理上面的内容。

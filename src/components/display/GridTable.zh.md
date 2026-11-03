@@ -48,7 +48,7 @@ GridTable 是通用的 CSS 网格，用于矩阵式表格，例如为每个条�
 
 组件不保存选中状态。用 `current` 传入选中的列，并由调用方绑定表头控件，例如用 `Choice` 配合 `v-model`。每个 `cell` 都是调用方内容，可以放链接、按钮或文本。网格内的链接会显示焦点轮廓。
 
-未声明的属性（包括 `class` 和 `style`）会转发给网格根元素。用 `class` 添加项目的布局，例如外边距。组件没有排序、筛选、虚拟化或业务状态。样式只使用 UI 库 token，不依赖字体、路由或业务状态。在调用方引入 `style.css`，并将组件放在带有 `class="ui"` 的元素内。
+未声明的属性（包括 `class` 和 `style`）会转发给网格根元素。用 `class` 添加项目的布局，例如外边距。组件没有排序、筛选、虚拟化或业务状态。样式只使用 UI 库 token，不依赖字体、路由或业务状态。在调用方引入 `tokens.css`，并将组件放在带有 `class="ui"` 的元素内。
 
 ## 用法
 
@@ -57,7 +57,7 @@ GridTable 是通用的 CSS 网格，用于矩阵式表格，例如为每个条�
 import type { ChoiceOption } from '@froq/ui/vue'
 import { Choice, GridTable } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 interface PortRow {
   id: string
@@ -73,7 +73,10 @@ const columns: VariantColumn[] = [
   { id: 'full', label: 'Full' },
   { id: 'lite', label: 'Lite' },
 ]
-const options: ChoiceOption<string>[] = columns.map(column => ({ value: column.id, label: column.label }))
+const options: ChoiceOption<string>[] = columns.map(column => ({
+  value: column.id,
+  label: column.label,
+}))
 const variant = ref('full')
 </script>
 

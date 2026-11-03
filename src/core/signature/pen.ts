@@ -8,7 +8,17 @@ import type { InkMark, LayerColors, PenLayer, PenOptions, Point } from './types'
 import { prefersReducedMotion } from '../motion'
 import { createCanvasViewport } from './canvas-viewport'
 import { layoutText } from './hand-font'
-import { cubic, looseEllipse, resample, roundJoin, simplify, smooth, STEP, tangent, wobble } from './pen-geometry'
+import {
+  cubic,
+  looseEllipse,
+  resample,
+  roundJoin,
+  simplify,
+  smooth,
+  STEP,
+  tangent,
+  wobble,
+} from './pen-geometry'
 
 interface Seg {
   from: number
@@ -53,7 +63,14 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
   const canvas = document.createElement('canvas')
   canvas.className = 'ui-pen-layer'
   canvas.setAttribute('aria-hidden', 'true')
-  Object.assign(canvas.style, { position: 'fixed', inset: '0', width: '100%', height: '100%', zIndex: '-1', pointerEvents: 'none' })
+  Object.assign(canvas.style, {
+    position: 'fixed',
+    inset: '0',
+    width: '100%',
+    height: '100%',
+    zIndex: '-1',
+    pointerEvents: 'none',
+  })
   // Inside the page's stacking context, under its type: it fades out with the page it belongs to
   root.prepend(canvas)
   const viewport = createCanvasViewport(canvas, root, 2)
@@ -108,7 +125,12 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
     if (!probe) {
       const created = document.createElement('i')
       created.className = 'ui-pen-probe'
-      Object.assign(created.style, { display: 'inline-block', width: '0', height: '0', verticalAlign: 'baseline' })
+      Object.assign(created.style, {
+        display: 'inline-block',
+        width: '0',
+        height: '0',
+        verticalAlign: 'baseline',
+      })
       el.append(created)
       probes.push(created)
       probe = created
@@ -126,16 +148,23 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
     let dir: Point = [1, 0]
     dot = null
     let sized = false
-    const tremble = (pts: Point[], amp: number, seed: number): Point[] => options.tremor === false ? pts : wobble(pts, amp, seed)
+    const tremble = (pts: Point[], amp: number, seed: number): Point[] =>
+      options.tremor === false ? pts : wobble(pts, amp, seed)
 
     const append = (poly: Point[], w: number, opts: TravelOpts): Seg => {
-      const { speed, trigger = null, taper = false, nib = false, emphasis = true, scroll = false } = opts
+      const {
+        speed,
+        trigger = null,
+        taper = false,
+        nib = false,
+        emphasis = true,
+        scroll = false,
+      } = opts
       const joined = pen ? (options.roundJoins === false ? poly : roundJoin(pen, dir, poly)) : poly
       const r = resample(joined)
       const from = pts.length
       r.forEach((p, i) => {
-        if (from > 0 && i === 0)
-          return
+        if (from > 0 && i === 0) return
         pts.push(p)
         const k = taper ? Math.min(1, i / 24, (r.length - 1 - i) / 24) : 1
         let ww = w * (0.45 + 0.55 * k)
@@ -161,29 +190,48 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
         return null
       }
       const d = Math.hypot(to[0] - pen[0], to[1] - pen[1])
-      return append(tremble(cubic(pen, dir, to, entry, Math.max(20, Math.round(d / 6))), Math.min(6, d * 0.012), to[1] * 0.01), w ?? 0, { ...opts, speed: opts?.speed ?? 0, emphasis: false, scroll: !!opts?.trigger })
+      return append(
+        tremble(
+          cubic(pen, dir, to, entry, Math.max(20, Math.round(d / 6))),
+          Math.min(6, d * 0.012),
+          to[1] * 0.01,
+        ),
+        w ?? 0,
+        { ...opts, speed: opts?.speed ?? 0, emphasis: false, scroll: !!opts?.trigger },
+      )
     }
 
     // Latin ink fitted to a box. `lifted` starts a new mark instead of joining the route.
-    const writeLatin = (source: string, left: number, baselineY: number, fitWidth: number, trigger: Element | null, lifted: boolean): void => {
+    const writeLatin = (
+      source: string,
+      left: number,
+      baselineY: number,
+      fitWidth: number,
+      trigger: Element | null,
+      lifted: boolean,
+    ): void => {
       const probeSize = 100
       const sample = layoutText(source, { size: probeSize })
-      if (sample.width <= 0 || fitWidth <= 0)
-        return
-      const size = probeSize * fitWidth / sample.width
+      if (sample.width <= 0 || fitWidth <= 0) return
+      const size = (probeSize * fitWidth) / sample.width
       const ww = Math.max(1.4, Math.min(3.4, size * 0.028))
       if (!sized) {
         wordWidth = ww
         sized = true
       }
       const scale = ww / wordWidth
-      if (lifted)
-        pen = null
-      const glyphs = layoutText(source, { size }).strokes.map(s => smooth(simplify(s.map(([x, y]): Point => [x + left, y + baselineY]), size * 0.006)))
+      if (lifted) pen = null
+      const glyphs = layoutText(source, { size }).strokes.map(s =>
+        smooth(
+          simplify(
+            s.map(([x, y]): Point => [x + left, y + baselineY]),
+            size * 0.006,
+          ),
+        ),
+      )
       glyphs.forEach((g, k) => {
         const start = g[0]
-        if (!start)
-          return
+        if (!start) return
         let len = 0
         for (let i = 1; i < g.length; i++) {
           const prev = g[i - 1]!
@@ -197,17 +245,28 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
           const dx = start[0] - pen[0]
           const dy = start[1] - pen[1]
           const l = Math.hypot(dx, dy) || 1
-          draft.push(append(cubic(pen, dir, start, isDot ? [dx / l, dy / l] : tangent(g, false), 40), 0.07 * scale, { speed: size * 9, emphasis: false, trigger }))
+          draft.push(
+            append(
+              cubic(pen, dir, start, isDot ? [dx / l, dy / l] : tangent(g, false), 40),
+              0.07 * scale,
+              { speed: size * 9, emphasis: false, trigger },
+            ),
+          )
         }
-        draft.push(append(g, (isDot ? 1.5 : 1) * scale, { speed: size * (isDot ? 2 : 6), nib: !isDot, trigger }))
+        draft.push(
+          append(g, (isDot ? 1.5 : 1) * scale, {
+            speed: size * (isDot ? 2 : 6),
+            nib: !isDot,
+            trigger,
+          }),
+        )
       })
     }
 
     const placeMark = (mark: InkMark): void => {
       const raw = mark.stripStop ? mark.text.replace(/[.!?]$/, '') : mark.text
       const source = raw.trim()
-      if (!source)
-        return
+      if (!source) return
       const el = mark.element
       if (el) {
         const rect = textRect(el)
@@ -215,8 +274,7 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
         return
       }
       const box = mark.box
-      if (!box)
-        return
+      if (!box) return
       writeLatin(source, box.x, box.baseline, box.width, null, true)
     }
 
@@ -229,7 +287,8 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
     // Single-column layouts have no margin to run in. A written tagline ends the stroke;
     // otherwise the pen still lifts between sections.
     const narrow = window.innerWidth < 860
-    const lift = (to: Point, trigger: Element): Seg | null => pen ? append([pen, to], 0, { speed: 1e6, trigger }) : travel(to, [1, 0])
+    const lift = (to: Point, trigger: Element): Seg | null =>
+      pen ? append([pen, to], 0, { speed: 1e6, trigger }) : travel(to, [1, 0])
 
     // A tagline can be the whole stroke. The route below is the rest of the page.
     if (!(narrow && hand) && (options.continuePastHand !== false || !hand)) {
@@ -246,41 +305,77 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
         if (end) {
           x0 = end.right
           x1 = end.left
-        }
-        else {
-          const firstLabel = !narrow ? anchors.sections?.find(section => section.label)?.label : undefined
+        } else {
+          const firstLabel = !narrow
+            ? anchors.sections?.find(section => section.label)?.label
+            : undefined
           if (firstLabel) {
             const lr = textRect(firstLabel)
             x1 = Math.min(fr.right - 32, Math.max(fr.left + 32, lr.right + 32))
           }
         }
         draft.push(travel([x0, y], [-0.45, 0.9], connector, { speed: 1100 }))
-        draft.push(append(tremble([[x0, y], [x1, y]], 1.2, 3), connector * 0.8, { speed: 1800, emphasis: false }))
+        draft.push(
+          append(
+            tremble(
+              [
+                [x0, y],
+                [x1, y],
+              ],
+              1.2,
+              3,
+            ),
+            connector * 0.8,
+            { speed: 1800, emphasis: false },
+          ),
+        )
       }
 
       // 3. Mark each section name; prices get their own ring.
       anchors.sections?.forEach(({ label, price }) => {
-        if (!label)
-          return
+        if (!label) return
         const lr = textRect(label)
         switch (labels) {
           case 'ring': {
             const labelCx = lr.left + lr.width / 2
             const labelCy = lr.top + window.scrollY + lr.height / 2
             // Grow across the turns so they read as pen passes rather than one thick outline.
-            const labelRing = looseEllipse(labelCx, labelCy, lr.width / 2 + 12, lr.height / 2 + 10, -2, Math.PI * 2.5, 0.3)
+            const labelRing = looseEllipse(
+              labelCx,
+              labelCy,
+              lr.width / 2 + 12,
+              lr.height / 2 + 10,
+              -2,
+              Math.PI * 2.5,
+              0.3,
+            )
             const labelStart = labelRing[0]
-            if (!labelStart)
-              return
-            draft.push(narrow ? lift(labelStart, label) : travel(labelStart, tangent(labelRing, false), connector, { speed: 1600, trigger: label }))
+            if (!labelStart) return
+            draft.push(
+              narrow
+                ? lift(labelStart, label)
+                : travel(labelStart, tangent(labelRing, false), connector, {
+                    speed: 1600,
+                    trigger: label,
+                  }),
+            )
             draft.push(append(labelRing, connector * 1.05, { speed: 700, trigger: label }))
             break
           }
           case 'line': {
             const y = lr.bottom + window.scrollY + 5
             const start: Point = [lr.left - 2, y]
-            draft.push(narrow ? lift(start, label) : travel(start, [0.25, 0.97], connector, { speed: 1600, trigger: label }))
-            draft.push(append(tremble([start, [lr.right + 18, y - 1.5]], 0.8, y), connector * 1.15, { speed: 700, trigger: label }))
+            draft.push(
+              narrow
+                ? lift(start, label)
+                : travel(start, [0.25, 0.97], connector, { speed: 1600, trigger: label }),
+            )
+            draft.push(
+              append(tremble([start, [lr.right + 18, y - 1.5]], 0.8, y), connector * 1.15, {
+                speed: 700,
+                trigger: label,
+              }),
+            )
             break
           }
           default: {
@@ -289,16 +384,18 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
           }
         }
 
-        if (!price)
-          return
+        if (!price) return
         const pr = textRect(price)
         const cx = pr.left + pr.width / 2
         const cy = pr.top + window.scrollY + pr.height * 0.55
         const ring = looseEllipse(cx, cy, pr.width * 0.62, pr.height * 0.5)
         const ringStart = ring[0]
-        if (!ringStart)
-          return
-        draft.push(narrow ? lift(ringStart, price) : travel(ringStart, tangent(ring, false), connector, { speed: 1600, trigger: price }))
+        if (!ringStart) return
+        draft.push(
+          narrow
+            ? lift(ringStart, price)
+            : travel(ringStart, tangent(ring, false), connector, { speed: 1600, trigger: price }),
+        )
         draft.push(append(ring, connector * 1.25, { speed: 1100, trigger: price }))
       })
 
@@ -314,8 +411,15 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
         const t = measure.measureText(glyphText)
         const mr = mark.getBoundingClientRect()
         const b = baseline(mark)
-        const c: Point = [mr.left + (t.actualBoundingBoxRight - t.actualBoundingBoxLeft) / 2, b + (t.actualBoundingBoxDescent - t.actualBoundingBoxAscent) / 2]
-        const r = Math.max(t.actualBoundingBoxRight + t.actualBoundingBoxLeft, t.actualBoundingBoxAscent + t.actualBoundingBoxDescent) / 2
+        const c: Point = [
+          mr.left + (t.actualBoundingBoxRight - t.actualBoundingBoxLeft) / 2,
+          b + (t.actualBoundingBoxDescent - t.actualBoundingBoxAscent) / 2,
+        ]
+        const r =
+          Math.max(
+            t.actualBoundingBoxRight + t.actualBoundingBoxLeft,
+            t.actualBoundingBoxAscent + t.actualBoundingBoxDescent,
+          ) / 2
         // Down the margin, across the empty band above the last section, then into the stop
         // from the upper right so the line never crosses text
         const prev = section.previousElementSibling?.getBoundingClientRect()
@@ -327,8 +431,14 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
         // cross the band, and drop onto the stop from its right.
         const band = anchors.finalBand?.getBoundingClientRect()
         const over: Point = band
-          ? [Math.min(window.innerWidth - 24, c[0] + title.height * 0.3), band.top + band.height / 2 + window.scrollY]
-          : [Math.min(window.innerWidth - 40, c[0] + title.height * 1.1), title.top + window.scrollY - title.height * 0.9]
+          ? [
+              Math.min(window.innerWidth - 24, c[0] + title.height * 0.3),
+              band.top + band.height / 2 + window.scrollY,
+            ]
+          : [
+              Math.min(window.innerWidth - 40, c[0] + title.height * 1.1),
+              title.top + window.scrollY - title.height * 0.9,
+            ]
         if (band) {
           // Right along the band, straight down past the stop, then left into it:
           // three square-ish turns with a radius no larger than the stop's gap to the edge.
@@ -337,24 +447,34 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
           if (narrow) {
             draft.push(lift(turn, section))
             dir = [1, 0]
-          }
-          else {
+          } else {
             const laneX = Math.max(12, band.left - 28)
-            draft.push(travel([laneX, top + window.scrollY + 24], [0, 1], connector, { speed: 1500, trigger: section }))
-            draft.push(travel([laneX, over[1]], [0.2, 0.98], connector, { speed: 1500, trigger: section }))
+            draft.push(
+              travel([laneX, top + window.scrollY + 24], [0, 1], connector, {
+                speed: 1500,
+                trigger: section,
+              }),
+            )
+            draft.push(
+              travel([laneX, over[1]], [0.2, 0.98], connector, { speed: 1500, trigger: section }),
+            )
             draft.push(travel(turn, [1, 0], connector, { speed: 1500, trigger: section }))
           }
-          draft.push(travel([over[0], over[1] + gap], [0, 1], connector, { speed: 1100, trigger: mark }))
-          draft.push(travel([over[0], c[1] - gap], [0, 1], connector, { speed: 1500, trigger: mark }))
+          draft.push(
+            travel([over[0], over[1] + gap], [0, 1], connector, { speed: 1100, trigger: mark }),
+          )
+          draft.push(
+            travel([over[0], c[1] - gap], [0, 1], connector, { speed: 1500, trigger: mark }),
+          )
           draft.push(travel(c, [-1, 0], connector, { speed: 1100, trigger: mark }))
-        }
-        else {
+        } else {
           if (narrow) {
             draft.push(lift(over, section))
             dir = [0.86, 0.5]
-          }
-          else {
-            draft.push(travel([left + 24, bandY], [0.2, 0.98], connector, { speed: 1500, trigger: section }))
+          } else {
+            draft.push(
+              travel([left + 24, bandY], [0.2, 0.98], connector, { speed: 1500, trigger: section }),
+            )
             draft.push(travel(over, [0.86, 0.5], connector, { speed: 1500, trigger: section }))
           }
           draft.push(travel(c, [-0.42, 0.91], connector, { speed: 1100, trigger: mark }))
@@ -363,10 +483,8 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
       }
     }
 
-    if (pts.length)
-      sized = true
-    for (const mark of options.marks?.() ?? [])
-      placeMark(mark)
+    if (pts.length) sized = true
+    for (const mark of options.marks?.() ?? []) placeMark(mark)
 
     segs = draft.filter((seg): seg is Seg => seg !== null)
     total = pts.length
@@ -392,8 +510,7 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
           continue
         }
         let end = start + 1
-        while (end < total && !emphases[end])
-          end++
+        while (end < total && !emphases[end]) end++
         const enters = start > 0 && widths[start - 1]! > 0
         const leaves = end < total ? widths[end]! > 0 : !!dot
         const from = distance[Math.max(0, start - 1)]!
@@ -410,8 +527,8 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
   }
 
   function recolor(): void {
-    inkAt = Array.from(Tone, weight => weight === 1 ? ink : blend(ink, weight, paper))
-    accentAt = Array.from(Tone, weight => weight === 1 ? accent : blend(accent, weight, paper))
+    inkAt = Array.from(Tone, weight => (weight === 1 ? ink : blend(ink, weight, paper)))
+    accentAt = Array.from(Tone, weight => (weight === 1 ? accent : blend(accent, weight, paper)))
   }
 
   let dpr = 1
@@ -430,13 +547,19 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
   function rebuild(): void {
     const done = segIndex
     const current = segs[done]
-    const progress = current ? Math.max(0, Math.min(1, (head - current.from) / Math.max(1, current.to - current.from))) : 0
+    const progress = current
+      ? Math.max(0, Math.min(1, (head - current.from) / Math.max(1, current.to - current.from)))
+      : 0
     const finished = head >= total - 1 && total > 0
     build()
     segIndex = Math.min(done, segs.length)
     const prev = segs[segIndex - 1]
     const next = segs[segIndex]
-    head = finished ? total - 1 : next ? next.from + (next.to - next.from) * progress : prev?.to ?? 0
+    head = finished
+      ? total - 1
+      : next
+        ? next.from + (next.to - next.from) * progress
+        : (prev?.to ?? 0)
     dirty = true
   }
 
@@ -463,18 +586,15 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
     const atBottom = document.documentElement.scrollHeight - window.innerHeight - window.scrollY < 2
     const readingEdge = window.scrollY + window.innerHeight * (atBottom ? 1 : 0.8)
     revealEdge += (readingEdge - revealEdge) * (1 - Math.exp(-dt / 0.22))
-    if (Math.abs(readingEdge - revealEdge) < 0.5)
-      revealEdge = readingEdge
+    if (Math.abs(readingEdge - revealEdge) < 0.5) revealEdge = readingEdge
     let budget = dt
     while (segIndex < segs.length && budget > 0) {
       const seg = segs[segIndex]
-      if (!seg || (!seg.scroll && !triggered(seg)))
-        break
+      if (!seg || (!seg.scroll && !triggered(seg))) break
       // If the reader has run ahead, the pen hurries to catch up
       let ahead = 0
       for (let k = segIndex + 1; k < segs.length && triggered(segs[k]!); k++) {
-        if (segs[k]!.trigger)
-          ahead++
+        if (segs[k]!.trigger) ahead++
       }
       const rate = (seg.speed / STEP) * (1 + ahead * 0.6)
       let target = Math.min(seg.to, head + rate * budget)
@@ -484,28 +604,24 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
         // cannot reveal an unseen stretch just because their endpoint is visible.
         for (let i = Math.floor(head) + 1; i <= Math.ceil(target); i++) {
           const y = Y[i]!
-          if (y <= edge)
-            continue
+          if (y <= edge) continue
           const before = Y[i - 1]!
           const crossing = before < edge ? i - 1 + (edge - before) / (y - before) : head
           target = Math.max(head, Math.min(target, crossing))
           break
         }
       }
-      if (target <= head)
-        break
+      if (target <= head) break
       budget -= (target - head) / rate
       head = target
       dirty = true
       if (head >= seg.to) {
         segIndex++
-      }
-      else {
+      } else {
         break
       }
     }
-    if (segIndex >= segs.length && dot && !dotBorn)
-      arrive(performance.now())
+    if (segIndex >= segs.length && dot && !dotBorn) arrive(performance.now())
   }
 
   function arrive(at: number): void {
@@ -532,16 +648,18 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
     }
     const dyeOf = (i: number): number => {
       const at = stainAt[i] ?? 0
-      if (at <= 0)
-        return 0
+      if (at <= 0) return 0
       const since = (now - at) / 1000
-      if (since <= DYE_HOLD)
-        return 1
+      if (since <= DYE_HOLD) return 1
       return 1 - smoothstep(DYE_HOLD, DYE_HOLD + DYE_FADE, since)
     }
-    const gradient = (from: Point, to: Point, first: string, last: string): string | CanvasGradient => {
-      if (first === last || (from[0] === to[0] && from[1] === to[1]))
-        return first
+    const gradient = (
+      from: Point,
+      to: Point,
+      first: string,
+      last: string,
+    ): string | CanvasGradient => {
+      if (first === last || (from[0] === to[0] && from[1] === to[1])) return first
       const color = ctx.createLinearGradient(from[0], from[1] - sy, to[0], to[1] - sy)
       color.addColorStop(0, first)
       color.addColorStop(1, last)
@@ -565,15 +683,12 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
     for (let i = 0; i < upto;) {
       const w = Wd[i + 1] ?? 0
       let j = i + 1
-      while (j < upto && j - i < CH && Math.abs((Wd[j + 1] ?? 0) - w) < w * 0.35)
-        j++
-      if (w > 0 && !hidden(i, j))
-        stroke(i, j, wordWidth * w, inkAt, 1)
+      while (j < upto && j - i < CH && Math.abs((Wd[j + 1] ?? 0) - w) < w * 0.35) j++
+      if (w > 0 && !hidden(i, j)) stroke(i, j, wordWidth * w, inkAt, 1)
       if (wet) {
         for (let k = i; k < j; k++) {
           const [x, y] = doc(k)
-          if (wet(x, y) > 0.2)
-            stainAt[k] = now
+          if (wet(x, y) > 0.2) stainAt[k] = now
         }
       }
       i = j
@@ -585,17 +700,13 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
       const at = stainAt[i] ?? 0
       if (at > 0) {
         const fadeAt = at + DYE_HOLD * 1000
-        if (now >= fadeAt && now < fadeAt + DYE_FADE * 1000)
-          fading = true
-        else if (now < fadeAt && fadeAt < next)
-          next = fadeAt
+        if (now >= fadeAt && now < fadeAt + DYE_FADE * 1000) fading = true
+        else if (now < fadeAt && fadeAt < next) next = fadeAt
       }
       let j = i + 1
-      while (j < upto && j - i < CH && Math.abs(dyeOf(j) - dye) < 0.06)
-        j++
+      while (j < upto && j - i < CH && Math.abs(dyeOf(j) - dye) < 0.06) j++
       const w = Wd[j] ?? Wd[i + 1] ?? 0
-      if (dye > 0.02 && w > 0 && !hidden(i, j))
-        stroke(i, j, wordWidth * w, accentAt, dye)
+      if (dye > 0.02 && w > 0 && !hidden(i, j)) stroke(i, j, wordWidth * w, accentAt, dye)
       i = j
     }
     wake = fading ? now : next
@@ -641,30 +752,23 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
   }
 
   function frame(now: number): void {
-    if (destroyed)
-      return
+    if (destroyed) return
     resize()
     const dt = Math.min(0.05, (now - last) / 1000)
     last = now
-    if (!started)
-      started = now
-    if (now - started > 500)
-      advance(dt)
-    if (destroyed)
-      return
-    if (flowing?.() || now >= wake)
-      dirty = true
+    if (!started) started = now
+    if (now - started > 500) advance(dt)
+    if (destroyed) return
+    if (flowing?.() || now >= wake) dirty = true
     if (dirty || (dot && dotBorn && now - dotBorn < 500)) {
       draw(now)
       dirty = false
     }
-    if (!destroyed)
-      raf = requestAnimationFrame(frame)
+    if (!destroyed) raf = requestAnimationFrame(frame)
   }
 
   function setColors(colors: LayerColors): void {
-    if (destroyed)
-      return
+    if (destroyed) return
     ink = colors.ink
     accent = colors.accent
     paper = colors.paper
@@ -673,14 +777,12 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
   }
 
   function destroy(): void {
-    if (destroyed)
-      return
+    if (destroyed) return
     destroyed = true
     cancelAnimationFrame(raf)
     window.clearTimeout(resizeTimer)
     layoutObserver?.disconnect()
-    for (const probe of probes)
-      probe.remove()
+    for (const probe of probes) probe.remove()
     canvas.remove()
   }
 
@@ -690,8 +792,7 @@ export function createPenStroke(options: PenOptions): PenLayer | null {
   let layoutWidth = root.clientWidth
   let layoutHeight = root.clientHeight
   layoutObserver = new ResizeObserver(() => {
-    if (root.clientWidth === layoutWidth && root.clientHeight === layoutHeight)
-      return
+    if (root.clientWidth === layoutWidth && root.clientHeight === layoutHeight) return
     layoutWidth = root.clientWidth
     layoutHeight = root.clientHeight
     window.clearTimeout(resizeTimer)

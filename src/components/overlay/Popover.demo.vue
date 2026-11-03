@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import Button from '../button/Button.vue'
 import Popover from './Popover.vue'
 
-const reference = ref<HTMLElement>()
+const reference = ref<InstanceType<typeof Button>>()
 const infoOpen = ref(false)
 </script>
 
@@ -17,22 +17,18 @@ const infoOpen = ref(false)
     </template>
     <template #default="{ close }">
       <p>This document is still a draft.</p>
-      <Button @click="close">
-        Understood
-      </Button>
+      <Button @click="close"> Understood </Button>
     </template>
   </Popover>
-  <button
+  <Button
     ref="reference"
-    class="ui-overlay-trigger"
-    type="button"
     @click="infoOpen = true"
   >
     Inspect an external anchor
-  </button>
+  </Button>
   <Popover
     v-model="infoOpen"
-    :reference="reference"
+    :reference="reference?.$el"
     label="External anchor"
     close-label="Close anchor information"
   >

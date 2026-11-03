@@ -2,8 +2,7 @@ import { parseDate } from '@internationalized/date'
 
 /** Gregorian date-only value. Empty means unset; invalid nonempty input fails explicitly. */
 export function parseCalendarDate(value: string) {
-  if (!value)
-    return undefined
+  if (!value) return undefined
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000-'))
     throw new RangeError(`Expected a Gregorian YYYY-MM-DD date: ${value}`)
   return parseDate(value)
@@ -21,6 +20,8 @@ export function calendarDateBounds(min?: string, max?: string) {
 export function formatCalendarDate(value: string, locale: string) {
   const date = parseCalendarDate(value)
   return date
-    ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(date.toDate('UTC'))
+    ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(
+        date.toDate('UTC'),
+      )
     : ''
 }

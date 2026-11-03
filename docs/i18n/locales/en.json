@@ -2,10 +2,19 @@
   "site": {
     "skip": "Skip to content",
     "noticeLabel": "Site notice",
-    "wip": "Work in progress. This site and its AI-generated components are awaiting manual design review.",
-    "noticeAction": "Explore the drafts"
+    "wip": "Work in progress. Most components are still AI drafts awaiting manual design review.",
+    "noticeAction": "Explore the drafts",
+    "foot": {
+      "about": "About",
+      "aboutText": "Small controls, shared behavior, one visual language. Set in {instrument} and {geist}.",
+      "site": "Site",
+      "elsewhere": "Elsewhere",
+      "prefs": "Preferences",
+      "license": "License"
+    }
   },
   "theme": {
+    "label": "Color theme",
     "dark": "Dark",
     "light": "Light"
   },
@@ -13,7 +22,10 @@
     "docs": "Docs",
     "components": "Components",
     "changelog": "Changelog",
-    "github": "GitHub"
+    "github": "GitHub",
+    "language": "Language",
+    "section": "Section navigation",
+    "close": "Close navigation"
   },
   "hero": {
     "tagline": "An interface library, in progress.",
@@ -58,8 +70,17 @@
   },
   "components": {
     "title": "Components",
-    "draft": "AI Draft · Unreviewed",
-    "draftDescription": "AI-generated drafts. Not yet manually designed or approved by the maintainer.",
+    "statusGate": "Each component has a design status: AI draft, reviewed, or stable.",
+    "status": {
+      "ai-draft": "AI Draft · Unreviewed",
+      "reviewed": "Reviewed",
+      "stable": "Stable"
+    },
+    "statusDescription": {
+      "ai-draft": "AI-generated draft. Not yet manually designed or approved by the maintainer.",
+      "reviewed": "Checked against the library surface language. Not yet marked stable.",
+      "stable": "Accepted as the library default."
+    },
     "lede": "A folder is a concept page. Each component in it has its own page.",
     "concepts": "{n} concepts",
     "count": "{n} components",

@@ -5,8 +5,6 @@ import Tooltip from './Tooltip.vue'
 
 <template>
   <Tooltip text="Save this draft locally">
-    <IconButton label="Save draft">
-      ↓
-    </IconButton>
+    <IconButton label="Save draft"> ↓ </IconButton>
   </Tooltip>
 </template>

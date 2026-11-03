@@ -15,6 +15,9 @@ props:
     type: boolean
     default: 'false'
     description: 允许顶层有子项的路由折叠。分组标题不会折叠。
+  - name: current
+    type: '(item: SidebarItem) => \'page\' | \'location\' | false | undefined'
+    description: 判定哪个条目是当前项。默认把 item.value 和 v-model 比较。'location' 表示页内锚点。
 slots:
   - name: link
     description: 提供 item 和 props。将 props 绑定到链接，保留选中行为、样式和无障碍属性。
@@ -33,17 +36,21 @@ Sidebar 保持单栏，子项通过缩进与引导线区分层级。选中项使
 import type { SidebarGroup } from '@froq/ui'
 import { Sidebar } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const active = ref('install')
-const groups: SidebarGroup[] = [{
-  label: '指南',
-  items: [{
-    value: 'start',
-    label: '开始使用',
-    children: [{ value: 'install', label: '安装' }],
-  }],
-}]
+const groups: SidebarGroup[] = [
+  {
+    label: '指南',
+    items: [
+      {
+        value: 'start',
+        label: '开始使用',
+        children: [{ value: 'install', label: '安装' }],
+      },
+    ],
+  },
+]
 </script>
 
 <template>

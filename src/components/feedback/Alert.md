@@ -26,7 +26,7 @@ Alert displays optional `title` content and the default slot. `announcement` def
 
 Providing `dismissLabel` adds a dismiss button. Activating it emits `dismiss` with no arguments. The component does not hide itself, manage visibility, or move focus; the consuming component handles those actions and any focus placement after dismissal.
 
-The component has no `v-model`. Its styles use the UI library tokens and do not depend on fonts, routes, or business state. Import `style.css` in the caller and place the component inside an element with `class="ui"`.
+The component has no `v-model`. Its styles use the UI library tokens and do not depend on fonts, routes, or business state. Import `tokens.css` in the caller and place the component inside an element with `class="ui"`.
 
 ## Usage
 
@@ -34,7 +34,7 @@ The component has no `v-model`. Its styles use the UI library tokens and do not 
 <script setup lang="ts">
 import { Alert } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const visible = ref(true)
 </script>

@@ -1,10 +1,12 @@
 import { readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { countCardWords } from '@froq/og-covers-layer/card-words'
+import { X18nDevtools } from '@x18n/devtools/vite'
 import { componentFile } from './app/utils/component-files'
 import { keepEmptyTitle } from './app/utils/empty-title'
 import { listPublicShareImages } from './app/utils/public-files'
 import { IMAGE_ORIGIN, SITE_DESCRIPTION, SITE_NAME } from './app/utils/site'
+import ligThemes from './app/assets/lig-themes.json'
 
 const siteDist = fileURLToPath(new URL('../dist', import.meta.url))
 const componentsRoot = fileURLToPath(new URL('../src/components', import.meta.url))
@@ -12,24 +14,26 @@ const componentsRoot = fileURLToPath(new URL('../src/components', import.meta.ur
 function componentRoutes(): string[] {
   const routes: string[] = []
   for (const concept of readdirSync(componentsRoot, { withFileTypes: true })) {
-    if (!concept.isDirectory())
-      continue
-    routes.push(`/components/${concept.name}`, `/zh/components/${concept.name}`)
-    const files = readdirSync(fileURLToPath(new URL(`../src/components/${concept.name}`, import.meta.url)))
+    if (!concept.isDirectory()) continue
+    routes.push(
+      `/components/${concept.name}`,
+      `/zh/components/${concept.name}`,
+      `/ja/components/${concept.name}`,
+    )
+    const files = readdirSync(
+      fileURLToPath(new URL(`../src/components/${concept.name}`, import.meta.url)),
+    )
     for (const file of files) {
       const entry = componentFile(`${concept.name}/${file}`)
-      if (!entry || entry.demo)
-        continue
-      routes.push(entry.to, `/zh${entry.to}`)
+      if (!entry || entry.demo) continue
+      routes.push(entry.to, `/zh${entry.to}`, `/ja${entry.to}`)
     }
   }
   return routes
 }
 
 export default defineNuxtConfig({
-  extends: [
-    ['github:0froq/og-layer#v0.2.1', { install: true }],
-  ],
+  extends: ['@froq/og-covers-layer'],
 
   compatibilityDate: '2026-09-19',
 
@@ -47,13 +51,15 @@ export default defineNuxtConfig({
     },
   },
 
-  modules: [
-    '@nuxt/content',
-    '@nuxtjs/i18n',
-    '@nuxt/eslint',
-  ],
+  modules: ['@nuxt/content', '@nuxtjs/i18n'],
 
-  devtools: { enabled: true },
+  devtools: {
+    enabled: true,
+
+    timeline: {
+      enabled: true,
+    },
+  },
 
   // `og:image` is absolute on this origin. `og:url` stays on ui.froq.me via useShareMeta.
   site: {
@@ -61,11 +67,7 @@ export default defineNuxtConfig({
     name: SITE_NAME,
   },
 
-  css: [
-    '~/assets/css/fonts.css',
-    '@froq/ui/style.css',
-    '~/assets/css/site.css',
-  ],
+  css: ['~/assets/css/fonts.css', '@froq/ui/tokens.css', '~/assets/css/site.css'],
 
   app: {
     pageTransition: { name: 'page', mode: 'out-in' },
@@ -75,10 +77,12 @@ export default defineNuxtConfig({
         { name: 'color-scheme', content: 'light dark' },
         { name: 'description', content: SITE_DESCRIPTION },
       ],
-      script: [{
-        tagPosition: 'head',
-        innerHTML: `try{var t=localStorage.getItem('ui-theme');var dark=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.theme=dark?'dark':'light';document.documentElement.classList.toggle('dark',dark)}catch(e){}`,
-      }],
+      script: [
+        {
+          tagPosition: 'head',
+          innerHTML: `try{var t=localStorage.getItem('ui-theme');var dark=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.theme=dark?'dark':'light';document.documentElement.classList.toggle('dark',dark)}catch(e){}`,
+        },
+      ],
     },
   },
 
@@ -90,6 +94,7 @@ export default defineNuxtConfig({
     server: {
       fs: { allow: ['..'] },
     },
+    plugins: [X18nDevtools()],
   },
 
   content: {
@@ -97,7 +102,7 @@ export default defineNuxtConfig({
     build: {
       markdown: {
         highlight: {
-          theme: { default: 'vitesse-light', dark: 'vitesse-dark' },
+          theme: { default: ligThemes.default, dark: ligThemes.dark },
           langs: ['ts', 'vue', 'bash', 'css', 'json'],
         },
       },
@@ -108,6 +113,7 @@ export default defineNuxtConfig({
     locales: [
       { code: 'en', language: 'en', name: 'English', file: 'en.json' },
       { code: 'zh', language: 'zh-CN', name: '中文', file: 'zh.json' },
+      { code: 'ja', language: 'ja-JP', name: '日本語', file: 'ja.json' },
     ],
     defaultLocale: 'en',
     strategy: 'prefix_except_default',
@@ -123,8 +129,10 @@ export default defineNuxtConfig({
       routes: [
         '/',
         '/zh',
+        '/ja',
         '/components',
         '/zh/components',
+        '/ja/components',
         ...componentRoutes(),
       ],
     },
@@ -141,6 +149,4 @@ export default defineNuxtConfig({
   },
 
   typescript: { strict: true },
-
-  eslint: { config: { standalone: false } },
 })

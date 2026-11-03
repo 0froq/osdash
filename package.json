@@ -1,23 +1,29 @@
 {
   "name": "@froq/ui",
-  "type": "module",
   "version": "0.1.0",
   "private": false,
-  "packageManager": "pnpm@10.15.0",
   "description": "froq's UI library: shared logic, a token contract, and the components.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0froq/ui.git"
+  },
+  "files": [
+    "src"
+  ],
+  "type": "module",
   "sideEffects": [
     "**/*.css"
   ],
   "exports": {
     ".": "./src/index.ts",
-    "./style.css": "./src/style.css",
     "./tokens.css": "./src/tokens.css",
     "./core": "./src/core/index.ts",
     "./vue": "./src/vue/index.ts"
   },
-  "files": [
-    "src"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "pnpm --filter docs dev",
     "generate": "pnpm --filter docs generate",
@@ -25,11 +31,35 @@
     "deploy": "pnpm generate && cf deploy",
     "preview": "pnpm --filter docs preview",
     "preview:deploy": "pnpm generate && cf previews deploy",
-    "lint": "eslint . && pnpm --filter docs lint",
-    "lint:fix": "eslint . --fix && pnpm --filter docs lint:fix",
+    "lint": "vp lint --config .oxlintrc.json .",
+    "lint:fix": "vp lint --config .oxlintrc.json . --fix",
+    "fmt": "vp fmt --config .oxfmtrc.json .",
+    "fmt:check": "vp fmt --config .oxfmtrc.json . --check",
     "typecheck": "vue-tsc --noEmit && pnpm --filter docs typecheck",
     "check:tokens": "jiti scripts/check-tokens.ts",
-    "check": "pnpm lint && pnpm typecheck && pnpm check:tokens"
+    "check": "vp run lint && vp run fmt:check && vp run typecheck && vp run check:tokens && vp run check:wheel",
+    "prepare": "npx simple-git-hooks",
+    "check:i18n": "x18n check --strict",
+    "check:wheel": "jiti scripts/check-wheel-step.ts"
+  },
+  "dependencies": {
+    "@iconify-vue/solar": "^1.0.9",
+    "@internationalized/date": "^3.12.4",
+    "reka-ui": "^2.10.5"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:dev",
+    "@x18n/cli": "catalog:dev",
+    "@x18n/core": "catalog:dev",
+    "cf": "catalog:dev",
+    "jiti": "catalog:dev",
+    "lint-staged": "catalog:dev",
+    "simple-git-hooks": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vite-plus": "catalog:dev",
+    "vue": "catalog:prod",
+    "vue-tsc": "catalog:dev",
+    "wrangler": "catalog:dev"
   },
   "peerDependencies": {
     "vue": "^3.5.0"
@@ -39,20 +69,17 @@
       "optional": true
     }
   },
-  "dependencies": {
-    "@internationalized/date": "^3.12.4",
-    "reka-ui": "^2.10.5"
+  "simple-git-hooks": {
+    "pre-commit": "pnpm i --frozen-lockfile --ignore-scripts --offline && npx lint-staged"
   },
-  "devDependencies": {
-    "@antfu/eslint-config": "catalog:dev",
-    "@types/node": "catalog:dev",
-    "cf": "catalog:dev",
-    "eslint": "catalog:dev",
-    "eslint-plugin-format": "catalog:dev",
-    "jiti": "catalog:dev",
-    "typescript": "catalog:dev",
-    "vue": "catalog:prod",
-    "vue-tsc": "catalog:dev",
-    "wrangler": "catalog:dev"
-  }
+  "lint-staged": {
+    "*": [
+      "vp lint --config .oxlintrc.json --fix --no-error-on-unmatched-pattern",
+      "vp fmt --config .oxfmtrc.json --no-error-on-unmatched-pattern"
+    ]
+  },
+  "engines": {
+    "node": "^24.21.0 || >=26.0.0"
+  },
+  "packageManager": "pnpm@12.11.2+sha512.25a51652a196785af5f28bda6dfe8dc582ebefa4ac1d180221ce1390231c5fb76637822ea4b6e4633ce74acdcb0a77f725af11bad38177fdeddaee818a955cb9"
 }

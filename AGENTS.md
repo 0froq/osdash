@@ -39,7 +39,7 @@ pnpm add ./vendor/ui
 
 保持包管理器写进 `package.json` 的那一行。它必须是 file 协议，指向 `vendor/ui`，例如 `"@froq/ui": "file:vendor/ui"`。项目用别的包管理器时，用那个管理器的 `file:` 依赖，不要把项目改成 pnpm。
 
-5. 当前项目是 Nuxt 时，在 `nuxt.config` 里加上 `build: { transpile: ['@froq/ui'] }`。页面要用组件时，把 `@froq/ui/style.css` 放进 `css`。没有页面要用，就不要加进全局 `css`。Vite 项目直接编译 `vendor/ui` 里的 `.vue`，不要加 alias，也不要加 `server.fs.allow`。
+5. 当前项目是 Nuxt 时，在 `nuxt.config` 里加上 `build: { transpile: ['@froq/ui'] }`。组件自带样式。页面要用 token 时，把 `@froq/ui/tokens.css` 放进 `css`。Vite 项目直接编译 `vendor/ui` 里的 `.vue`，不要加 alias，也不要加 `server.fs.allow`。
 6. 当前项目的 eslint 如果会检查全部文件，把 `vendor/ui/**` 加进 ignore。不要用当前项目的格式规则去改库里已有的源码。
 7. 按下一节，把同步和抽组件的步骤写进当前项目的 agent markdown。
 8. 提交这次安装剩下的文件：`package.json`、锁文件、`nuxt.config`、eslint 配置、agent markdown。`subtree add` 已经提交过 `vendor/ui` 本身，不要把无关改动放进这次提交。
@@ -47,11 +47,11 @@ pnpm add ./vendor/ui
 ### 引用
 
 ```ts
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 import { Choice, Toggle } from '@froq/ui'
 ```
 
-包名 `@froq/ui`。导出有 `.`、`./core`、`./vue`，以及 `./style.css` 和 `./tokens.css`。作用域类是 `ui`。字体不在包里。组件用 Instrument Serif、Geist、Geist Mono，由当前项目自己引入。组件放在带 `class="ui"` 的元素里。
+包名 `@froq/ui`。导出有 `.`、`./core`、`./vue`，以及 `./tokens.css`。作用域类是 `ui`。字体不在包里。组件用 Instrument Serif、Geist、Geist Mono，由当前项目自己引入。组件放在带 `class="ui"` 的元素里。
 
 ## 写进当前项目的 agent markdown
 
@@ -133,14 +133,14 @@ git subtree pull --prefix=vendor/ui https://github.com/0froq/ui.git main --squas
 
 用户定了之后再改代码，让它在库里和项目里都能运行。不要把项目文件原样复制进 `vendor/ui`。指向页面组件、项目 store、路由、项目类名和项目色值的地方，改成 props、slot，或库里已有的函数；样式改读 `--ui-*`。调用处仍由项目传入文案和数据。改完后，原来的页面还要能渲染。外观如果用了 token 契约里没有的颜色或字体，而且不能改写成那十二个变量，停下来告诉用户缺哪一个，不要给这个组件单开一套变量。
 
-写库里的代码之前，读 `vendor/ui/AGENTS.md` 的「代码规范」，并对照同一层已有文件。规范一节还没有细则时，以同一目录里已有组件为准，并让库的 eslint 通过。不要另起一套写法。
+写库里的代码之前，读 `vendor/ui/AGENTS.md` 的「代码规范」，并对照同一层已有文件。规范一节还没有细则时，以同一目录里已有组件为准，并让库的 `pnpm lint` 通过。不要另起一套写法。
 
 1. 定名字和 props。库里已有同一种控件就沿用现有名字，例如 `Choice`、`Toggle`。新控件不要带项目名。props 只保留交互需要的，例如 `v-model`、`options`、`label`。项目专属参数留在本项目里包一层。
 2. 行为。不依赖 DOM 结构的逻辑放进 `vendor/ui/src/core/`，不要引用 Vue。需要 Vue、但不关心样子的逻辑放进 `vendor/ui/src/vue/`，并从 `vendor/ui/src/vue/index.ts` 导出。已有 `useChoice` 或其他函数能用就用，不要复制一份。有动效时用 `vendor/ui/src/core` 里的 `prefersReducedMotion`。
-3. 皮肤。在 `vendor/ui/src/components/<concept>/<Name>.vue` 写模板和样式，只读那十二个 `--ui-*` 变量。不要写本项目的类名、色值或字号。组件根上不要写 `ui`，由使用方加在外层。样式加进 `vendor/ui/src/style.css`。已有概念就放进那个目录，对不上时先问，不要自己新开一个概念。
+3. 皮肤。在 `vendor/ui/src/components/<concept>/<Name>.vue` 写模板和样式，只读那十二个 `--ui-*` 变量。不要写本项目的类名、色值或字号。组件根上不要写 `ui`，由使用方加在外层。样式写进该组件自己的 `<style scoped>`，不与其他组件共用样式，只共用 token。已有概念就放进那个目录，对不上时先问，不要自己新开一个概念。
 4. 从 `vendor/ui/src/index.ts` 导出该组件。共享类型从 `vendor/ui/src/vue/index.ts` 导出。
 5. 在组件旁边加 `vendor/ui/src/components/<concept>/<Name>.demo.vue`，以及 `<Name>.md`（英文说明）和 `<Name>.zh.md`（中文说明）。文档站生成概念页 `/components/<concept>` 和组件页 `/components/<concept>/<name>`。概念页放这个目录里每个组件的 demo，组件页渲染旁边的说明。左侧目录有三层：form、prose 这种分组名不是页面；概念和组件都是页面。不要另写一份 demo 名单。
-6. 换本项目的引用。调用处改为从 `@froq/ui` 导入，并引入 `style.css`（项目里还没有这份样式时才加）。文案和数据留在调用处。本项目里不再有旧文件的引用之后，删掉旧的组件文件。只负责使用它的页面代码留着。
+6. 换本项目的引用。调用处改为从 `@froq/ui` 导入，并引入 `tokens.css`（项目里还没有这份 token 时才加）。文案和数据留在调用处。本项目里不再有旧文件的引用之后，删掉旧的组件文件。只负责使用它的页面代码留着。
 7. 在本项目根目录提交。同一次提交同时包含 `vendor/ui` 的新组件和本项目换引用的改动。提交说明写抽了哪个组件。然后把本项目推到它自己的远程。不要执行 `subtree push`。
 
 做完之后，在回复里说明下面这些，让用户审查。不要接着做别的改动：
@@ -161,7 +161,7 @@ git subtree pull --prefix=vendor/ui https://github.com/0froq/ui.git main --squas
 
 抽进库的代码要符合这一节。移植前先读这里，再对照同一层已有文件。
 
-eslint 使用 `@antfu/eslint-config`。Vue 单行和多行都是每个属性单独一行。改完在库仓库里跑 `pnpm lint`，或在项目里对 `vendor/ui` 跑同一套配置。不要为了迁就项目原来的格式去关规则。
+库仓库使用 Oxlint 与 Oxfmt（Vite+ `vp lint` / `vp fmt`）。Vue 单行和多行都是每个属性单独一行。改完在库仓库里跑 `pnpm lint` 与 `pnpm fmt:check`，或在项目里对 `vendor/ui` 跑同一套配置。不要为了迁就项目原来的格式去关规则。
 
 ### 细则
 

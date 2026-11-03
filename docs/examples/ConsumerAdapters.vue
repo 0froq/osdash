@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ChoiceOption } from '@froq/ui'
-import { Button, CopyButton, Dialog, Drawer, Navigation, Tabs } from '@froq/ui'
+import { Button, CodeBlock, Dialog, Drawer, Navigation, Tabs } from '@froq/ui'
 import { useChoice, useClipboard } from '@froq/ui/vue'
 import { computed, ref, shallowRef } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 // Landing pages own labels, code blocks, section collection and scroll spy.
 const section = ref('overview')
@@ -20,17 +20,19 @@ const variants: ChoiceOption<Variant>[] = [
   { value: 'dark-crisp', label: 'Dark / crisp' },
 ]
 const choice = useChoice(variants, variant)
-const paletteValue = computed(() => variant.value === 'light-soft' ? '#f3f1ed' : '#161616')
+const paletteValue = computed(() => (variant.value === 'light-soft' ? '#f3f1ed' : '#161616'))
 const clipboard = useClipboard(paletteValue)
-const copyLabel = computed(() => ({
-  idle: 'Copy palette value',
-  pending: 'Copying palette value',
-  copied: 'Palette value copied',
-  error: 'Copy failed',
-})[clipboard.status.value])
+const copyLabel = computed(
+  () =>
+    ({
+      idle: 'Copy palette value',
+      pending: 'Copying palette value',
+      copied: 'Palette value copied',
+      error: 'Copy failed',
+    })[clipboard.status.value],
+)
 function choose(next: Variant) {
-  if (!choice.isDisabled(next))
-    variant.value = next
+  if (!choice.isDisabled(next)) variant.value = next
 }
 
 // A person/entry is selected by multiple external buttons, not by the modal itself.
@@ -63,12 +65,11 @@ function showContents(event: MouseEvent) {
     />
     <section id="overview">
       <h2>Shared actions, consumer content</h2>
-      <code>pnpm add ./vendor/ui</code>
-      <CopyButton
-        text="pnpm add ./vendor/ui"
-        label="Copy command"
+      <CodeBlock
+        code="pnpm add ./vendor/ui"
+        copy-label="Copy command"
         copied-label="Copied"
-        error-label="Copy failed"
+        copy-error-label="Copy failed"
       />
       <div
         role="radiogroup"
@@ -99,7 +100,9 @@ function showContents(event: MouseEvent) {
         role="status"
         aria-live="polite"
       >
-        {{ clipboard.status.value === 'copied' || clipboard.status.value === 'error' ? copyLabel : '' }}
+        {{
+          clipboard.status.value === 'copied' || clipboard.status.value === 'error' ? copyLabel : ''
+        }}
       </p>
     </section>
     <section id="details">
@@ -122,10 +125,15 @@ function showContents(event: MouseEvent) {
         <Tabs
           v-model="noteTab"
           label="Notes"
-          :items="[{ value: 'mine', label: 'My notes' }, { value: 'theirs', label: 'Their notes', disabled: selected === 'Lin' }]"
+          :items="[
+            { value: 'mine', label: 'My notes' },
+            { value: 'theirs', label: 'Their notes', disabled: selected === 'Lin' },
+          ]"
         >
           <template #default="{ item }">
-            <p>{{ item.value === 'mine' ? 'Consumer-owned impression' : 'Consumer-owned reply' }}</p>
+            <p>{{
+              item.value === 'mine' ? 'Consumer-owned impression' : 'Consumer-owned reply'
+            }}</p>
           </template>
         </Tabs>
       </Dialog>

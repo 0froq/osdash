@@ -19,7 +19,5 @@ const resetKey = ref(0)
   <p class="demo-readout">
     {{ files.length ? files.map(file => file.name).join(', ') : 'No files selected' }}
   </p>
-  <Button @click="resetKey++">
-    Clear selection
-  </Button>
+  <Button @click="resetKey++"> Clear selection </Button>
 </template>

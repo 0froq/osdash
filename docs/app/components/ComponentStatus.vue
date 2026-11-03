@@ -1,21 +1,54 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
-  explain?: boolean
-}>(), { explain: false })
+export type DesignStatus = 'ai-draft' | 'reviewed' | 'stable'
+
+const props = withDefaults(
+  defineProps<{
+    explain?: boolean
+    status?: DesignStatus
+  }>(),
+  { explain: false, status: 'ai-draft' },
+)
 
 const { t } = useI18n()
+
+const label = computed(() => {
+  switch (props.status) {
+    case 'ai-draft':
+      return t('components.status.ai-draft')
+    case 'reviewed':
+      return t('components.status.reviewed')
+    case 'stable':
+      return t('components.status.stable')
+    default: {
+      const unreachable: never = props.status
+      return unreachable
+    }
+  }
+})
+
+const description = computed(() => {
+  switch (props.status) {
+    case 'ai-draft':
+      return t('components.statusDescription.ai-draft')
+    case 'reviewed':
+      return t('components.statusDescription.reviewed')
+    case 'stable':
+      return t('components.statusDescription.stable')
+    default: {
+      const unreachable: never = props.status
+      return unreachable
+    }
+  }
+})
 </script>
 
 <template>
   <span class="design-status">
     <span
       class="design-status-badge"
-      :title="t('components.draftDescription')"
-    >{{ t('components.draft') }}</span>
-    <span
-      v-if="explain"
-      class="design-status-description"
-    >{{ t('components.draftDescription') }}</span>
+      :title="description"
+      >{{ label }}</span
+    >
   </span>
 </template>
 
@@ -39,12 +72,5 @@ const { t } = useI18n()
   font-family: var(--ui-font-meta);
   font-size: 10px;
   white-space: nowrap;
-}
-
-.design-status-description {
-  max-width: 38rem;
-  color: var(--ui-muted);
-  font-family: var(--ui-font-text);
-  font-size: 13px;
 }
 </style>

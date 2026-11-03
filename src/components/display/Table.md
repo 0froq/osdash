@@ -32,7 +32,7 @@ Table is a generic native HTML table. It renders a `<caption>` and column header
 
 `TableColumn<T>` has a `key` from the string keys of `T`, a `label`, and optional `align` (`start`, `center`, or `end`). `header` receives `{ column }`; `cell` receives `{ row, column, value, index }`; `empty` renders when there are no rows and the slot is provided. Supply unique, stable `rowKey` values and typed columns so TypeScript keeps the column keys specific.
 
-Table does not implement sorting, filtering, pagination, grid keyboard interaction, virtualization, or business state. Use it for tabular data and compose those behaviors in the consuming application. It has no `v-model`. Styles use the UI library tokens and do not depend on fonts, routes, or business state. Import `style.css` in the caller and place the component inside an element with `class="ui"`.
+Table does not implement sorting, filtering, pagination, grid keyboard interaction, virtualization, or business state. Use it for tabular data and compose those behaviors in the consuming application. It has no `v-model`. Styles use the UI library tokens and do not depend on fonts, routes, or business state. Import `tokens.css` in the caller and place the component inside an element with `class="ui"`.
 
 ## Usage
 
@@ -40,7 +40,7 @@ Table does not implement sorting, filtering, pagination, grid keyboard interacti
 <script setup lang="ts">
 import type { TableColumn } from '@froq/ui/vue'
 import { Badge, Table } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 interface DocumentRow {
   id: string
@@ -48,9 +48,7 @@ interface DocumentRow {
   status: string
 }
 
-const rows: DocumentRow[] = [
-  { id: 'one', title: 'Tokens and typography', status: 'Published' },
-]
+const rows: DocumentRow[] = [{ id: 'one', title: 'Tokens and typography', status: 'Published' }]
 const columns: TableColumn<DocumentRow>[] = [
   { key: 'title', label: 'Document' },
   { key: 'status', label: 'Status', align: 'end' },
@@ -73,9 +71,7 @@ const columns: TableColumn<DocumentRow>[] = [
           {{ value }}
         </template>
       </template>
-      <template #empty>
-        No documents yet.
-      </template>
+      <template #empty> No documents yet. </template>
     </Table>
   </div>
 </template>

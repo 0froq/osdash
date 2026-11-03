@@ -10,7 +10,6 @@ src/
   vue/          Vue behavior without styles
   components/   One directory per concept, such as radio/ or toggle/
   index.ts      Components exported from @froq/ui
-  style.css
   tokens.css
 docs/           Docs site. It depends on this package. Component and docs changes ship together
 ```
@@ -18,34 +17,32 @@ docs/           Docs site. It depends on this package. Component and docs change
 ## Components
 
 > [!NOTE]
-> AI draft. Not yet accepted by a manual design pass.
-> A working component is not a finished design.
-> Each note records `designStatus: ai-draft`.
-> The docs site shows that mark.
-> Keeping the current implementation does not clear it.
+> Design status is `ai-draft`, `reviewed`, or `stable`.
+> Most notes are still `ai-draft`. A working component is not a finished design.
+> Menu and Select lists are `reviewed`.
+> The docs site shows the mark on each note.
 
 Everything below is exported from `@froq/ui`.
 
-| Component | Role |
-| --- | --- |
-| Button / CopyButton | Native button. Async clipboard, stable width |
-| TextInput / TextArea / Select / Checkbox | Native fields. Attributes and events reach the control |
-| FormField / NumberInput / DateInput / Slider / FileUpload / RadioGroup | Label, error, native value. Validation stays with the caller |
-| Choice / ChoiceCircle / Toggle | Controlled choice and switch. Custom radio does not submit a form value |
-| ToggleGroup | Single or multiple. Arrow keys move focus. A selected value can be cleared |
-| Combobox | Search and multiple selection. Remote requests stay with the caller |
-| Calendar / DatePicker | One month. ISO dates, locale, range, disabled dates |
-| Navigation / Sidebar | Flat links and collapsible groups. Routing stays with the caller |
-| Breadcrumb / Pagination | Path and page links. No router and no data fetching |
-| Collapsible / Accordion / Tabs | Controlled panels. Content stays mounted |
-| Skeleton / Progress / Spinner / Alert | Loading, progress, wait, inline notice |
-| Banner | Site notice. Actions slot. The caller owns dismissal |
-| Toast / ToastRegion | Temporary notice and a shared region. The queue stays with the caller |
-| IconButton / EmptyState | Named icon button. Empty content and an actions slot |
-| Badge / Avatar / Separator / Card / AspectRatio / Table | Mark, image, rule, surface, ratio, native table |
-| Dialog / AlertDialog / Drawer / Popover / Menu / Tooltip | Dialog, confirm, side panel, anchored layer, menu, tip |
-| ContextMenu / HoverCard | Context menu and link preview. The preview is not required content |
-| Paper | Paper texture |
+| Component                                                              | Role                                                                       |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Button / IconButton                                                    | Native button. Inline text action / boxed icon                             |
+| TextInput / TextArea / Select / Checkbox                               | Native fields. Attributes and events reach the control                     |
+| FormField / NumberInput / DateInput / Slider / FileUpload / RadioGroup | Label, error, native value. Validation stays with the caller               |
+| Choice / ChoiceCircle / Toggle                                         | Controlled choice and switch. Custom radio does not submit a form value    |
+| ToggleGroup                                                            | Single or multiple. Arrow keys move focus. A selected value can be cleared |
+| Combobox                                                               | Search and multiple selection. Remote requests stay with the caller        |
+| Calendar / DatePicker                                                  | One month. ISO dates, locale, range, disabled dates                        |
+| Navigation / Sidebar                                                   | Flat links and collapsible groups. Routing stays with the caller           |
+| Breadcrumb / Pagination                                                | Path and page links. No router and no data fetching                        |
+| Collapsible / Accordion / Tabs                                         | Controlled panels. Content stays mounted                                   |
+| Skeleton / Progress / Spinner / Alert                                  | Loading, progress, wait, inline notice                                     |
+| Banner                                                                 | Site notice. Actions slot. The caller owns dismissal                       |
+| Toast / ToastRegion                                                    | Temporary notice and a shared region. The queue stays with the caller      |
+| IconButton / EmptyState                                                | Named icon button. Empty content and an actions slot                       |
+| Dialog / AlertDialog / Drawer / Popover / Menu / Tooltip               | Dialog, confirm, side panel, anchored layer, menu, tip                     |
+| ContextMenu / HoverCard                                                | Context menu and link preview. The preview is not required content         |
+| Paper                                                                  | Paper texture                                                              |
 
 Each component has a demo, an English note, and a Chinese note.
 The docs site discovers them from the source.
@@ -65,10 +62,18 @@ Set `data-theme="light"` or `data-theme="dark"` on the scope, or an ancestor, to
 `@froq/ui/tokens.css` is enough when a project wants the tokens without the components.
 `pnpm check:tokens` fails if a variable is missing, or if a component reads one outside this list.
 
+## Install
+
+```bash
+pnpm add @froq/ui
+```
+
+Requires Node `^24.21.0 || >=26.0.0` for development of this repo; consumers may use any Node version their bundler supports.
+
 ## Use
 
 ```ts
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 import { Choice, Toggle } from '@froq/ui'
 ```
 
@@ -88,7 +93,7 @@ Nuxt:
 ```ts
 export default defineNuxtConfig({
   build: { transpile: ['@froq/ui'] },
-  css: ['@froq/ui/style.css'],
+  css: ['@froq/ui/tokens.css'],
 })
 ```
 
@@ -163,8 +168,12 @@ pnpm dev             # docs at http://localhost:3000
 pnpm generate        # static files in dist/
 pnpm deploy          # generate, then cf deploy
 pnpm preview:deploy  # generate, then cf previews deploy
-pnpm check           # lint, types, token contract
+pnpm check           # oxlint, oxfmt, types, token contract
+pnpm lint:fix        # oxlint --fix
+pnpm fmt             # oxfmt
 ```
+
+Node **24.21.0** (`.node-version`, `mise.toml`). Lint and format use [Vite+](https://github.com/voidzero-dev/vite-plus) (`vp`) with `.oxlintrc.json` and `.oxfmtrc.json`.
 
 ## Docs site
 
@@ -175,7 +184,7 @@ The static output is `dist/` at the repo root.
 It deploys to the Cloudflare Worker `ui`.
 The Worker config is `cloudflare.config.ts`; the assets directory is in `wrangler.config.ts`.
 
-Workers Builds (GitHub connection, no API token in the repo): `NODE_VERSION=22`, build `pnpm generate`, production `pnpm exec cf deploy`, preview `pnpm exec cf previews deploy`.
+Workers Builds (GitHub connection, no API token in the repo): `NODE_VERSION=24.21.0`, build `pnpm generate`, production `pnpm exec cf deploy`, preview `pnpm exec cf previews deploy`.
 
 The docs live in the `docs/` subpackage, so root `cf deploy` does not run generate on its own.
 That is why `deploy` is `pnpm generate && cf deploy`.
@@ -189,7 +198,7 @@ CI installs from the lockfile.
 
 ## License
 
-This package has no root license file.
+MIT. See [LICENSE](LICENSE).
 The handwriting strokes in `src/core/signature/` are SIL OFL 1.1.
 Copyright 2010 The Allura Project Authors.
 See `OFL.txt` and `NOTICE.md` beside that data.

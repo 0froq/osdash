@@ -27,14 +27,14 @@ Banner 是放在网站页头或内容上方的通栏通知，不是局部的 Ale
 
 传入 `dismissLabel` 才显示关闭按钮，点击只发出 `dismiss`。显示状态、持久化和移除后的焦点由使用方管理。必需信息不要只放在可关闭的提示里。`actions` 插槽接受真正的链接或按钮，不把整个通知条变成点击区域。
 
-使用方引入 `@froq/ui/style.css`，外层加 `.ui`。文案、链接、翻译和活动策略留在项目里。
+使用方引入 `@froq/ui/tokens.css`，外层加 `.ui`。文案、链接、翻译和活动策略留在项目里。
 
 ## 用法
 
 ```vue
 <script setup lang="ts">
 import { Banner } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 </script>
 
 <template>

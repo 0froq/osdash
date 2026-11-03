@@ -20,8 +20,7 @@ export function createScrollGesture(idle = 180) {
 
   function route(delta: number, time: number, bounds: ScrollBounds): ScrollOwner {
     const next = Math.sign(delta)
-    if (!next)
-      return owner
+    if (!next) return owner
     if (time - last >= idle || next !== direction) {
       const bottom = Math.max(0, bounds.height - bounds.viewport)
       const outside = next < 0 ? bounds.top <= 1 : bounds.top >= bottom - 1

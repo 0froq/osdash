@@ -2,10 +2,19 @@
   "site": {
     "skip": "跳到正文",
     "noticeLabel": "站点提示",
-    "wip": "此网站仍在建设中。站点与 AI 生成的组件尚待人工设计与验收。",
-    "noticeAction": "查看组件初稿"
+    "wip": "此网站仍在建设中。多数组件仍是待人工设计验收的 AI 初稿。",
+    "noticeAction": "查看组件初稿",
+    "foot": {
+      "about": "关于",
+      "aboutText": "小巧的控件，共享的行为，统一的视觉语言。字体选用 {instrument} 与 {geist}。",
+      "site": "站点",
+      "elsewhere": "其他",
+      "prefs": "偏好",
+      "license": "许可证"
+    }
   },
   "theme": {
+    "label": "颜色主题",
     "dark": "深色",
     "light": "浅色"
   },
@@ -13,7 +22,10 @@
     "docs": "文档",
     "components": "组件",
     "changelog": "更新日志",
-    "github": "GitHub"
+    "github": "GitHub",
+    "language": "语言",
+    "section": "章节导航",
+    "close": "关闭导航"
   },
   "hero": {
     "tagline": "一份仍在打磨的界面语言。",
@@ -58,8 +70,17 @@
   },
   "components": {
     "title": "组件",
-    "draft": "AI Draft · 待验证",
-    "draftDescription": "AI 生成的初稿，尚未经维护者手动设计或验收。",
+    "statusGate": "每个组件有自己的设计状态：AI 初稿、已复核、稳定。",
+    "status": {
+      "ai-draft": "AI Draft · 待验证",
+      "reviewed": "已复核",
+      "stable": "稳定"
+    },
+    "statusDescription": {
+      "ai-draft": "AI 生成的初稿，尚未经维护者手动设计或验收。",
+      "reviewed": "已对照库的表面语言核对，尚未标为稳定。",
+      "stable": "已接受为库的默认。"
+    },
     "lede": "一个目录是概念页。目录里的每个组件再有自己的一页。",
     "concepts": "共 {n} 个概念",
     "count": "共 {n} 个组件",

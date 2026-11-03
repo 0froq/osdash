@@ -5,7 +5,7 @@ description: 在加载时保留组件布局的单个占位表面。
 props:
   - name: loading
     type: boolean
-    default: "true"
+    default: 'true'
     description: 加载时显示占位表面并隐藏插槽内容。
   - name: shape
     type: "'block' | 'text' | 'circle'"
@@ -37,7 +37,7 @@ Skeleton 只负责视觉呈现，不读取字体、路由或网络状态。`aria
 ```vue
 <script setup lang="ts">
 import { Skeleton } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 </script>
 
 <template>

@@ -3,7 +3,7 @@
  * asynchronously after a client-side navigation, and the layers measure the final layout.
  */
 export function settled(el: Element, quiet = 120, max = 2000): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     let timer = setTimeout(done, quiet)
     const cap = setTimeout(done, max)
     const observer = new MutationObserver(() => {

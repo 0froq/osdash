@@ -11,7 +11,11 @@ const props = defineProps<{
 }>()
 const model = defineModel<T>({ required: true })
 
-const { values, signature, isDisabled, tabindex, onKeydown } = useChoice(() => props.options, model, () => props.disabled ?? false)
+const { values, signature, isDisabled, tabindex, onKeydown } = useChoice(
+  () => props.options,
+  model,
+  () => props.disabled ?? false,
+)
 
 const words: HTMLElement[] = []
 const box = reactive({ x: 0, y: 0, w: 0, h: 0 })
@@ -35,8 +39,7 @@ function place(): void {
 }
 
 function choose(next: T): void {
-  if (isDisabled(next) || next === model.value)
-    return
+  if (isDisabled(next) || next === model.value) return
   model.value = next
   drawn.value++
 }
@@ -48,8 +51,7 @@ onMounted(async () => {
   place()
   addEventListener('resize', place)
   await document.fonts?.ready
-  if (disposed)
-    return
+  if (disposed) return
   place()
 })
 
@@ -69,7 +71,11 @@ onBeforeUnmount(() => {
     <button
       v-for="(option, index) in options"
       :key="option.value"
-      :ref="el => { if (el) words[index] = el as HTMLElement }"
+      :ref="
+        el => {
+          if (el) words[index] = el as HTMLElement
+        }
+      "
       type="button"
       role="radio"
       class="ui-circle-word"
@@ -99,3 +105,71 @@ onBeforeUnmount(() => {
     </svg>
   </div>
 </template>
+
+<style scoped>
+/*ChoiceCircle: the pen circles the chosen word.*/
+.ui-circle {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 36px;
+  padding: 0 6px;
+}
+
+.ui-circle-word {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-muted);
+  cursor: pointer;
+  font-family: var(--ui-font-meta);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.3s var(--ui-ease);
+}
+
+.ui-circle-word:hover,
+.ui-circle-word:focus-visible,
+.ui-circle-word.is-active {
+  color: var(--ui-fg);
+  outline: none;
+}
+
+.ui-circle-ring {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ui-circle-word:disabled {
+  color: var(--ui-muted);
+  cursor: not-allowed;
+}
+
+.ui-circle-ring :deep(path) {
+  fill: none;
+  stroke: var(--ui-fg);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.ui-circle-ring.is-drawn :deep(path) {
+  animation: ui-draw 0.8s var(--ui-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-circle-ring.is-drawn :deep(path) {
+    animation: none;
+  }
+}
+
+@keyframes ui-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+</style>

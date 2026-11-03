@@ -12,9 +12,7 @@ const open = ref(false)
     label="Notification"
     viewport-label="Notifications ({hotkey})"
   >
-    <Button @click="open = true">
-      Show notification
-    </Button>
+    <Button @click="open = true"> Show notification </Button>
     <Toast
       v-model="open"
       title="Example notification"

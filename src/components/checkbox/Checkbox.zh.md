@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: 由布尔值模型控制的带标签复选框。
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: 复选框是否已选中。
 props:
   - name: label

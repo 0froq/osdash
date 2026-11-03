@@ -1,6 +1,6 @@
 ---
 title: Button
-designStatus: ai-draft
+designStatus: stable
 description: A native button with a small, consistent surface style.
 props:
   - name: type
@@ -23,9 +23,7 @@ import { Button } from '@froq/ui'
 
 <template>
   <div class="ui">
-    <Button type="button">
-      Save
-    </Button>
+    <Button type="button"> Save </Button>
   </div>
 </template>
 ```

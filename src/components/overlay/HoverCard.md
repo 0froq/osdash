@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: A delayed, non-interactive preview for an existing link.
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: Preview open state. The disabled prop suppresses the preview without rewriting this model.
 props:
   - name: label
@@ -17,15 +17,15 @@ props:
     description: Destination for the trigger link.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Suppresses preview opening without disabling the link or changing the model.
   - name: openDelay
     type: number
-    default: "700"
+    default: '700'
     description: Delay in milliseconds before opening. Finite values are clamped to zero or greater; invalid values fall back to 700.
   - name: closeDelay
     type: number
-    default: "300"
+    default: '300'
     description: Delay in milliseconds before closing. Finite values are clamped to zero or greater; invalid values fall back to 300.
   - name: side
     type: "'top' | 'right' | 'bottom' | 'left'"
@@ -37,7 +37,7 @@ props:
     description: Preferred alignment against the link; collision handling may reposition the preview.
   - name: sideOffset
     type: number
-    default: "8"
+    default: '8'
     description: Distance in pixels between the link and preview.
   - name: portalTo
     type: string | HTMLElement
@@ -57,7 +57,7 @@ The boolean `v-model` defaults to `false`. `openDelay` defaults to 700ms and `cl
 
 `disabled` suppresses preview opening but does not disable the anchor or force the parent model to `false`. If the model was already true, the preview is hidden while disabled and the model value is preserved. The preview prefers `side`, `align`, and `sideOffset`, with automatic collision handling and 12 pixels of collision padding. Undeclared attributes are forwarded to the preview content, not to the link. The component root does not add the `.ui` class.
 
-By default, preview content is teleported into the closest consumer element with `class="ui"`; if none exists, it renders inline. During SSR, only the trigger link renders; the preview appears on the client when opened and unmounts when closed. A custom `portalTo` target must already exist and provide the consumer's theme and UI tokens. Import `style.css` in the caller and provide a `.ui` ancestor for library styles and the default portal target.
+By default, preview content is teleported into the closest consumer element with `class="ui"`; if none exists, it renders inline. During SSR, only the trigger link renders; the preview appears on the client when opened and unmounts when closed. A custom `portalTo` target must already exist and provide the consumer's theme and UI tokens. Import `tokens.css` in the caller and provide a `.ui` ancestor for library styles and the default portal target.
 
 ## Usage
 
@@ -65,7 +65,7 @@ By default, preview content is teleported into the closest consumer element with
 <script setup lang="ts">
 import { HoverCard } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 </script>

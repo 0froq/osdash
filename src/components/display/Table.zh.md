@@ -32,7 +32,7 @@ Table 是泛型原生 HTML 表格。它渲染 `<caption>` 和带有 `scope="col"
 
 `TableColumn<T>` 包含一个取自 `T` 字符串键的 `key`、一个 `label`，以及可选的 `align`（`start`、`center` 或 `end`）。`header` 接收 `{ column }`；`cell` 接收 `{ row, column, value, index }`；没有数据行且提供了 `empty` 插槽时，会渲染该插槽。请提供唯一且稳定的 `rowKey`，并为列数组添加类型，让 TypeScript 保留具体的列键类型。
 
-Table 不实现排序、筛选、分页、网格键盘交互、虚拟化或业务状态。它用于呈现表格数据，这些行为由调用方组合实现。组件没有 `v-model`。样式只使用 UI 库 token，不依赖字体、路由或业务状态。在调用方引入 `style.css`，并将组件放在带有 `class="ui"` 的元素内。
+Table 不实现排序、筛选、分页、网格键盘交互、虚拟化或业务状态。它用于呈现表格数据，这些行为由调用方组合实现。组件没有 `v-model`。样式只使用 UI 库 token，不依赖字体、路由或业务状态。在调用方引入 `tokens.css`，并将组件放在带有 `class="ui"` 的元素内。
 
 ## 用法
 
@@ -40,7 +40,7 @@ Table 不实现排序、筛选、分页、网格键盘交互、虚拟化或业�
 <script setup lang="ts">
 import type { TableColumn } from '@froq/ui/vue'
 import { Badge, Table } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 interface DocumentRow {
   id: string
@@ -48,9 +48,7 @@ interface DocumentRow {
   status: string
 }
 
-const rows: DocumentRow[] = [
-  { id: 'one', title: 'Tokens and typography', status: 'Published' },
-]
+const rows: DocumentRow[] = [{ id: 'one', title: 'Tokens and typography', status: 'Published' }]
 const columns: TableColumn<DocumentRow>[] = [
   { key: 'title', label: 'Document' },
   { key: 'status', label: 'Status', align: 'end' },
@@ -73,9 +71,7 @@ const columns: TableColumn<DocumentRow>[] = [
           {{ value }}
         </template>
       </template>
-      <template #empty>
-        No documents yet.
-      </template>
+      <template #empty> No documents yet. </template>
     </Table>
   </div>
 </template>

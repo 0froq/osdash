@@ -17,15 +17,19 @@ function checkDirectory(directory: string): void {
       checkDirectory(path)
       continue
     }
-    if (!/\.(?:vue|css)$/.test(path) || path.endsWith('.demo.vue'))
-      continue
+    if (!/\.(?:vue|css)$/.test(path) || path.endsWith('.demo.vue')) continue
     const content = readFileSync(path, 'utf8')
-    const styles = path.endsWith('.css') ? content : [...content.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map(match => match[1]).join('\n')
+    const styles = path.endsWith('.css')
+      ? content
+      : [...content.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)]
+          .map(match => match[1])
+          .join('\n')
     // A name the file declares for itself (a private custom property) is not a token read.
-    const declared = new Set([
-      ...styles.matchAll(/(--[\w-]+)\s*:/g),
-      ...styles.matchAll(/@property\s+(--[\w-]+)/g),
-    ].map(match => match[1]!))
+    const declared = new Set(
+      [...styles.matchAll(/(--[\w-]+)\s*:/g), ...styles.matchAll(/@property\s+(--[\w-]+)/g)].map(
+        match => match[1]!,
+      ),
+    )
     for (const match of styles.matchAll(/var\(\s*(--[\w-]+)/g)) {
       if (!allowed.has(match[1]!) && !declared.has(match[1]!))
         problems.push(`${path.slice(source.length + 1)}: reads undeclared token ${match[1]}`)
@@ -34,8 +38,7 @@ function checkDirectory(directory: string): void {
 }
 checkDirectory(source)
 
-if (!/\.ui\s*\{/.test(css))
-  problems.push('tokens.css: no .ui scope')
+if (!/\.ui\s*\{/.test(css)) problems.push('tokens.css: no .ui scope')
 for (const token of TOKENS) {
   if (!new RegExp(`${tokenVar(token)}\\s*:`).test(css))
     problems.push(`tokens.css: missing ${tokenVar(token)}`)
@@ -44,7 +47,8 @@ for (const token of TOKENS) {
 if (problems.length) {
   console.error(problems.join('\n'))
   process.exitCode = 1
-}
-else {
-  process.stdout.write(`tokens.css defines all ${TOKENS.length} tokens; component styles only read the contract\n`)
+} else {
+  process.stdout.write(
+    `tokens.css defines all ${TOKENS.length} tokens; component styles only read the contract\n`,
+  )
 }

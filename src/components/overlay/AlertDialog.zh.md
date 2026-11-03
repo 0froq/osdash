@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: 提供明确确认和取消操作的模态确认对话框。
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: 对话框是否打开，支持 v-model。
 props:
   - name: title
@@ -28,15 +28,15 @@ props:
     description: 未提供 trigger 插槽时的触发按钮文案，默认使用 title。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 只禁用触发按钮。父组件仍可通过模型打开对话框。
   - name: pending
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁用确认操作并在内容上设置 aria-busy；取消和 Escape 仍可用。
   - name: confirmDisabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 独立于 pending 禁用确认按钮。
   - name: portalTo
     type: string | HTMLElement
@@ -60,7 +60,7 @@ AlertDialog 是模态确认对话框，必须提供 `title`、`description`、`c
 
 `pending` 会在内容上设置 `aria-busy`，且只禁用确认按钮。取消和 Escape 仍可用，因此 pending 不会锁定请求或阻止取消。`confirmDisabled` 禁用确认操作，但不会将内容标为忙碌。
 
-未声明属性会转发给内容，不会传给 trigger 或外层 scope。默认情况下，内容会 portal 到最近的消费者 `class="ui"` 元素；找不到时会在客户端以内联方式渲染。SSR 时会渲染 trigger，但不会渲染 portal 内容。自定义 `portalTo` 目标必须已经存在，并由消费者提供主题和 UI token。组件根节点不会添加 `.ui` 类。在调用方引入 `style.css`，并提供 `.ui` 祖先元素，以供库样式和默认 portal 目标使用。
+未声明属性会转发给内容，不会传给 trigger 或外层 scope。默认情况下，内容会 portal 到最近的消费者 `class="ui"` 元素；找不到时会在客户端以内联方式渲染。SSR 时会渲染 trigger，但不会渲染 portal 内容。自定义 `portalTo` 目标必须已经存在，并由消费者提供主题和 UI token。组件根节点不会添加 `.ui` 类。在调用方引入 `tokens.css`，并提供 `.ui` 祖先元素，以供库样式和默认 portal 目标使用。
 
 ## 用法
 
@@ -68,7 +68,7 @@ AlertDialog 是模态确认对话框，必须提供 `title`、`description`、`c
 <script setup lang="ts">
 import { AlertDialog, Button } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 const confirmed = ref(false)
@@ -93,9 +93,7 @@ function confirm() {
       </template>
       <p>确定删除当前草稿吗？</p>
     </AlertDialog>
-    <p v-if="confirmed">
-      此示例已确认删除意图，没有发送请求。
-    </p>
+    <p v-if="confirmed"> 此示例已确认删除意图，没有发送请求。 </p>
   </div>
 </template>
 ```

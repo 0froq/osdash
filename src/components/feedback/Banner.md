@@ -27,14 +27,14 @@ The required `label` names a region. This is not the `banner` landmark reserved 
 
 Providing `dismissLabel` adds a button that emits `dismiss`. The caller owns visibility, persistence and focus after removal. Do not make required information available only in a dismissible notice. The `actions` slot accepts genuine links or buttons; do not make the whole notice clickable.
 
-Import `@froq/ui/style.css` and place it inside `.ui`. Copy, links, translations and campaign policy stay outside the library.
+Import `@froq/ui/tokens.css` and place it inside `.ui`. Copy, links, translations and campaign policy stay outside the library.
 
 ## Usage
 
 ```vue
 <script setup lang="ts">
 import { Banner } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 </script>
 
 <template>

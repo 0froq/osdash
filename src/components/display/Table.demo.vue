@@ -12,7 +12,10 @@ const rows: DocumentRow[] = [
   { id: 'one', title: 'Tokens and typography', status: 'Published' },
   { id: 'two', title: 'Composition notes', status: 'Draft' },
 ]
-const columns: TableColumn<DocumentRow>[] = [{ key: 'title', label: 'Document' }, { key: 'status', label: 'Status' }]
+const columns: TableColumn<DocumentRow>[] = [
+  { key: 'title', label: 'Document' },
+  { key: 'status', label: 'Status' },
+]
 </script>
 
 <template>
@@ -30,8 +33,6 @@ const columns: TableColumn<DocumentRow>[] = [{ key: 'title', label: 'Document' }
         {{ value }}
       </template>
     </template>
-    <template #empty>
-      No documents yet.
-    </template>
+    <template #empty> No documents yet. </template>
   </Table>
 </template>

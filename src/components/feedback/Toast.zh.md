@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: 需要 ToastRegion 承载的临时通知。
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: 控制当前通知是否打开。
 props:
   - name: title
@@ -26,7 +26,7 @@ props:
     default: foreground
     description: foreground 使用 assertive 播报，background 使用 polite 播报。
   - name: action
-    type: "{ label: string, altText: string }"
+    type: '{ label: string, altText: string }'
     description: 可选操作按钮及替代操作说明；请在持久界面中保留该操作的替代入口。
 events:
   - name: action
@@ -53,7 +53,7 @@ ToastRegion 会共享暂停状态和展示 viewport。区域不实现队列、ID
 <script setup lang="ts">
 import { Toast, ToastRegion } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const messages = ref([
   {

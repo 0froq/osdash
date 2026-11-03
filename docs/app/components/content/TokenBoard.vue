@@ -9,12 +9,10 @@ const values = ref<Partial<Record<TokenName, string>>>({})
 
 function read(): void {
   const el = root.value
-  if (!el)
-    return
+  if (!el) return
   const style = getComputedStyle(el)
   const row: Partial<Record<TokenName, string>> = {}
-  for (const name of TOKENS)
-    row[name] = style.getPropertyValue(tokenVar(name)).trim()
+  for (const name of TOKENS) row[name] = style.getPropertyValue(tokenVar(name)).trim()
   values.value = row
 }
 
@@ -23,7 +21,10 @@ let observer: MutationObserver | undefined
 onMounted(() => {
   read()
   observer = new MutationObserver(() => read())
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] })
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme', 'class'],
+  })
 })
 
 onBeforeUnmount(() => observer?.disconnect())

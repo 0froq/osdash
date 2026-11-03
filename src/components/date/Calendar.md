@@ -37,29 +37,29 @@ props:
     type: string
     description: Optional caller-supplied YYYY-MM-DD marker; no local-today value is inferred by the component.
   - name: isDateDisabled
-    type: "(date: string) => boolean"
+    type: '(date: string) => boolean'
     description: Callback that disables a Gregorian date string.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Disable date selection and calendar navigation.
   - name: readonly
     type: boolean
-    default: "false"
+    default: 'false'
     description: Allow navigation but prevent date selection and clearing.
   - name: preventDeselect
     type: boolean
-    default: "false"
+    default: 'false'
     description: Prevent clicking the selected day from clearing the selection.
   - name: weekStartsOn
-    type: "0 | 1 | 2 | 3 | 4 | 5 | 6"
+    type: '0 | 1 | 2 | 3 | 4 | 5 | 6'
     description: First weekday, from Sunday (0) through Saturday (6); defaults from the locale.
   - name: dir
     type: "'ltr' | 'rtl'"
     description: Reading and keyboard direction; defaults to the Reka UI direction context, then ltr.
   - name: initialFocus
     type: boolean
-    default: "false"
+    default: 'false'
     description: Focus the calendar after mount.
 events:
   - name: viewChange
@@ -89,7 +89,7 @@ Calendar is a date-selection primitive, not a form input: it has no native form 
 <script setup lang="ts">
 import { Calendar } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const selected = ref('')
 const disabledDates = new Set(['2026-09-12'])

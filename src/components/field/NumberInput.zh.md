@@ -32,7 +32,7 @@ NumberInput 渲染带标签的原生 `type="number"` 控件。除非调用方提
 <script setup lang="ts">
 import { NumberInput } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const quantity = ref<number | undefined>()
 </script>

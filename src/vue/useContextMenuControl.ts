@@ -17,28 +17,38 @@ export function useContextMenuControl(disabled: MaybeRefOrGetter<boolean> = fals
   // Re-arm only from a fresh context-menu gesture. Enabling alone must not revive
   // a queued long press; mouse pointerdown does not clear Reka's touch timer.
   async function prepare(event: Event) {
-    if (event.defaultPrevented || toValue(disabled))
-      return
-    if (event.type !== 'contextmenu' && !(event.type === 'pointerdown' && ['touch', 'pen'].includes((event as PointerEvent).pointerType)))
+    if (event.defaultPrevented || toValue(disabled)) return
+    if (
+      event.type !== 'contextmenu' &&
+      !(
+        event.type === 'pointerdown' &&
+        ['touch', 'pen'].includes((event as PointerEvent).pointerType)
+      )
+    )
       return
     const current = revision
     // Capture runs before descendants can prevent the gesture. Resume before
     // Reka's bubbling handler, but never undo a close requested in that gesture.
     await nextTick()
-    if (!event.defaultPrevented && !toValue(disabled) && revision === current)
-      blocked.value = false
+    if (!event.defaultPrevented && !toValue(disabled) && revision === current) blocked.value = false
   }
 
-  watch(() => toValue(disabled), (value) => {
-    if (value)
-      close()
-  }, { flush: 'sync' })
+  watch(
+    () => toValue(disabled),
+    value => {
+      if (value) close()
+    },
+    { flush: 'sync' },
+  )
   // Boolean-only synchronous guard runs before content can mount/focus or the
   // upstream batched update event can report a rejected opening request.
-  watch(context.open, (value) => {
-    if (value && (toValue(disabled) || blocked.value))
-      context.onOpenChange(false)
-  }, { flush: 'sync' })
+  watch(
+    context.open,
+    value => {
+      if (value && (toValue(disabled) || blocked.value)) context.onOpenChange(false)
+    },
+    { flush: 'sync' },
+  )
 
   return { close, prepare }
 }

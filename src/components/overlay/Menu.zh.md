@@ -1,10 +1,10 @@
 ---
 title: Menu
-designStatus: ai-draft
+designStatus: reviewed
 description: 支持嵌套子菜单的无障碍菜单。
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: 菜单是否打开，支持 v-model。
 props:
   - name: label
@@ -17,11 +17,11 @@ props:
     description: 菜单项及可选的嵌套子菜单项。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 只禁用触发按钮；要禁用菜单项，请设置对应 MenuItem 的属性。
   - name: modal
     type: boolean
-    default: "true"
+    default: 'true'
     description: 控制打开菜单时外部交互是否采用模态行为。
   - name: dir
     type: "'ltr' | 'rtl'"
@@ -36,7 +36,7 @@ props:
     description: 相对触发按钮的首选对齐方式；碰撞处理可能重新定位菜单。
   - name: sideOffset
     type: number
-    default: "8"
+    default: '8'
     description: 触发按钮与菜单内容之间的像素距离。
   - name: portalTo
     type: string | HTMLElement
@@ -60,7 +60,11 @@ Menu 是支持嵌套子菜单的无障碍菜单。trigger 插槽必须最终渲�
 
 组件通过布尔值 `v-model` 控制打开状态，默认值为 `false`。`modal` 默认为 `true`。`dir` 可设为 `ltr` 或 `rtl`；省略时沿用 Reka UI 方向上下文，没有上下文时回退到 `ltr`。菜单优先使用 `side`、`align` 和 `sideOffset`，并以 12 像素碰撞间距自动处理边界碰撞。未声明属性会转发到菜单内容，不会转发给触发按钮。组件根节点不会添加 `.ui` 类。
 
-默认情况下，内容会 Teleport 到最近的消费者 `class="ui"` 元素；找不到时则以内联方式渲染。在服务端只渲染触发按钮，打开后才会在客户端显示菜单内容。自定义 `portalTo` 目标必须已经存在，并由消费者提供主题和 UI token。本库的 token 契约不包含 Reka UI CSS 变量。在调用方引入 `style.css`，并提供 `.ui` 祖先元素，以供库样式和默认 portal 目标使用。
+默认情况下，内容会 Teleport 到最近的消费者 `class="ui"` 元素；找不到时则以内联方式渲染。在服务端只渲染触发按钮，打开后才会在客户端显示菜单内容。自定义 `portalTo` 目标必须已经存在，并由消费者提供主题和 UI token。本库的 token 契约不包含 Reka UI CSS 变量。在调用方引入 `tokens.css`，并提供 `.ui` 祖先元素，以供库样式和默认 portal 目标使用。
+
+## 表面
+
+列表是 `--ui-line` 的细线、圆角 0、没有阴影。高亮行是下划线，没有填充，也没有 accent 竖条。行的起始侧留出槽位。在项内容上标记 `aria-current="page"` 时，槽位里出现 5px 的 accent 圆点。字是 11px 的 `--ui-font-meta`。Select、Combobox 和 ContextMenu 的列表用同一套。见[语言](/docs/language)。
 
 ## 用法
 
@@ -69,7 +73,7 @@ Menu 是支持嵌套子菜单的无障碍菜单。trigger 插槽必须最终渲�
 import type { MenuItem } from '@froq/ui/vue'
 import { Button, Menu } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 const items: MenuItem[] = [

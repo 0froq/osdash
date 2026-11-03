@@ -13,7 +13,7 @@ props:
     description: Non-empty accessible name for the notification viewport; supports the {hotkey} placeholder.
   - name: duration
     type: number
-    default: "5000"
+    default: '5000'
     description: Default auto-dismiss delay in milliseconds for child Toast components.
   - name: hotkey
     type: string[]
@@ -24,7 +24,7 @@ props:
     default: bottom-end
     description: Logical viewport position using inline start and end.
   - name: portalTo
-    type: "string | HTMLElement"
+    type: 'string | HTMLElement'
     description: Teleport target. Defaults to the nearest ancestor with class ui; without one, viewport content renders inline on the client.
 slots:
   - name: default
@@ -35,7 +35,7 @@ ToastRegion provides one shared notification viewport and timing context for its
 
 `duration` defaults to 5000 ms and is inherited by child toasts that do not specify their own duration. The four `position` values use logical inline start/end, so they follow the page's writing direction. The region disables swipe dismissal for its toasts.
 
-Undeclared attributes are applied to the viewport. By default, the viewport is teleported to the nearest consumer ancestor with class `.ui`; if no such target exists, it renders inline on the client. The viewport and toast content appear on the client; ordinary content in the default slot, such as a button, can still render during SSR. A custom `portalTo` target must exist and provide the consumer's theme and UI tokens. The region does not add `.ui`; import `style.css` and provide that scope in the consumer.
+Undeclared attributes are applied to the viewport. By default, the viewport is teleported to the nearest consumer ancestor with class `.ui`; if no such target exists, it renders inline on the client. The viewport and toast content appear on the client; ordinary content in the default slot, such as a button, can still render during SSR. A custom `portalTo` target must exist and provide the consumer's theme and UI tokens. The region does not add `.ui`; import `tokens.css` and provide that scope in the consumer.
 
 ## Usage
 
@@ -43,7 +43,7 @@ Undeclared attributes are applied to the viewport. By default, the viewport is t
 <script setup lang="ts">
 import { Button, Toast, ToastRegion } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const firstOpen = ref(false)
 const secondOpen = ref(false)

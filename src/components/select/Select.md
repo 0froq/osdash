@@ -1,6 +1,6 @@
 ---
 title: Select
-designStatus: ai-draft
+designStatus: reviewed
 description: A single-value select with native and custom presentations.
 model:
   type: string
@@ -9,11 +9,11 @@ model:
 props:
   - name: native
     type: boolean
-    default: "true"
+    default: 'true'
     description: Use the native select; false enables the compact custom listbox.
   - name: hideLabel
     type: boolean
-    default: "false"
+    default: 'false'
     description: Hide the visible label while retaining an accessible name.
   - name: accent
     type: string
@@ -33,7 +33,7 @@ props:
     description: Form field name in either mode.
   - name: framed
     type: boolean
-    default: "false"
+    default: 'false'
     description: Full outline and token background; inherits the host font.
   - name: label
     type: string
@@ -76,7 +76,7 @@ const tone = ref('plain')
 
 The native control has a shared chevron inset 12 px from the right; 34 px of control padding reserves space for it. The chevron ignores pointer events, so native mouse, keyboard, touch and assistive-technology behavior remains on the select. Set optional `framed` (boolean, default false) for a full outline and token background; the framed control inherits its host font. The default keeps the understated underline. Both presentations read only the existing UI token contract.
 
-The custom trigger is borderless unless `framed` is set. Its dropdown has a straight outline, no shadow, and compact rows without gaps. Hover uses a faint accent tint; the selected row uses a solid accent and `--ui-bg` text. Selection is independent of disabled state. Arrow keys, typeahead, Enter/Space, Escape, and outside dismissal are handled by Reka UI. The dropdown stays inside the control's token scope, including when portaled. Reduced-motion preferences disable the trigger's color transition.
+The custom trigger is borderless unless `framed` is set. Its list matches Menu: a hairline (`--ui-line`), radius 0, no shadow, and 11px `--ui-font-meta`. A highlighted row is underlined, with no fill and no accent bar. The checked row keeps `--ui-fg` text and a 5px accent dot in the start gutter. Selection is independent of disabled state. Arrow keys, typeahead, Enter/Space, Escape, and outside dismissal are handled by Reka UI. The dropdown stays inside the control's token scope, including when portaled. Reduced-motion preferences disable the trigger's color transition. See [Language](/docs/language).
 
 ```vue
 <Select

@@ -13,7 +13,5 @@ const value = ref(40)
     :step="5"
     :aria-valuetext="`${value} percent`"
   />
-  <p class="demo-readout">
-    {{ value }}%
-  </p>
+  <p class="demo-readout"> {{ value }}% </p>
 </template>

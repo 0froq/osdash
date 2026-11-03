@@ -28,11 +28,11 @@ props:
     description: Reading and keyboard direction; defaults to the Reka UI direction context, then ltr.
   - name: loop
     type: boolean
-    default: "true"
+    default: 'true'
     description: Loop arrow-key focus movement from the last enabled item to the first, and back.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Disable the entire group.
 slots:
   - name: option
@@ -55,7 +55,7 @@ The group has `role="group"` and uses its visible label as its accessible name. 
 <script setup lang="ts">
 import { ToggleGroup } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const alignment = ref('left')
 const emphasis = ref<string[]>(['italic'])

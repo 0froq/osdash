@@ -8,7 +8,7 @@ model:
   description: 当前选中项的值。
 props:
   - name: options
-    type: "ChoiceOption<T>[]"
+    type: 'ChoiceOption<T>[]'
     required: true
     description: 这些词。每项有 value 和 label，也可以设置为禁用。
   - name: label
@@ -16,7 +16,7 @@ props:
     description: 这一组的无障碍名称，不会显示在页面上。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁用整组。
 ---
 

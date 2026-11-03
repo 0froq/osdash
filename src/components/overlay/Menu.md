@@ -1,10 +1,10 @@
 ---
 title: Menu
-designStatus: ai-draft
+designStatus: reviewed
 description: An accessible menu with optional nested submenus.
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: Whether the menu is open. Supports v-model.
 props:
   - name: label
@@ -17,11 +17,11 @@ props:
     description: Menu entries and optional nested submenu entries.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Disables the trigger only; disable individual entries on their MenuItem.
   - name: modal
     type: boolean
-    default: "true"
+    default: 'true'
     description: Controls whether interaction outside the open menu is modal.
   - name: dir
     type: "'ltr' | 'rtl'"
@@ -36,7 +36,7 @@ props:
     description: Preferred alignment against the trigger; collision handling may reposition the menu.
   - name: sideOffset
     type: number
-    default: "8"
+    default: '8'
     description: Distance in pixels between the trigger and menu content.
   - name: portalTo
     type: string | HTMLElement
@@ -60,7 +60,11 @@ Selecting a leaf emits `select` with the `MenuItem` and the original cancelable 
 
 The component supports `v-model` for its boolean open state, defaulting to `false`. `modal` defaults to `true`. `dir` accepts `ltr` or `rtl`; when omitted it follows the Reka UI direction context, which falls back to `ltr`. The menu prefers `side`, `align`, and `sideOffset`, then automatically handles collisions with 12 pixels of collision padding. Undeclared attributes are forwarded to the menu content, not the trigger. The component root does not add the `.ui` class.
 
-By default, content is teleported into the closest consumer element with `class="ui"`; if there is none, it renders inline. On the server, only the trigger is rendered; menu content appears after opening on the client. A custom `portalTo` target must already exist and provide the consumer's theme and UI tokens. The library does not add Reka UI CSS variables to its token contract. Import `style.css` in the caller and provide a `.ui` ancestor for the library styles and default portal target.
+By default, content is teleported into the closest consumer element with `class="ui"`; if there is none, it renders inline. On the server, only the trigger is rendered; menu content appears after opening on the client. A custom `portalTo` target must already exist and provide the consumer's theme and UI tokens. The library does not add Reka UI CSS variables to its token contract. Import `tokens.css` in the caller and provide a `.ui` ancestor for the library styles and default portal target.
+
+## Surface
+
+The list is a hairline (`--ui-line`), radius 0, and no shadow. A highlighted row is underlined. There is no fill and no accent bar. Row padding leaves a start gutter. Mark the current page with `aria-current="page"` on the item content and that gutter shows a 5px accent dot. Type is 11px `--ui-font-meta`. The same list is used by Select, Combobox, and ContextMenu. See [Language](/docs/language).
 
 ## Usage
 
@@ -69,7 +73,7 @@ By default, content is teleported into the closest consumer element with `class=
 import type { MenuItem } from '@froq/ui/vue'
 import { Button, Menu } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 const items: MenuItem[] = [

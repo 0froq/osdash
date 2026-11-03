@@ -11,8 +11,7 @@ const external = computed(() => {
 })
 const to = computed(() => {
   const href = props.href ?? ''
-  if (!href || external.value || href.startsWith('#'))
-    return href
+  if (!href || external.value || href.startsWith('#')) return href
   return link(href)
 })
 </script>

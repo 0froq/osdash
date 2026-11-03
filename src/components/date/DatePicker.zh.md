@@ -85,7 +85,7 @@ DatePicker 的日期值是 Gregorian `YYYY-MM-DD` 字符串，空字符串表示
 
 选择日期（包括再次选择当前日期）、清空或关闭都会关闭弹层。打开时焦点进入当前可用日期；Escape、外部点击或关闭按钮会关闭弹层。关闭后焦点返回触发器；由外部交互触发关闭时保留外部目标的焦点。日期网格支持方向键、Enter/Space 与原生 Tab 导航。
 
-提供 `name` 时，组件渲染值为 ISO 日期字符串的隐藏 input，`form` 可指定其关联表单。该字段不提供浏览器原生 `required`、`min` 或 `max` 校验；需要日期输入或原生校验时使用 `DateInput`，或由调用方自行校验。`class` 和 `style` 应用于外层容器；其他未声明属性会传给触发器按钮。portal 默认挂到最近的 `.ui` 容器；自定义 portal 目标需由调用方提供主题 token。SSR 时弹出内容不会渲染，客户端打开后才挂载。组件使用 UI 库 token；引入 `@froq/ui/style.css`，并置于带有 `class="ui"` 的元素内。
+提供 `name` 时，组件渲染值为 ISO 日期字符串的隐藏 input，`form` 可指定其关联表单。该字段不提供浏览器原生 `required`、`min` 或 `max` 校验；需要日期输入或原生校验时使用 `DateInput`，或由调用方自行校验。`class` 和 `style` 应用于外层容器；其他未声明属性会传给触发器按钮。portal 默认挂到最近的 `.ui` 容器；自定义 portal 目标需由调用方提供主题 token。SSR 时弹出内容不会渲染，客户端打开后才挂载。组件使用 UI 库 token；引入 `@froq/ui/tokens.css`，并置于带有 `class="ui"` 的元素内。
 
 ## 用法
 
@@ -95,7 +95,7 @@ DatePicker 的日期值是 Gregorian `YYYY-MM-DD` 字符串，空字符串表示
 <script setup lang="ts">
 import { DatePicker } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const date = ref('')
 const open = ref(false)
