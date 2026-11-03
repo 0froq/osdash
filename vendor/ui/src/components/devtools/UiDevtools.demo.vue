@@ -5,9 +5,7 @@ import UiDevtools from './UiDevtools.vue'
 
 <template>
   <div>
-    <Badge tone="accent">
-      Open the ui button at the bottom right
-    </Badge>
+    <Badge tone="accent"> Open the ui button at the bottom right </Badge>
     <UiDevtools />
   </div>
 </template>

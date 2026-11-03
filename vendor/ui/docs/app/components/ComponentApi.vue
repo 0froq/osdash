@@ -15,10 +15,14 @@ const { t } = useI18n()
       <tbody>
         <tr>
           <th>modelValue</th>
-          <td><code>{{ doc.model.type }}</code></td>
+          <td
+            ><code>{{ doc.model.type }}</code></td
+          >
           <td>
             <span v-if="doc.model.required">{{ t('components.required') }}</span>
-            <span v-else-if="doc.model.default">{{ t('components.default') }} {{ doc.model.default }}</span>
+            <span v-else-if="doc.model.default"
+              >{{ t('components.default') }} {{ doc.model.default }}</span
+            >
             {{ doc.model.description }}
           </td>
         </tr>
@@ -34,7 +38,9 @@ const { t } = useI18n()
           :key="prop.name"
         >
           <th>{{ prop.name }}</th>
-          <td><code>{{ prop.type }}</code></td>
+          <td
+            ><code>{{ prop.type }}</code></td
+          >
           <td>
             <span v-if="prop.required">{{ t('components.required') }}</span>
             <span v-else-if="prop.default">{{ t('components.default') }} {{ prop.default }}</span>
@@ -53,7 +59,9 @@ const { t } = useI18n()
           :key="event.name"
         >
           <th>{{ event.name }}</th>
-          <td><code>{{ event.payload }}</code></td>
+          <td
+            ><code>{{ event.payload }}</code></td
+          >
           <td>{{ event.description }}</td>
         </tr>
       </tbody>
@@ -76,31 +84,8 @@ const { t } = useI18n()
 </template>
 
 <style scoped>
-h3 {
-  margin: 2em 0 0.5em;
-  font-size: 17px;
-  font-weight: 500;
-}
-
-.api {
-  width: 100%;
-  margin: 0 0 1.6em;
-  border-collapse: collapse;
-  font-size: 15px;
-}
-
-.api th,
-.api td {
-  padding: 10px 16px 10px 0;
-  border-top: 1px solid var(--ui-line);
-  vertical-align: baseline;
-  text-align: left;
-  font-weight: 400;
-}
-
 .api th {
   width: 8rem;
   font-family: var(--ui-font-meta);
-  font-size: 13px;
 }
 </style>

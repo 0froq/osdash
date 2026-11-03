@@ -26,7 +26,7 @@ Alert 显示可选的 `title` 和默认插槽内容。`announcement` 默认为 `
 
 提供 `dismissLabel` 后会显示关闭按钮。激活按钮会无参数触发 `dismiss` 事件。组件不会自行隐藏、管理可见状态或移动焦点；这些操作以及关闭后的焦点位置由调用方处理。
 
-组件没有 `v-model`。样式只使用 UI 库 token，不依赖字体、路由或业务状态。在调用方引入 `style.css`，并将组件放在带有 `class="ui"` 的元素内。
+组件没有 `v-model`。样式只使用 UI 库 token，不依赖字体、路由或业务状态。在调用方引入 `tokens.css`，并将组件放在带有 `class="ui"` 的元素内。
 
 ## 用法
 
@@ -34,7 +34,7 @@ Alert 显示可选的 `title` 和默认插槽内容。`announcement` 默认为 `
 <script setup lang="ts">
 import { Alert } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const visible = ref(true)
 </script>

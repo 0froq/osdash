@@ -28,30 +28,12 @@ props:
     description: 阅读及键盘方向；默认使用 Reka UI 方向上下文，无上下文时为 ltr。
   - name: loop
     type: boolean
-    default: "true"
+    default: 'true'
     description: 方向键焦点移动是否在首尾启用循环。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁用整个按钮组。
-  - name: variant
-    type: "'default' | 'pill'"
-    default: default
-    description: 默认按钮组或独立的圆角 pill。
-  - name: maxRows
-    type: number
-    description: 收起时最多显示的实际行数。正整数对横向布局生效，不传则不限制。
-  - name: clearLabel
-    type: string
-    description: 设置后在组首显示清除按钮。清除为空数组或空字符串，不添加特殊选项值。
-  - name: expandLabel
-    type: string
-    default: Show more
-    description: 超出最大行数时显示的展开按钮文案。
-  - name: collapseLabel
-    type: string
-    default: Show less
-    description: 展开后同一按钮显示的收起文案。
 slots:
   - name: option
     description: 接收 option 和 active 以替换标签；不要加入交互后代。
@@ -67,33 +49,13 @@ ToggleGroup 渲染可见标签和由该标签命名的按钮组。单选模式�
 
 `class` 和 `style` 会应用到外层字段包装元素。其他未声明属性会应用到 Reka 组根节点，不会应用到每个选项按钮。
 
-## Pill 与行数限制
-
-`variant="pill"` 使用独立的圆角 pill。`clearLabel` 在组首添加清除按钮，没有选中项时显示为按下状态。它清空模型，不往选中数组里塞特殊值。清除按钮有独立的 Tab 停靠，方向键在普通选项之间移动。
-
-`maxRows` 按实际换行计数，清除按钮也占布局位置。组件在挂载、字体加载、选项变化和尺寸变化后测量元素边界。只有超出限制时才显示展开/收起按钮。收起后，被裁掉的选项保留选中状态，但会禁用并标记为 inert，键盘焦点和读屏不能进入隐藏内容。展开和收起不改变选择。选项或行数限制变化时重置为收起状态。纵向布局忽略 `maxRows`。
-
-```vue
-<ToggleGroup
-  v-model="selected"
-  type="multiple"
-  variant="pill"
-  label="主题"
-  :options="topics"
-  :max-rows="3"
-  clear-label="全部"
-  expand-label="展开全部"
-  collapse-label="收起"
-/>
-```
-
 ## 用法
 
 ```vue
 <script setup lang="ts">
 import { ToggleGroup } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const alignment = ref('left')
 const emphasis = ref<string[]>(['italic'])

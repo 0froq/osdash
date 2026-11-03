@@ -19,15 +19,13 @@ Badge 渲染为用于短行内标签的 `<span>`。通过默认插槽提供内�
 ```vue
 <script setup lang="ts">
 import { Badge } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 </script>
 
 <template>
   <div class="ui">
     <Badge>草稿</Badge>
-    <Badge tone="accent">
-      已更新
-    </Badge>
+    <Badge tone="accent"> 已更新 </Badge>
   </div>
 </template>
 ```

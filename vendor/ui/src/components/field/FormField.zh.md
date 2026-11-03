@@ -18,7 +18,7 @@ props:
     description: 调用方提供的错误文字；非空值将控件标记为无效。
   - name: required
     type: boolean
-    default: "false"
+    default: 'false'
     description: 可见必填标记及原生、ARIA 必填控件属性。
 slots:
   - name: default
@@ -37,7 +37,7 @@ FormField 负责无障碍关联，不管理值或校验，没有模型。默认�
 <script setup lang="ts">
 import { FormField } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const title = ref('')
 const error = ref<string>()
@@ -58,7 +58,7 @@ const error = ref<string>()
           class="ui-field-control"
           type="text"
           name="title"
-        >
+        />
       </template>
     </FormField>
   </div>

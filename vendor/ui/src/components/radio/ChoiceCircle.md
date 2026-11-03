@@ -8,7 +8,7 @@ model:
   description: The value of the chosen option.
 props:
   - name: options
-    type: "ChoiceOption<T>[]"
+    type: 'ChoiceOption<T>[]'
     required: true
     description: The words. Each option has a value and a label, and may be disabled.
   - name: label
@@ -16,7 +16,7 @@ props:
     description: Accessible name for the group; it is not displayed.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Disable the entire group.
 ---
 

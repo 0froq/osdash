@@ -15,9 +15,7 @@ const open = ref(false)
     :duration="8000"
     :hotkey="[]"
   >
-    <Button @click="open = true">
-      Show background notification
-    </Button>
+    <Button @click="open = true"> Show background notification </Button>
     <Toast
       v-model="open"
       title="Library demo"

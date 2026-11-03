@@ -13,8 +13,7 @@ const { data: page } = await useAsyncData(
   () => `page-${locale.value}-${rest.value}`,
   () => queryCollection('pages').path(contentPath(rest.value)).first(),
 )
-if (!page.value)
-  throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: true })
+if (!page.value) throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: true })
 
 useContentOgImage(page, 'pages', {
   title: () => page.value?.title,
@@ -36,12 +35,12 @@ useContentOgImage(page, 'pages', {
       :lede="page.description"
     />
     <section class="l-section">
-      <DocBody class="l-body">
-        <ContentRenderer
-          :value="page"
-          class="l-md"
-        />
-      </DocBody>
+      <DocPage
+        :title="page.head ? undefined : page.title"
+        :lede="page.head ? undefined : page.description"
+        :kicker="page.head ? undefined : page.kicker"
+        :value="page"
+      />
     </section>
   </div>
 </template>
@@ -53,24 +52,6 @@ useContentOgImage(page, 'pages', {
 }
 
 .l-section {
-  display: grid;
-  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-  gap: var(--gap);
-  align-items: start;
   padding: clamp(48px, 8vh, 96px) var(--pad) 0;
-}
-
-.l-body {
-  grid-column: span var(--span-body);
-}
-
-@media (max-width: 860px) {
-  .l-section {
-    grid-template-columns: 1fr;
-  }
-
-  .l-body {
-    grid-column: 1 / -1;
-  }
 }
 </style>

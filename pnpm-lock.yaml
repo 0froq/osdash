@@ -1268,11 +1268,23 @@ packages:
 
   '@froq/ui@file:vendor/ui':
     resolution: {directory: vendor/ui, type: directory}
+    engines: {node: ^24.21.0 || >=26.0.0}
     peerDependencies:
       vue: ^3.5.0
     peerDependenciesMeta:
       vue:
         optional: true
+
+  '@iconify-vue/solar@1.0.9':
+    resolution: {integrity: sha512-rbVgQBvIh/Bkcz5kFkV+t0MuyyTySHiH+HTlU1oKsbYtUTZycmzhps+2ect76TqG/K+BovyPJyPcjQiXhvePWA==}
+
+  '@iconify/css-vue@1.0.4':
+    resolution: {integrity: sha512-XB3j2+q0uTBhEb4t/8gs3oMtl7t0xDdGqO2FdjZd3h+76YCG14oIUnSmGRapkecKwtg2ikGXqX93e5zPMjn1JA==}
+    peerDependencies:
+      vue: '>=3.0.0'
+
+  '@iconify/types@2.0.0':
+    resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -6620,10 +6632,24 @@ snapshots:
 
   '@froq/ui@file:vendor/ui(vue@3.5.44(typescript@5.9.3))':
     dependencies:
+      '@iconify-vue/solar': 1.0.9(vue@3.5.44(typescript@5.9.3))
       '@internationalized/date': 3.12.4
       reka-ui: 2.11.0(vue@3.5.44(typescript@5.9.3))
     optionalDependencies:
       vue: 3.5.44(typescript@5.9.3)
+
+  '@iconify-vue/solar@1.0.9(vue@3.5.44(typescript@5.9.3))':
+    dependencies:
+      '@iconify/css-vue': 1.0.4(vue@3.5.44(typescript@5.9.3))
+    transitivePeerDependencies:
+      - vue
+
+  '@iconify/css-vue@1.0.4(vue@3.5.44(typescript@5.9.3))':
+    dependencies:
+      '@iconify/types': 2.0.0
+      vue: 3.5.44(typescript@5.9.3)
+
+  '@iconify/types@2.0.0': {}
 
   '@img/colour@1.1.0': {}
 

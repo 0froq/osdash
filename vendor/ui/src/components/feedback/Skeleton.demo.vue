@@ -5,11 +5,16 @@ import Sidebar from '../navigation/Sidebar.vue'
 import Skeleton from './Skeleton.vue'
 
 const loading = ref(true)
-const groups = [{ label: 'Reference', items: [
-  { value: 'overview', label: 'Overview' },
-  { value: 'components', label: 'Components' },
-  { value: 'tokens', label: 'Tokens' },
-] }]
+const groups = [
+  {
+    label: 'Reference',
+    items: [
+      { value: 'overview', label: 'Overview' },
+      { value: 'components', label: 'Components' },
+      { value: 'tokens', label: 'Tokens' },
+    ],
+  },
+]
 </script>
 
 <template>

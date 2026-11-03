@@ -48,7 +48,7 @@ GridTable is a generic CSS grid for matrix-style tables, such as choosing a vari
 
 The component does not hold selection state. Pass the selected column with `current` and bind the header control yourself, for example with a `Choice` and `v-model`. Each `cell` is caller content, so put links, buttons, or text inside it. Focus outlines apply to links inside the grid.
 
-Undeclared attributes, including `class` and `style`, are forwarded to the grid root. Use `class` to add project layout such as margins. The component has no sorting, filtering, virtualization, or business state. Styles use only UI library tokens and do not depend on fonts, routes, or business state. Import `style.css` in the caller and place the component inside an element with `class="ui"`.
+Undeclared attributes, including `class` and `style`, are forwarded to the grid root. Use `class` to add project layout such as margins. The component has no sorting, filtering, virtualization, or business state. Styles use only UI library tokens and do not depend on fonts, routes, or business state. Import `tokens.css` in the caller and place the component inside an element with `class="ui"`.
 
 ## Usage
 
@@ -57,7 +57,7 @@ Undeclared attributes, including `class` and `style`, are forwarded to the grid 
 import type { ChoiceOption } from '@froq/ui/vue'
 import { Choice, GridTable } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 interface PortRow {
   id: string
@@ -73,7 +73,10 @@ const columns: VariantColumn[] = [
   { id: 'full', label: 'Full' },
   { id: 'lite', label: 'Lite' },
 ]
-const options: ChoiceOption<string>[] = columns.map(column => ({ value: column.id, label: column.label }))
+const options: ChoiceOption<string>[] = columns.map(column => ({
+  value: column.id,
+  label: column.label,
+}))
 const variant = ref('full')
 </script>
 

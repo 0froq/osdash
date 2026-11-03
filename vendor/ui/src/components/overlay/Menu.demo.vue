@@ -6,10 +6,14 @@ import Menu from './Menu.vue'
 
 const items: MenuItem[] = [
   { value: 'rename', label: 'Rename' },
-  { value: 'export', label: 'Export', children: [
-    { value: 'markdown', label: 'Markdown' },
-    { value: 'html', label: 'HTML' },
-  ] },
+  {
+    value: 'export',
+    label: 'Export',
+    children: [
+      { value: 'markdown', label: 'Markdown' },
+      { value: 'html', label: 'HTML' },
+    ],
+  },
   { value: 'share', label: 'Share', disabled: true },
   { value: 'archive', label: 'Archive', separatorBefore: true },
 ]
@@ -21,7 +25,7 @@ const selected = ref('No command selected')
     <Menu
       label="Document actions"
       :items="items"
-      @select="item => selected = item.label"
+      @select="item => (selected = item.label)"
     >
       <template #trigger>
         <Button>Document actions</Button>

@@ -8,7 +8,7 @@ model:
   description: 当前选中项的值。
 props:
   - name: options
-    type: "ChoiceOption<T>[]"
+    type: 'ChoiceOption<T>[]'
     required: true
     description: 这些词。每项有 value 和 label，也可以设置为禁用。
   - name: label
@@ -16,11 +16,11 @@ props:
     description: 页面上可见、用于命名这一组的标签。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁用整组。
 ---
 
-Choice 是在几个词里选一个，不是一叠方框。选中的词留在前景，其余的变淡。一枚着重号停在选中词的后面，选择变化时它走到下一个词。读者偏好减少动效时，着重号直接跳过去。
+Choice 是在几个词里选一个，不是一叠方框。选中的词留在前景，下方有一条 accent 色横线，其余的变淡。选择变化时横线滑到下一个词：先拉伸跨过两个词之间的空隙，再收拢到新词下方。读者偏好减少动效时，横线直接跳过去。
 
 自定义按钮单选组只有一个 Tab 停靠。方向键、Home 和 End 移动选择，并跳过禁用项；带修饰键时不会拦截按键。如果当前值不存在或已禁用，第一个可用项会成为 Tab 入口，但不会因此修改模型。所有选项都禁用时，组内没有 Tab 入口。`disabled` 属性会禁用整组。
 

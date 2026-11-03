@@ -15,8 +15,6 @@ const page = ref(4)
       next-label="Next"
       :page-label="value => `Page ${value}`"
     />
-    <p aria-live="polite">
-      Current page: {{ page }}
-    </p>
+    <p aria-live="polite"> Current page: {{ page }} </p>
   </div>
 </template>

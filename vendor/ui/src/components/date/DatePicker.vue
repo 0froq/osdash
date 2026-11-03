@@ -7,35 +7,48 @@ import { useControlAttrs, usePortalTarget } from '../../vue'
 import Calendar from './Calendar.vue'
 
 defineOptions({ inheritAttrs: false })
-const props = withDefaults(defineProps<{
-  label: string
-  locale: string
-  initialDate: string
-  placeholder: string
-  prevLabel: string
-  nextLabel: string
-  clearLabel: string
-  closeLabel: string
-  min?: string
-  max?: string
-  today?: string
-  isDateDisabled?: (date: string) => boolean
-  disabled?: boolean
-  readonly?: boolean
-  weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6
-  dir?: 'ltr' | 'rtl'
-  name?: string
-  form?: string
-  portalTo?: string | HTMLElement
-}>(), { disabled: false, readonly: false })
-defineSlots<{ day?: (scope: { date: string, day: string, selected: boolean, disabled: boolean, today: boolean }) => unknown }>()
+const props = withDefaults(
+  defineProps<{
+    label: string
+    locale: string
+    initialDate: string
+    placeholder: string
+    prevLabel: string
+    nextLabel: string
+    clearLabel: string
+    closeLabel: string
+    min?: string
+    max?: string
+    today?: string
+    isDateDisabled?: (date: string) => boolean
+    disabled?: boolean
+    readonly?: boolean
+    weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6
+    dir?: 'ltr' | 'rtl'
+    name?: string
+    form?: string
+    portalTo?: string | HTMLElement
+  }>(),
+  { disabled: false, readonly: false },
+)
+defineSlots<{
+  day?: (scope: {
+    date: string
+    day: string
+    selected: boolean
+    disabled: boolean
+    today: boolean
+  }) => unknown
+}>()
 const model = defineModel<string>({ default: '' })
 const open = defineModel<boolean>('open', { default: false })
 const viewDate = ref(props.initialDate)
-watch(() => props.initialDate, (date) => {
-  if (!model.value)
-    viewDate.value = date
-})
+watch(
+  () => props.initialDate,
+  date => {
+    if (!model.value) viewDate.value = date
+  },
+)
 const id = useId()
 const scope = useTemplateRef<HTMLElement>('scope')
 const trigger = useTemplateRef<ComponentPublicInstance>('trigger')
@@ -46,19 +59,20 @@ const display = computed(() => formatCalendarDate(model.value, props.locale))
 const invalid = computed(() => {
   const date = parseCalendarDate(model.value)
   const bounds = calendarDateBounds(props.min, props.max)
-  return Boolean(date && ((bounds.min && date.compare(bounds.min) < 0)
-    || (bounds.max && date.compare(bounds.max) > 0) || props.isDateDisabled?.(model.value)))
+  return Boolean(
+    date &&
+    ((bounds.min && date.compare(bounds.min) < 0) ||
+      (bounds.max && date.compare(bounds.max) > 0) ||
+      props.isDateDisabled?.(model.value)),
+  )
 })
 function updateOpen(next: boolean) {
-  if (!props.disabled || !next)
-    open.value = next
+  if (!props.disabled || !next) open.value = next
 }
 function clear() {
-  if (props.disabled || props.readonly)
-    return
+  if (props.disabled || props.readonly) return
   const button = trigger.value?.$el
-  if (typeof HTMLElement !== 'undefined' && button instanceof HTMLElement)
-    button.focus()
+  if (typeof HTMLElement !== 'undefined' && button instanceof HTMLElement) button.focus()
   model.value = ''
   open.value = false
 }
@@ -78,7 +92,8 @@ function focusCalendar(event: Event) {
     <span
       :id="`${id}-label`"
       class="ui-field-label"
-    >{{ label }}</span>
+      >{{ label }}</span
+    >
     <PopoverRoot
       :open="open && !disabled"
       @update:open="updateOpen"
@@ -161,6 +176,96 @@ function focusCalendar(event: Event) {
       :form="form"
       :value="model"
       :disabled="disabled"
-    >
+    />
   </div>
 </template>
+
+<style scoped>
+.ui-date-picker-trigger:focus-visible,
+.ui-date-picker-clear:focus-visible,
+.ui-date-picker-close:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.ui-date-picker {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ui-date-picker-control {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+}
+
+.ui-date-picker-trigger {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--ui-radius);
+  background: transparent;
+  color: var(--ui-fg);
+  font: inherit;
+  font-family: var(--ui-font-text);
+  text-align: start;
+  cursor: pointer;
+}
+
+.ui-date-picker-clear,
+.ui-date-picker-close {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--ui-radius);
+  background: transparent;
+  color: var(--ui-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ui-date-picker-trigger:disabled,
+.ui-date-picker-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ui-date-picker-content {
+  z-index: 1001;
+  box-sizing: border-box;
+  width: min(22rem, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 12px;
+  overflow-y: auto;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  box-shadow: none;
+  color: var(--ui-fg);
+}
+
+.ui-date-picker-content :deep(.ui-calendar) {
+  width: 100%;
+}
+
+.ui-date-picker-close {
+  display: block;
+  margin-block-start: 8px;
+  margin-inline-start: auto;
+  font-family: var(--ui-font-text);
+}
+
+.ui-field-label {
+  color: var(--ui-muted);
+  font-family: var(--ui-font-meta);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+</style>

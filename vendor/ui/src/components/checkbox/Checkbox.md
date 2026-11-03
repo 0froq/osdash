@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: A labeled checkbox controlled by a boolean model.
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: Whether the checkbox is checked.
 props:
   - name: label

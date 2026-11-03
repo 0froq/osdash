@@ -1,0 +1,103 @@
+{
+  "site": {
+    "skip": "本文へスキップ",
+    "noticeLabel": "サイトのお知らせ",
+    "wip": "制作中です。多くのコンポーネントはAIによる下書きで、手動のデザイン確認を待っています。",
+    "noticeAction": "下書きを見る",
+    "foot": {
+      "about": "このサイトについて",
+      "aboutText": "小さなコントロール、共有される振る舞い、ひとつの視覚言語。書体は {instrument} と {geist}。",
+      "site": "サイト",
+      "elsewhere": "ほかの場所",
+      "prefs": "設定",
+      "license": "ライセンス"
+    }
+  },
+  "theme": {
+    "label": "カラーテーマ",
+    "dark": "ダーク",
+    "light": "ライト"
+  },
+  "nav": {
+    "docs": "ドキュメント",
+    "components": "コンポーネント",
+    "changelog": "更新履歴",
+    "github": "GitHub",
+    "language": "言語",
+    "section": "セクションナビゲーション",
+    "close": "ナビゲーションを閉じる"
+  },
+  "hero": {
+    "tagline": "制作中のインターフェースライブラリ。",
+    "lede": "小さなコントロール、共有される振る舞い、ひとつの視覚言語。froq のプロジェクトのために作られ、細部はまだ磨いている途中です。",
+    "cta": "ドキュメントを読む",
+    "browse": "コンポーネントを見る",
+    "specimen": "操作できる見本",
+    "tone": "トーン",
+    "quiet": "静か",
+    "clear": "明快",
+    "loud": "力強い",
+    "switchLabel": "プレビュー用スイッチ",
+    "switchBefore": "ちょっとした操作、",
+    "on": "オン",
+    "off": "オフ",
+    "selected": "選択中",
+    "index": "ライブラリの中身",
+    "indexDescription": "概念ごとに見て回れます。操作を試し、APIを確かめて、自分のものにしてください。",
+    "contract": "表面の下",
+    "contractDescription": "core にはフレームワークに依存しないロジック、vue にはスタイルのない振る舞い。コンポーネントは12個のトークンを共有します。",
+    "contractLink": "トークンの契約を読む"
+  },
+  "docs": {
+    "label": "ドキュメント",
+    "prev": "前へ",
+    "next": "次へ",
+    "groups": {
+      "start": "はじめに",
+      "contract": "契約"
+    }
+  },
+  "changelog": {
+    "label": "更新履歴",
+    "title": "更新履歴",
+    "lede": "ライブラリの変更点。",
+    "count": "{n} 件のリリース",
+    "latest": "最新"
+  },
+  "notFound": {
+    "title": "ページが見つかりません",
+    "back": "ホームへ戻る"
+  },
+  "components": {
+    "title": "コンポーネント",
+    "statusGate": "各コンポーネントにはデザイン状態があります。AI下書き、確認済み、安定のいずれかです。",
+    "status": {
+      "ai-draft": "AI下書き · 未確認",
+      "reviewed": "確認済み",
+      "stable": "安定"
+    },
+    "statusDescription": {
+      "ai-draft": "AIが生成した下書きです。メンテナーによる手動のデザインや承認はまだありません。",
+      "reviewed": "ライブラリの表面言語に照らして確認済みです。まだ安定とは判断されていません。",
+      "stable": "ライブラリの標準として承認されています。"
+    },
+    "lede": "フォルダーは概念ページです。その中の各コンポーネントに個別のページがあります。",
+    "concepts": "{n} 個の概念",
+    "count": "{n} 個のコンポーネント",
+    "noDemo": "デモファイルはまだありません。",
+    "details": "詳細",
+    "demo": "デモ",
+    "usage": "使い方",
+    "api": "API",
+    "props": "プロパティ",
+    "model": "v-model",
+    "slots": "スロット",
+    "events": "イベント",
+    "required": "必須。",
+    "default": "デフォルト",
+    "sections": {
+      "form": "フォーム",
+      "prose": "本文"
+    }
+  }
+}

@@ -22,7 +22,10 @@ const columns: VariantColumn[] = [
   { id: 'lite', label: 'Lite' },
   { id: 'min', label: 'Minimal' },
 ]
-const options: ChoiceOption<string>[] = columns.map(column => ({ value: column.id, label: column.label }))
+const options: ChoiceOption<string>[] = columns.map(column => ({
+  value: column.id,
+  label: column.label,
+}))
 const variant = ref('full')
 </script>
 

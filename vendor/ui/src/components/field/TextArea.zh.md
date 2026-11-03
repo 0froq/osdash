@@ -13,7 +13,7 @@ props:
     description: 文本框上显示的文字标签。
   - name: rows
     type: number
-    default: "3"
+    default: '3'
     description: 可见文本行数。
 ---
 

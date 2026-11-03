@@ -23,7 +23,7 @@ FileUpload renders a native file input with a visible `label`. It has no `v-mode
 
 Native file input attributes such as `accept`, `multiple`, `capture`, `name`, `required`, and `disabled` are forwarded to the input. `class` and `style` apply to the outer label. The input type is fixed to `file`; do not pass `value`. Browsers do not allow JavaScript to prefill a file input. `accept` is a picker hint, not file validation. FileUpload does not upload files or retain them in application state. Keep selected files in the consumer and synchronize that state when clearing or resetting the form. A native `cancel` event is forwarded and is distinct from an empty `change` event.
 
-The component has no slots. Its styles use the UI library tokens and do not depend on fonts, routes, or business state. Import `style.css` in the caller and place the component inside an element with `class="ui"`.
+The component has no slots. Its styles use the UI library tokens and do not depend on fonts, routes, or business state. Import `tokens.css` in the caller and place the component inside an element with `class="ui"`.
 
 ## Usage
 
@@ -31,7 +31,7 @@ The component has no slots. Its styles use the UI library tokens and do not depe
 <script setup lang="ts">
 import { FileUpload } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const resetKey = ref(0)
 const files = ref<File[]>([])

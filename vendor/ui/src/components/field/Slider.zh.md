@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: 带可见标签的原生单滑块范围输入。
 model:
   type: number
-  default: "50"
+  default: '50'
   description: 受控滑块值；显示值会限制在规范化后的上下界内。
 props:
   - name: label
@@ -13,15 +13,15 @@ props:
     description: 范围输入的可见文本标签。
   - name: min
     type: number
-    default: "0"
+    default: '0'
     description: 最小值。非有限数值会回退为 0。
   - name: max
     type: number
-    default: "100"
+    default: '100'
     description: 最大值。非有限数值回退为 max(min, 100)；有限且小于 min 的值会规范化为 min。
   - name: step
     type: number | 'any'
-    default: "1"
+    default: '1'
     description: 原生范围输入步长。非有限或非正数值回退为 1；any 表示不限制步进粒度。
 ---
 
@@ -31,7 +31,7 @@ Slider 使用原生 `<input type="range">`，包含一个滑块，不提供双�
 
 `class` 和 `style` 会应用到外层 label。其他未声明的原生属性，包括 `name`、`disabled` 和 `aria-valuetext`，会转发给 input。原生 range 输入不支持 `readonly`。重置外层表单不会自动重置 Vue model。
 
-组件没有插槽。样式只使用 UI 库 token，不依赖字体、路由或业务状态。在调用方引入 `style.css`，并将组件放在带有 `class="ui"` 的元素内。
+组件没有插槽。样式只使用 UI 库 token，不依赖字体、路由或业务状态。在调用方引入 `tokens.css`，并将组件放在带有 `class="ui"` 的元素内。
 
 ## 用法
 
@@ -39,7 +39,7 @@ Slider 使用原生 `<input type="range">`，包含一个滑块，不提供双�
 <script setup lang="ts">
 import { Slider } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const volume = ref(50)
 </script>

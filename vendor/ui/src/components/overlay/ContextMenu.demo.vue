@@ -14,9 +14,7 @@ const menu = useTemplateRef<{ close: () => void }>('menu')
     v-model="disabled"
     label="Disable context menu"
   />
-  <Button @click="menu?.close()">
-    Close context menu
-  </Button>
+  <Button @click="menu?.close()"> Close context menu </Button>
   <ContextMenu
     ref="menu"
     label="Draft actions"

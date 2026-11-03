@@ -5,8 +5,6 @@ import Badge from './Badge.vue'
 <template>
   <div style="display: flex; gap: 8px">
     <Badge>Draft</Badge>
-    <Badge tone="accent">
-      Updated
-    </Badge>
+    <Badge tone="accent"> Updated </Badge>
   </div>
 </template>

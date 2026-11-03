@@ -13,17 +13,17 @@ props:
     description: 菜单项，可含禁用项、分隔符和嵌套子菜单。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁止在目标上打开菜单，但不禁用目标内的子内容。
   - name: modal
     type: boolean
-    default: "true"
+    default: 'true'
     description: 打开菜单时是否限制外部交互。
   - name: dir
     type: "'ltr' | 'rtl'"
     description: 菜单文字和键盘方向；默认沿用 Reka UI 方向上下文，无上下文时为 ltr。
   - name: portalTo
-    type: "string | HTMLElement"
+    type: 'string | HTMLElement'
     description: Teleport 目标。默认使用最近的消费者 class 为 ui 的元素；找不到时以内联方式渲染。
 events:
   - name: openChange
@@ -51,7 +51,7 @@ ContextMenu 会将默认插槽包在一个有名称且可聚焦的 `div` 中，�
 
 - `close(): void` 可通过组件 ref 关闭当前菜单或拒绝待执行的打开，不会卸载目标。组件不会自动监听全局滚动或路由变化；关闭策略由消费端决定并执行。
 
-未声明的属性会透传到菜单内容，不会传到目标包装元素。默认情况下，内容会 Teleport 到最近的消费者 `class="ui"` 元素；找不到时则在客户端以内联方式渲染。SSR 时只渲染目标，菜单内容在客户端出现。关闭时菜单内容会卸载。自定义 `portalTo` 目标必须存在，并由消费者提供主题和 UI token。消费者需引入 `style.css` 并提供 `.ui` 作用域。
+未声明的属性会透传到菜单内容，不会传到目标包装元素。默认情况下，内容会 Teleport 到最近的消费者 `class="ui"` 元素；找不到时则在客户端以内联方式渲染。SSR 时只渲染目标，菜单内容在客户端出现。关闭时菜单内容会卸载。自定义 `portalTo` 目标必须存在，并由消费者提供主题和 UI token。消费者需引入 `tokens.css` 并提供 `.ui` 作用域。
 
 ## 用法
 
@@ -60,7 +60,7 @@ ContextMenu 会将默认插槽包在一个有名称且可聚焦的 `div` 中，�
 import type { MenuItem } from '@froq/ui/vue'
 import { ContextMenu } from '@froq/ui'
 import { useTemplateRef } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const items: MenuItem[] = [
   { value: 'edit', label: '编辑' },
@@ -92,9 +92,7 @@ function selectItem(item: MenuItem, event: Event) {
       @select="selectItem"
       @open-change="open => console.info('菜单状态：', open)"
     >
-      <div class="document-preview">
-        右键此区域，或聚焦后按 Shift+F10。
-      </div>
+      <div class="document-preview"> 右键此区域，或聚焦后按 Shift+F10。 </div>
       <template #item="{ item }">
         {{ item.label }}
       </template>

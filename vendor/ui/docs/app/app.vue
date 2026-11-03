@@ -17,9 +17,8 @@ useHead({
   htmlAttrs: {
     lang,
   },
-  titleTemplate: (title) => {
-    if (!title || title === 'froq/ui')
-      return 'froq/ui'
+  titleTemplate: title => {
+    if (!title || title === 'froq/ui') return 'froq/ui'
     return `${title} — froq/ui`
   },
 })

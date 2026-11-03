@@ -10,7 +10,7 @@ defineProps<{
 }>()
 defineSlots<{
   header?: (scope: { column: TableColumn<T> }) => unknown
-  cell?: (scope: { row: T, column: TableColumn<T>, value: T[keyof T], index: number }) => unknown
+  cell?: (scope: { row: T; column: TableColumn<T>; value: T[keyof T]; index: number }) => unknown
   empty?: () => unknown
 }>()
 </script>
@@ -74,3 +74,42 @@ defineSlots<{
     </table>
   </div>
 </template>
+
+<style scoped>
+.ui-table-scroll {
+  overflow-x: auto;
+}
+
+.ui-table-scroll:focus-visible {
+  outline: 1px solid var(--ui-accent);
+  outline-offset: 4px;
+}
+
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ui-fg);
+  font-family: var(--ui-font-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ui-table :deep(caption) {
+  padding-block-end: 12px;
+  color: var(--ui-muted);
+  text-align: start;
+}
+
+.ui-table :deep(th),
+.ui-table :deep(td) {
+  padding: 10px 16px 10px 0;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.ui-table :deep(th) {
+  color: var(--ui-muted);
+  font-family: var(--ui-font-meta);
+  font-size: 11px;
+  font-weight: normal;
+}
+</style>

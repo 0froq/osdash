@@ -32,15 +32,15 @@ props:
     description: 输入框占位文字。
   - name: multiple
     type: boolean
-    default: "false"
+    default: 'false'
     description: 启用多选；model 为字符串数组，已选项以只读 chip 显示。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁用组合框及其选择和清除操作。
   - name: ignoreFilter
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁用内置选项过滤，供调用方提供已筛选的选项。
   - name: name
     type: string
@@ -70,6 +70,8 @@ Combobox 用于在固定选项中搜索和选择，不支持自由创建选项�
 
 `option` 插槽接收 `{ option, selected }`，用于替换选项标签；不要放入按钮等交互后代。`empty` 插槽用于替换无匹配结果提示。组件的选项列表默认 Teleport 到最近的消费者 `class="ui"` 元素；找不到时以内联方式渲染。自定义 `portalTo` 目标需由调用方提供 UI token 和主题样式。样式和字体作用域由调用方提供；组件不会自行添加 `.ui`。
 
+选项列表与 Menu、Select 相同：`--ui-line` 细线、圆角 0、无阴影、11px `--ui-font-meta`。高亮行是下划线，没有填充，也没有 accent 竖条。选中项保持 `--ui-fg`，并在起始侧槽位放 5px accent 圆点。`option` 插槽只替换标签，不负责画这个圆点。见[语言](/docs/language)。
+
 ## 用法
 
 通过 `name` 提交选中值要求组件放在表单内部。单选提交 `name=value`；多选提交 `name[0]=value` 等带索引字段，空数组不提供已选字段。透传的 `form` 属性只关联输入框，不会把隐藏的选择字段关联到外部表单。原生表单 reset 不会同步 Vue 模型，调用方也需重置模型。透传的 `readonly` 只禁止编辑文字，不禁止列表选择；要禁止全部交互请用 `disabled`。清除选择也会关闭列表。
@@ -79,7 +81,7 @@ Combobox 用于在固定选项中搜索和选择，不支持自由创建选项�
 import type { ChoiceOption } from '@froq/ui/vue'
 import { Combobox } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const selected = ref<string[]>(['vue'])
 const search = ref('')

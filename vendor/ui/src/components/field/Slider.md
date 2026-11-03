@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: A labeled native single-thumb range input.
 model:
   type: number
-  default: "50"
+  default: '50'
   description: The controlled slider value. Displayed values are clamped to the normalized bounds.
 props:
   - name: label
@@ -13,15 +13,15 @@ props:
     description: Visible text label for the range input.
   - name: min
     type: number
-    default: "0"
+    default: '0'
     description: Minimum bound. A non-finite value falls back to zero.
   - name: max
     type: number
-    default: "100"
+    default: '100'
     description: Maximum bound. A non-finite value falls back to the greater of min and 100; a finite value below min is normalized to min.
   - name: step
     type: number | 'any'
-    default: "1"
+    default: '1'
     description: Native range step. A non-finite or non-positive number falls back to 1; any disables step granularity.
 ---
 
@@ -31,7 +31,7 @@ Slider wraps a native `<input type="range">` with one thumb. It does not provide
 
 `class` and `style` apply to the outer label. Other undeclared native attributes, including `name`, `disabled`, and `aria-valuetext`, are forwarded to the input. Native range inputs do not support `readonly`. Resetting the surrounding form does not automatically reset the Vue model.
 
-The component has no slots. Its styles use the UI library tokens and do not depend on fonts, routes, or business state. Import `style.css` in the caller and place the component inside an element with `class="ui"`.
+The component has no slots. Its styles use the UI library tokens and do not depend on fonts, routes, or business state. Import `tokens.css` in the caller and place the component inside an element with `class="ui"`.
 
 ## Usage
 
@@ -39,7 +39,7 @@ The component has no slots. Its styles use the UI library tokens and do not depe
 <script setup lang="ts">
 import { Slider } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const volume = ref(50)
 </script>

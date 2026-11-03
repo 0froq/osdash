@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: 由模型控制、关闭时仍保留内容的无障碍折叠面板。
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: 面板是否打开。
 props:
   - name: label
@@ -13,7 +13,7 @@ props:
     description: 内置触发按钮的文字；自定义 trigger 插槽时由插槽提供内容。
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: 禁止用户触发切换。
 slots:
   - name: trigger
@@ -36,7 +36,7 @@ Collapsible 是受控折叠面板：`v-model` 为布尔值，默认关闭。原�
 <script setup lang="ts">
 import { Collapsible } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 </script>
@@ -48,9 +48,7 @@ const open = ref(false)
       label="安装详情"
     >
       <template #trigger="{ open: isOpen, props }">
-        <button v-bind="props">
-          {{ isOpen ? '隐藏' : '显示' }}安装详情
-        </button>
+        <button v-bind="props"> {{ isOpen ? '隐藏' : '显示' }}安装详情 </button>
       </template>
       <template #default="{ open: isOpen }">
         <p>{{ isOpen ? '面板已打开。' : '面板已关闭。' }}</p>

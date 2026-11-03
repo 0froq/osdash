@@ -77,8 +77,7 @@ function speckTile(): HTMLCanvasElement {
   spec.width = tile
   spec.height = tile
   const grain = spec.getContext('2d')
-  if (!grain)
-    return spec
+  if (!grain) return spec
   const image = grain.createImageData(tile, tile)
   const pixels = image.data
   for (let i = 0; i < pixels.length; i += 4) {
@@ -93,7 +92,15 @@ function speckTile(): HTMLCanvasElement {
   return spec
 }
 
-function writeFibre(pixels: Uint8ClampedArray, cols: number, row0: number, row1: number, originX: number, originY: number, paper: readonly [number, number, number]): void {
+function writeFibre(
+  pixels: Uint8ClampedArray,
+  cols: number,
+  row0: number,
+  row1: number,
+  originX: number,
+  originY: number,
+  paper: readonly [number, number, number],
+): void {
   const tone = (paper[0] + paper[1] + paper[2]) / 3
   const room = 255 - tone
   for (let row = row0; row < row1; row += 1) {
@@ -107,8 +114,7 @@ function writeFibre(pixels: Uint8ClampedArray, cols: number, row0: number, row1:
         pixels[i + 1] = 255
         pixels[i + 2] = 255
         pixels[i + 3] = alpha
-      }
-      else {
+      } else {
         pixels[i] = 0
         pixels[i + 1] = 0
         pixels[i + 2] = 0
@@ -140,30 +146,28 @@ export function createPaperPaint(): PaperPaint {
       canvas.width = cols
       canvas.height = rows
       const grain = canvas.getContext('2d')
-      if (!grain)
-        return
+      if (!grain) return
       const image = grain.createImageData(cols, rows)
       writeFibre(image.data, cols, 0, rows, originX, originY, paper)
       grain.putImageData(image, 0, 0)
       fibre = { canvas, image, cols, rows, originX, originY, tone }
-    }
-    else if (fibre.originX !== originX || fibre.originY !== originY) {
+    } else if (fibre.originX !== originX || fibre.originY !== originY) {
       const shift = Math.round((originY - fibre.originY) / STEP)
       const sameX = fibre.originX === originX
       const grain = fibre.canvas.getContext('2d')
-      if (!grain)
-        return
-      if (sameX && Math.abs(shift) < rows && Math.abs(originY - fibre.originY - shift * STEP) < 0.5) {
+      if (!grain) return
+      if (
+        sameX &&
+        Math.abs(shift) < rows &&
+        Math.abs(originY - fibre.originY - shift * STEP) < 0.5
+      ) {
         const stride = cols * 4
-        if (shift > 0)
-          fibre.image.data.copyWithin(0, shift * stride, rows * stride)
-        else
-          fibre.image.data.copyWithin(-shift * stride, 0, (rows + shift) * stride)
+        if (shift > 0) fibre.image.data.copyWithin(0, shift * stride, rows * stride)
+        else fibre.image.data.copyWithin(-shift * stride, 0, (rows + shift) * stride)
         const row0 = shift > 0 ? rows - shift : 0
         const row1 = shift > 0 ? rows : -shift
         writeFibre(fibre.image.data, cols, row0, row1, originX, originY, paper)
-      }
-      else {
+      } else {
         writeFibre(fibre.image.data, cols, 0, rows, originX, originY, paper)
       }
       grain.putImageData(fibre.image, 0, 0)
@@ -183,20 +187,17 @@ export function createPaperPaint(): PaperPaint {
       canvas.height = bh
     }
     const ctx = canvas.getContext('2d')
-    if (!ctx)
-      return
+    if (!ctx) return
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
     ctx.clearRect(0, 0, slice.width, slice.height)
-    if (slice.mode === 'off')
-      return
+    if (slice.mode === 'off') return
     if (slice.mode === 'light') {
       drawFibre(ctx, slice)
       return
     }
     specks ??= speckTile()
     const pattern = ctx.createPattern(specks, 'repeat')
-    if (!pattern)
-      return
+    if (!pattern) return
     ctx.save()
     ctx.translate(-slice.docX, -slice.docY)
     ctx.globalAlpha = 0.85

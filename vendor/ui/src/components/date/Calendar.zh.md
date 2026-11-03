@@ -79,7 +79,7 @@ Calendar 使用 Gregorian 日期，不包含时区语义。非空日期必须是
 
 默认情况下，再次选择当前日期会取消选择并以 `''` 触发 `select`。设置 `preventDeselect` 后，再次选择当前日期会保留日期；该次选择仍会触发 `select`。`readonly` 仍允许浏览月份，但不允许选择日期。组件暴露 `focus()` 方法，可将焦点移到当前可用日期或日历控件；`initialFocus` 会在挂载后调用它。键盘交互使用方向键浏览日期、Enter/Space 选择，以及浏览器原生 Tab 导航；不提供日期范围选择或年份选择器。
 
-组件没有表单字段或原生 `required`、`min`、`max` 表单校验。需要表单输入时使用 `DateInput` 或由调用方实现校验。未声明属性会应用到日历根元素。组件使用 UI 库 token；在带有 `class="ui"` 的元素内使用，并引入 `@froq/ui/style.css`。
+组件没有表单字段或原生 `required`、`min`、`max` 表单校验。需要表单输入时使用 `DateInput` 或由调用方实现校验。未声明属性会应用到日历根元素。组件使用 UI 库 token；在带有 `class="ui"` 的元素内使用，并引入 `@froq/ui/tokens.css`。
 
 ## 用法
 
@@ -87,7 +87,7 @@ Calendar 使用 Gregorian 日期，不包含时区语义。非空日期必须是
 <script setup lang="ts">
 import { Calendar } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const date = ref('2026-09-30')
 </script>

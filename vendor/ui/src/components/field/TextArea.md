@@ -13,7 +13,7 @@ props:
     description: Visible text label for the textarea.
   - name: rows
     type: number
-    default: "3"
+    default: '3'
     description: Number of visible text rows.
 ---
 

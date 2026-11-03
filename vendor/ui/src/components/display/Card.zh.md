@@ -18,7 +18,7 @@ Card 是带有 header、body 和 footer 插槽的简单 `<div>` 容器。它没�
 ```vue
 <script setup lang="ts">
 import { Badge, Button, Card } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 </script>
 
 <template>
@@ -30,9 +30,7 @@ import '@froq/ui/style.css'
       <h2>观察</h2>
       <p>收集日常的小观察。</p>
       <template #footer>
-        <Button type="button">
-          阅读记录
-        </Button>
+        <Button type="button"> 阅读记录 </Button>
       </template>
     </Card>
   </div>

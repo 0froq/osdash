@@ -22,7 +22,7 @@ UiDevtools 在右下角放一个小按钮 `ui`，点开是一个面板，把页�
 ```vue
 <script setup lang="ts">
 import { UiDevtools } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 </script>
 
 <template>

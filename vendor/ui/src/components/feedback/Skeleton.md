@@ -5,7 +5,7 @@ description: A single placeholder surface that preserves a component's layout wh
 props:
   - name: loading
     type: boolean
-    default: "true"
+    default: 'true'
     description: Show the placeholder surface and hide slot content while loading.
   - name: shape
     type: "'block' | 'text' | 'circle'"
@@ -37,7 +37,7 @@ Skeleton is visual only: it does not inspect fonts, routes, or network state. `a
 ```vue
 <script setup lang="ts">
 import { Skeleton } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 </script>
 
 <template>

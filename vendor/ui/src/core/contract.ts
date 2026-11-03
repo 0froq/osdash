@@ -10,12 +10,19 @@ export const TOKENS = [
   'faint',
   'line',
   'accent',
+  'danger',
+  'caution',
+  'info',
+  'success',
   'font-display',
   'font-text',
   'font-meta',
   'ease',
   'dur',
   'radius',
+  'radius-sm',
+  'radius-md',
+  'radius-lg',
 ] as const
 
 export type TokenName = (typeof TOKENS)[number]

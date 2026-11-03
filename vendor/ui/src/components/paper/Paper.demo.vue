@@ -3,14 +3,14 @@ import { layoutText as layoutHandwriting } from '../../core/signature/hand-font'
 import Paper from './Paper.vue'
 
 const lettering = layoutHandwriting('Held on the sheet', { size: 40 })
-const paths = lettering.strokes.map(stroke => stroke.map(([x, y], i) => `${i ? 'L' : 'M'}${x} ${y}`).join(' '))
+const paths = lettering.strokes.map(stroke =>
+  stroke.map(([x, y], i) => `${i ? 'L' : 'M'}${x} ${y}`).join(' '),
+)
 </script>
 
 <template>
   <Paper style="min-height: 180px">
-    <p class="demo-sentence">
-      Held on the sheet.
-    </p>
+    <p class="demo-sentence"> Held on the sheet. </p>
     <svg
       :viewBox="`0 ${-lettering.ascent} ${lettering.width} ${lettering.ascent + lettering.descent}`"
       style="width: min(100%, 24rem); overflow: visible"

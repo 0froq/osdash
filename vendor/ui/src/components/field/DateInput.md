@@ -23,7 +23,7 @@ Undeclared native attributes and listeners, including `min`, `max`, `step`, `nam
 <script setup lang="ts">
 import { DateInput } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const date = ref('2026-09-30')
 </script>

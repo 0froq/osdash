@@ -23,9 +23,10 @@ const { t } = useI18n()
 <style scoped>
 .demo-card {
   margin: 1.4em 0 1.6em;
-  padding: 22px 0 4px;
+  padding: 22px 20px;
+  border: 1px dashed var(--ui-line);
+  border-radius: var(--ui-radius);
   color: var(--ui-fg);
-  border-top: 1px solid var(--ui-line);
   font-family: var(--ui-font-text);
 }
 

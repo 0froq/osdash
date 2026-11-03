@@ -26,7 +26,7 @@ Navigation 显示一栏可换行的扁平链接。它不是 tabs 控件：不实
 
 Navigation 不提供文案、路由 URL 或滚动跟踪。条目文字和 URL、路由状态到 `v-model` 的映射，以及滚动监听都由消费端实现。路由链接可通过插槽适配器移除传入 props 中的 `href` 和 `onClick`，绑定剩余 props，将条目 URL 传给 `to`，并根据已确认的路由更新模型。
 
-组件不会自行添加 `.ui` 作用域类。调用方需引入 `style.css`，并将 Navigation 放在带有 `class="ui"` 的外层元素中。
+组件不会自行添加 `.ui` 作用域类。调用方需引入 `tokens.css`，并将 Navigation 放在带有 `class="ui"` 的外层元素中。
 
 ## 用法
 
@@ -34,7 +34,7 @@ Navigation 不提供文案、路由 URL 或滚动跟踪。条目文字和 URL、
 <script setup lang="ts">
 import { Navigation } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const active = ref('guide')
 const items = [

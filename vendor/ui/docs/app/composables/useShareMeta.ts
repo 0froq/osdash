@@ -1,5 +1,13 @@
 import type { MaybeRefOrGetter } from 'vue'
-import { absoluteImageUrl, canonicalUrl, OG_IMAGE_HEIGHT, OG_IMAGE_PATH, OG_IMAGE_WIDTH, shareTitle, SITE_NAME } from '~/utils/site'
+import {
+  absoluteImageUrl,
+  canonicalUrl,
+  OG_IMAGE_HEIGHT,
+  OG_IMAGE_PATH,
+  OG_IMAGE_WIDTH,
+  shareTitle,
+  SITE_NAME,
+} from '~/utils/site'
 
 export interface ShareMetaInput {
   title?: MaybeRefOrGetter<string | undefined>
@@ -32,13 +40,12 @@ export function useShareMeta(input: ShareMetaInput = {}): void {
   const skipImage = toValue(input.image) === false
   const image = computed(() => {
     const value = toValue(input.image)
-    if (value === false || !value)
-      return absoluteImageUrl(OG_IMAGE_PATH)
+    if (value === false || !value) return absoluteImageUrl(OG_IMAGE_PATH)
     return absoluteImageUrl(value)
   })
 
   useHead({
-    title: () => input.title == null ? undefined : toValue(input.title) || undefined,
+    title: () => (input.title == null ? undefined : toValue(input.title) || undefined),
   })
 
   useSeoMeta({

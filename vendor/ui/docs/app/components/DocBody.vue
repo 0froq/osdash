@@ -1,24 +1,22 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
-  /** Release notes: a plain list, not the usual indented prose list. */
-  notes?: boolean
-}>(), {
-  notes: false,
-})
+defineProps<{
+  value?: { body: unknown }
+}>()
 </script>
 
 <template>
-  <div
-    class="l-doc"
-    :class="{ 'l-notes': notes }"
-  >
+  <div class="l-doc">
+    <ContentRenderer
+      v-if="value"
+      :value="value"
+      class="l-md"
+    />
     <slot />
   </div>
 </template>
 
 <style scoped>
 .l-doc {
-  max-width: 42rem;
   font-size: 16px;
   line-height: 1.7;
 }
@@ -125,23 +123,5 @@ withDefaults(defineProps<{
   margin: 2.4em 0;
   border: 0;
   border-top: 1px solid var(--ui-line);
-}
-
-.l-notes :deep(ul) {
-  max-width: 34rem;
-  margin: 22px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.l-notes :deep(li) {
-  margin: 0;
-  padding: 10px 0;
-  border-top: 1px solid var(--ui-line);
-}
-
-.l-notes :deep(li:first-child) {
-  padding-top: 0;
-  border-top: 0;
 }
 </style>

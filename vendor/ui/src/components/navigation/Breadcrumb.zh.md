@@ -29,7 +29,7 @@ Breadcrumb 在带标签的 `<nav>` landmark 中渲染有序列表。带 `href` �
 ```vue
 <script setup lang="ts">
 import { Breadcrumb } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const items = [
   { value: 'docs', label: '文档', href: '/docs' },

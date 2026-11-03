@@ -1,17 +1,17 @@
 export { default as Button } from './components/button/Button.vue'
-export { default as CopyButton } from './components/button/CopyButton.vue'
-export { default as IconControl } from './components/button/IconControl.vue'
+export { default as IconButton } from './components/button/IconButton.vue'
+export { default as ToggleButton } from './components/button/ToggleButton.vue'
+export { default as ToggleIconButton } from './components/button/ToggleIconButton.vue'
 export { default as Checkbox } from './components/checkbox/Checkbox.vue'
 export { default as Calendar } from './components/date/Calendar.vue'
 export { default as DatePicker } from './components/date/DatePicker.vue'
 export { default as UiDevtools } from './components/devtools/UiDevtools.vue'
 export { default as Accordion } from './components/disclosure/Accordion.vue'
 export { default as Collapsible } from './components/disclosure/Collapsible.vue'
-export { default as AspectRatio } from './components/display/AspectRatio.vue'
 export { default as Avatar } from './components/display/Avatar.vue'
 export { default as Badge } from './components/display/Badge.vue'
 export { default as Card } from './components/display/Card.vue'
-export { default as CodeBlock } from './components/display/CodeBlock.vue'
+export { default as CodeBlock } from './components/code/CodeBlock.vue'
 export { default as GridTable } from './components/display/GridTable.vue'
 export { default as Separator } from './components/display/Separator.vue'
 export { default as Table } from './components/display/Table.vue'
@@ -49,6 +49,23 @@ export { default as ChoiceCircle } from './components/radio/ChoiceCircle.vue'
 export { default as RadioGroup } from './components/radio/RadioGroup.vue'
 export { default as Combobox } from './components/select/Combobox.vue'
 export { default as Select } from './components/select/Select.vue'
+export { default as ScrollSelect } from './components/select/ScrollSelect.vue'
 export { default as Toggle } from './components/toggle/Toggle.vue'
 export { default as ToggleGroup } from './components/toggle/ToggleGroup.vue'
-export type { BreadcrumbLinkProps, ChoiceOption, CodeSpan, CollapsibleTriggerProps, FieldControlProps, MenuItem, NavigationItem, NavigationLinkProps, PaginationControlProps, SidebarGroup, SidebarItem, SidebarLinkProps, TableColumn } from './vue'
+export { default as WordSwap } from './components/toggle/WordSwap.vue'
+export type {
+  BreadcrumbLinkProps,
+  ChoiceOption,
+  CodeSpan,
+  CollapsibleTriggerProps,
+  FieldControlProps,
+  MenuItem,
+  NavigationItem,
+  NavigationLinkProps,
+  PaginationControlProps,
+  SidebarCurrent,
+  SidebarGroup,
+  SidebarItem,
+  SidebarLinkProps,
+  TableColumn,
+} from './vue'

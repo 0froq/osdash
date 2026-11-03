@@ -15,6 +15,9 @@ props:
     type: boolean
     default: 'false'
     description: Allow top-level items with children to fold. Group headings never fold.
+  - name: current
+    type: '(item: SidebarItem) => \'page\' | \'location\' | false | undefined'
+    description: Decide which item is current. Defaults to comparing item.value with v-model. 'location' marks an in-page anchor.
 slots:
   - name: link
     description: Receives item and props. Bind props to your link to preserve selection, classes and accessibility.
@@ -33,17 +36,21 @@ When `foldable` is enabled, inactive top-level branches begin collapsed. A separ
 import type { SidebarGroup } from '@froq/ui'
 import { Sidebar } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const active = ref('install')
-const groups: SidebarGroup[] = [{
-  label: 'Guide',
-  items: [{
-    value: 'start',
-    label: 'Getting started',
-    children: [{ value: 'install', label: 'Installation' }],
-  }],
-}]
+const groups: SidebarGroup[] = [
+  {
+    label: 'Guide',
+    items: [
+      {
+        value: 'start',
+        label: 'Getting started',
+        children: [{ value: 'install', label: 'Installation' }],
+      },
+    ],
+  },
+]
 </script>
 
 <template>

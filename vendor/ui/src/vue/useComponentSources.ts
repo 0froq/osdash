@@ -21,7 +21,8 @@ export interface ComponentSourceOptions {
 }
 
 const LIBRARY = /[\\/]vendor[\\/]ui[\\/]|[\\/]node_modules[\\/]@froq[\\/]ui[\\/]/
-const IGNORE = /[\\/]node_modules[\\/](?!@froq[\\/]ui[\\/])|[\\/]\.nuxt[\\/]|[\\/]devtools[\\/]UiDevtools/
+const IGNORE =
+  /[\\/]node_modules[\\/](?!@froq[\\/]ui[\\/])|[\\/]\.nuxt[\\/]|[\\/]devtools[\\/]UiDevtools/
 
 interface ComponentType {
   __file?: string
@@ -30,29 +31,35 @@ interface ComponentType {
 }
 
 function nameOf(type: ComponentType, file: string): string {
-  return type.__name ?? type.name ?? file.split(/[\\/]/).pop()?.replace(/\.\w+$/, '') ?? 'Anonymous'
+  return (
+    type.__name ??
+    type.name ??
+    file
+      .split(/[\\/]/)
+      .pop()
+      ?.replace(/\.\w+$/, '') ??
+    'Anonymous'
+  )
 }
 
 function elementsOf(root: VNode): Element[] {
   const start = root.el as Node | null
-  if (!start)
-    return []
-  if (start.nodeType === 1)
-    return [start as Element]
+  if (!start) return []
+  if (start.nodeType === 1) return [start as Element]
   // A fragment root renders siblings between its start and end anchors.
   const elements: Element[] = []
   for (let node: Node | null = start; node; node = node.nextSibling) {
-    if (node.nodeType === 1)
-      elements.push(node as Element)
-    if (node === root.anchor)
-      break
+    if (node.nodeType === 1) elements.push(node as Element)
+    if (node === root.anchor) break
   }
   return elements
 }
 
-function walk(vnode: VNode | null | undefined, visit: (instance: ComponentInternalInstance) => void): void {
-  if (!vnode)
-    return
+function walk(
+  vnode: VNode | null | undefined,
+  visit: (instance: ComponentInternalInstance) => void,
+): void {
+  if (!vnode) return
   if (vnode.component) {
     visit(vnode.component)
     walk(vnode.component.subTree, visit)
@@ -61,8 +68,7 @@ function walk(vnode: VNode | null | undefined, visit: (instance: ComponentIntern
   walk(vnode.suspense?.activeBranch, visit)
   if (Array.isArray(vnode.children)) {
     for (const child of vnode.children) {
-      if (child && typeof child === 'object' && 'type' in child)
-        walk(child as VNode, visit)
+      if (child && typeof child === 'object' && 'type' in child) walk(child as VNode, visit)
     }
   }
 }
@@ -80,14 +86,18 @@ export function useComponentSources(options: ComponentSourceOptions = {}) {
     const found: ComponentSourceEntry[] = []
     const library = options.library ?? LIBRARY
     const ignore = options.ignore ?? IGNORE
-    walk(app?._instance?.subTree, (instance) => {
+    walk(app?._instance?.subTree, instance => {
       const type = instance.type as ComponentType
       const file = type.__file
-      if (!file || ignore.test(file))
-        return
+      if (!file || ignore.test(file)) return
       const elements = elementsOf(instance.subTree).filter(element => element.isConnected)
       if (elements.length)
-        found.push({ name: nameOf(type, file), file, source: library.test(file) ? 'library' : 'project', elements })
+        found.push({
+          name: nameOf(type, file),
+          file,
+          source: library.test(file) ? 'library' : 'project',
+          elements,
+        })
     })
     entries.value = found
   }

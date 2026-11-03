@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: A non-modal panel anchored to a trigger button or an external element.
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: Whether the popover is open.
 props:
   - name: reference
@@ -23,7 +23,7 @@ props:
     description: Trigger text when no trigger slot is provided; defaults to label.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Disables the trigger button.
   - name: side
     type: "'top' | 'right' | 'bottom' | 'left'"
@@ -35,7 +35,7 @@ props:
     description: Preferred alignment against the trigger. The position may change to avoid collisions.
   - name: sideOffset
     type: number
-    default: "8"
+    default: '8'
     description: Distance in pixels between the trigger and content.
   - name: portalTo
     type: string | HTMLElement
@@ -53,7 +53,7 @@ The panel prefers `side` and `align`, then automatically adjusts to avoid viewpo
 
 By default, content is teleported into the closest consumer element with `class="ui"`; if there is none, it renders inline. On the server, only the trigger is rendered; portal content appears after opening on the client. A custom `portalTo` target must already exist and provide the consumer's theme and UI tokens. The library does not add Reka UI CSS variables to its token contract.
 
-Popover is not a menu, tooltip, or modal dialog. Keep complex content and its business behavior in the consuming application. Import `style.css` in the caller and provide a `.ui` ancestor for the library styles and default portal target.
+Popover is not a menu, tooltip, or modal dialog. Keep complex content and its business behavior in the consuming application. Import `tokens.css` in the caller and provide a `.ui` ancestor for the library styles and default portal target.
 
 ## Usage
 
@@ -66,7 +66,7 @@ prevent `open-auto-focus` and `close-auto-focus` when focus should stay on the t
 <script setup lang="ts">
 import { Button, Popover } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 </script>
@@ -83,9 +83,7 @@ const open = ref(false)
       </template>
       <template #default="{ close }">
         <p>This document is still a draft.</p>
-        <Button @click="close">
-          Understood
-        </Button>
+        <Button @click="close"> Understood </Button>
       </template>
     </Popover>
   </div>

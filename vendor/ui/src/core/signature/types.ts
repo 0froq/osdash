@@ -12,7 +12,7 @@ export interface PenAnchors {
   hand?: HTMLElement | null
   /** Text without layout placeholders; defaults to hand.textContent. */
   handText?: string
-  sections?: { element: Element, label: Element, price?: Element | null }[]
+  sections?: { element: Element; label: Element; price?: Element | null }[]
   finalMark?: HTMLElement | null
   finalSection?: Element | null
   /** An empty horizontal band level with `finalMark`'s section, spanning its text column. The pen crosses it instead of descending the margin, so a stop inside a text-filled block is reached without crossing words. */
@@ -66,7 +66,7 @@ export interface InkMark {
   /** Fit the writing to this element's own text box. */
   element?: HTMLElement | null
   /** Document box when there is no element. `baseline` is the writing line. */
-  box?: { x: number, baseline: number, width: number }
+  box?: { x: number; baseline: number; width: number }
   /** Drop one trailing `.` `!` or `?`. The page tagline still does this on its own. */
   stripStop?: boolean
 }

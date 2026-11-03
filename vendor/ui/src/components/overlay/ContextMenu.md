@@ -13,17 +13,17 @@ props:
     description: Menu entries with optional disabled items, separators, and nested submenus.
   - name: disabled
     type: boolean
-    default: "false"
+    default: 'false'
     description: Suppress opening interactions on the target without disabling its child content.
   - name: modal
     type: boolean
-    default: "true"
+    default: 'true'
     description: Whether the open menu is modal relative to outside interaction.
   - name: dir
     type: "'ltr' | 'rtl'"
     description: Menu text and keyboard direction; defaults to the Reka UI direction context, then ltr.
   - name: portalTo
-    type: "string | HTMLElement"
+    type: 'string | HTMLElement'
     description: Teleport target. Defaults to the closest consumer element with class ui, or renders inline when none exists.
 events:
   - name: openChange
@@ -51,7 +51,7 @@ Items use the shared recursive `MenuItem` shape: `{ value, label, disabled?, sep
 
 - `close(): void` closes an open menu or rejects a pending open when called through a component ref. It does not unmount the target. The component does not automatically watch global scroll or route changes; choose and apply that closing policy in the consumer.
 
-Undeclared attributes are forwarded to menu content, not the target wrapper. By default, content is teleported into the closest consumer element with `class="ui"`; without one, it renders inline on the client. During SSR, only the target is rendered and menu content appears on the client. Content unmounts when closed. A custom `portalTo` target must exist and provide the consumer's theme and UI tokens. Import `style.css` in the consumer and provide a `.ui` scope.
+Undeclared attributes are forwarded to menu content, not the target wrapper. By default, content is teleported into the closest consumer element with `class="ui"`; without one, it renders inline on the client. During SSR, only the target is rendered and menu content appears on the client. Content unmounts when closed. A custom `portalTo` target must exist and provide the consumer's theme and UI tokens. Import `tokens.css` in the consumer and provide a `.ui` scope.
 
 ## Usage
 
@@ -60,7 +60,7 @@ Undeclared attributes are forwarded to menu content, not the target wrapper. By 
 import type { MenuItem } from '@froq/ui/vue'
 import { ContextMenu } from '@froq/ui'
 import { useTemplateRef } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const items: MenuItem[] = [
   { value: 'edit', label: 'Edit' },
@@ -92,9 +92,7 @@ function selectItem(item: MenuItem, event: Event) {
       @select="selectItem"
       @open-change="open => console.info('Menu open:', open)"
     >
-      <div class="document-preview">
-        Right-click or focus this region and press Shift+F10.
-      </div>
+      <div class="document-preview"> Right-click or focus this region and press Shift+F10. </div>
       <template #item="{ item }">
         {{ item.label }}
       </template>

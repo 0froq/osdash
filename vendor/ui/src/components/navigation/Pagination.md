@@ -51,7 +51,7 @@ The `control` slot receives `{ page, kind, tag, props }`, where `kind` is `page`
 
 URL and label callbacks must be pure render functions; the URL callback must return a valid, non-empty URL. A router adapter belongs in the `control` slot, not in the library. Preserve native buttons for disabled controls rather than rendering an active link with only `aria-disabled`.
 
-Undeclared attributes are applied to the `<nav>`. Pagination uses the UI library tokens and has no font, route, or business-data dependency. Import `style.css` in the caller and place it inside an element with `class="ui"`.
+Undeclared attributes are applied to the `<nav>`. Pagination uses the UI library tokens and has no font, route, or business-data dependency. Import `tokens.css` in the caller and place it inside an element with `class="ui"`.
 
 ## Usage
 
@@ -59,7 +59,7 @@ Undeclared attributes are applied to the `<nav>`. Pagination uses the UI library
 <script setup lang="ts">
 import { Pagination } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const page = ref(3)
 const pages = 24

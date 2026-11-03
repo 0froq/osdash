@@ -29,7 +29,7 @@ Item values must be unique. The optional `link` slot is used only for items with
 ```vue
 <script setup lang="ts">
 import { Breadcrumb } from '@froq/ui'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const items = [
   { value: 'docs', label: 'Docs', href: '/docs' },

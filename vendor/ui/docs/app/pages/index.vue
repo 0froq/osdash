@@ -7,12 +7,17 @@ const tone = ref('clear')
 const enabled = ref(true)
 const catalog = componentCatalog()
 const count = catalog.reduce((total, concept) => total + concept.items.length, 0)
-const options = computed(() => ['quiet', 'clear', 'loud'].map(value => ({ value, label: t(`hero.${value}`) })))
+const options = computed(() =>
+  ['quiet', 'clear', 'loud'].map(value => ({ value, label: t(`hero.${value}`) })),
+)
 
-usePaperOgImage({
-  title: 'froq/ui',
-  description: () => t('hero.lede'),
-}, { title: 'froq/ui' })
+usePaperOgImage(
+  {
+    title: 'froq/ui',
+    description: () => t('hero.lede'),
+  },
+  { title: 'froq/ui' },
+)
 </script>
 
 <template>
@@ -27,12 +32,9 @@ usePaperOgImage({
           {{ t('hero.lede') }}
         </p>
         <div class="home-actions">
-          <NuxtLink
-            class="l-cta"
-            :to="link('/components')"
-          >
+          <CtaLink :to="link('/components')">
             {{ t('hero.browse') }}
-          </NuxtLink>
+          </CtaLink>
           <NuxtLink :to="link('/docs')">
             {{ t('hero.cta') }}
           </NuxtLink>
@@ -44,9 +46,7 @@ usePaperOgImage({
           <span aria-hidden="true">01 / 02</span>
         </figcaption>
         <div class="home-sample">
-          <p class="home-sample-name">
-            Choice
-          </p>
+          <p class="home-sample-name"> Choice </p>
           <Choice
             v-model="tone"
             :label="t('hero.tone')"
@@ -60,9 +60,7 @@ usePaperOgImage({
           </p>
         </div>
         <div class="home-sample home-switch">
-          <p class="home-sample-name">
-            Toggle
-          </p>
+          <p class="home-sample-name"> Toggle </p>
           <p class="home-sentence">
             {{ t('hero.switchBefore') }}
             <Toggle
@@ -77,7 +75,7 @@ usePaperOgImage({
       </figure>
     </section>
     <aside class="home-draft">
-      <ComponentStatus explain />
+      <p>{{ t('components.statusGate') }}</p>
     </aside>
     <section
       class="home-index"
@@ -108,14 +106,11 @@ usePaperOgImage({
       <h2>{{ t('hero.contract') }}</h2>
       <div>
         <p>{{ t('hero.contractDescription') }}</p>
-        <NuxtLink
-          class="l-cta"
-          :to="link('/docs/tokens')"
-        >
+        <CtaLink :to="link('/docs/tokens')">
           {{ t('hero.contractLink') }}
-        </NuxtLink>
+        </CtaLink>
       </div>
-      <pre><code>import '@froq/ui/style.css'
+      <pre><code>import '@froq/ui/tokens.css'
 import { Choice, Toggle } from '@froq/ui'</code></pre>
     </section>
   </div>
@@ -227,6 +222,13 @@ h1 > span {
 .home-draft {
   padding: 16px 0;
   border-block: 1px solid var(--ui-line);
+}
+
+.home-draft p {
+  max-width: 38rem;
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 13px;
 }
 
 .home-index {

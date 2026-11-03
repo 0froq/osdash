@@ -12,20 +12,24 @@ export function usePaperOgImage(
   share: ShareMetaInput,
   paper?: { title?: MaybeRefOrGetter<string | undefined> },
 ): void {
-  const title = computed(() => cardTitle(
-    paper?.title != null ? toValue(paper.title) : toValue(share.title),
-  ))
+  const title = computed(() =>
+    cardTitle(paper?.title != null ? toValue(paper.title) : toValue(share.title)),
+  )
 
-  defineOgImage('Paper', {
-    title: () => title.value,
-    description: () => {
-      const raw = share.description == null ? undefined : toValue(share.description)
-      return (typeof raw === 'string' ? raw.trim() : '') || SITE_DESCRIPTION
+  defineOgImage(
+    'Paper',
+    {
+      title: () => title.value,
+      description: () => {
+        const raw = share.description == null ? undefined : toValue(share.description)
+        return (typeof raw === 'string' ? raw.trim() : '') || SITE_DESCRIPTION
+      },
+      words: 0,
     },
-    words: 0,
-  }, {
-    alt: () => title.value,
-  })
+    {
+      alt: () => title.value,
+    },
+  )
 
   useShareMeta({
     ...share,
@@ -38,7 +42,7 @@ interface ContentPage {
   title?: string | null
   description?: string | null
   cover?: string | null
-  ogImage?: boolean | { url?: string, component?: string, props?: Record<string, unknown> } | null
+  ogImage?: boolean | { url?: string; component?: string; props?: Record<string, unknown> } | null
   evergreen?: boolean | null
   kind?: string | null
   created?: string | null
@@ -59,44 +63,52 @@ export function useContentOgImage(
   const current = computed(() => toValue(page))
 
   if (override.value === undefined) {
-    defineOgImage(ogComponentName(current.value), {
-      title: () => paperFields(current.value).title,
-      description: () => paperFields(current.value, SITE_DESCRIPTION).description,
-      evergreen: () => paperFields(current.value).evergreen,
-      created: () => paperFields(current.value).created,
-      updated: () => paperFields(current.value).updated,
-      words: () => paperFields(current.value).words,
-      ...ogExtraProps(current.value),
-    }, {
-      alt: () => paperFields(current.value).title,
-    })
+    defineOgImage(
+      ogComponentName(current.value),
+      {
+        title: () => paperFields(current.value).title,
+        description: () => paperFields(current.value, SITE_DESCRIPTION).description,
+        evergreen: () => paperFields(current.value).evergreen,
+        created: () => paperFields(current.value).created,
+        updated: () => paperFields(current.value).updated,
+        words: () => paperFields(current.value).words,
+        ...ogExtraProps(current.value),
+      },
+      {
+        alt: () => paperFields(current.value).title,
+      },
+    )
   }
 
   useShareMeta({
     ...share,
-    image: () => override.value === undefined ? false : override.value,
+    image: () => (override.value === undefined ? false : override.value),
   })
 }
 
 /** Index/list routes under a collection (e.g. changelog) without a content file. */
 export function useCollectionIndexOgImage(
-  source: { collection: string, path: string },
+  source: { collection: string; path: string },
   share: ShareMetaInput,
 ): void {
   const files = useRuntimeConfig().public.publicFiles
   const override = computed(() => explicitContentCover(source, path => hasShareFile(files, path)))
 
   if (!override.value) {
-    defineOgImage('Paper', {
-      title: () => cardTitle(toValue(share.title)),
-      description: () => {
-        const raw = share.description == null ? undefined : toValue(share.description)
-        return (typeof raw === 'string' ? raw.trim() : '') || SITE_DESCRIPTION
+    defineOgImage(
+      'Paper',
+      {
+        title: () => cardTitle(toValue(share.title)),
+        description: () => {
+          const raw = share.description == null ? undefined : toValue(share.description)
+          return (typeof raw === 'string' ? raw.trim() : '') || SITE_DESCRIPTION
+        },
+        words: 0,
       },
-      words: 0,
-    }, {
-      alt: () => cardTitle(toValue(share.title)),
-    })
+      {
+        alt: () => cardTitle(toValue(share.title)),
+      },
+    )
   }
 
   useShareMeta({

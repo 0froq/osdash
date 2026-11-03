@@ -13,9 +13,7 @@ const value = ref(35)
       :value="value"
     />
     <span>{{ value }}%</span>
-    <Button @click="value = (value + 25) % 101">
-      Advance
-    </Button>
+    <Button @click="value = (value + 25) % 101"> Advance </Button>
     <Progress label="Preparing upload" />
   </div>
 </template>

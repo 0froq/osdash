@@ -27,9 +27,12 @@ export interface SidebarGroup {
 export interface SidebarLinkProps {
   'class': string
   'href': string
-  'aria-current': 'page' | undefined
+  'aria-current': 'page' | 'location' | undefined
   'onClick': (event: MouseEvent) => void
 }
+
+/** Match a sidebar item to the active one. Receives the item; `isGroup` marks a parent whose own link renders the group entry. */
+export type SidebarCurrent = (item: SidebarItem) => 'page' | 'location' | false | undefined
 
 export interface NavigationLinkProps extends Omit<SidebarLinkProps, 'aria-current'> {
   'aria-current': 'page' | 'location' | undefined

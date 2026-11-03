@@ -42,7 +42,7 @@ The unstyled keyboard and selection behavior is available through `useTabs` from
 <script setup lang="ts">
 import { Tabs } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const active = ref('overview')
 const items = [

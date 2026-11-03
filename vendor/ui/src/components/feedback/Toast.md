@@ -4,7 +4,7 @@ designStatus: ai-draft
 description: A dismissible, timed notification managed by a ToastRegion.
 model:
   type: boolean
-  default: "false"
+  default: 'false'
   description: Whether this toast is open.
 props:
   - name: title
@@ -26,7 +26,7 @@ props:
     default: foreground
     description: Announcement urgency. Foreground uses assertive live announcement; background uses polite.
   - name: action
-    type: "{ label: string, altText: string }"
+    type: '{ label: string, altText: string }'
     description: Optional action button label and alternate description for assistive technology.
 events:
   - name: action
@@ -51,7 +51,7 @@ Escape closes the toast only when focus is inside that toast. If a toast closes 
 <script setup lang="ts">
 import { Button, Toast, ToastRegion } from '@froq/ui'
 import { ref } from 'vue'
-import '@froq/ui/style.css'
+import '@froq/ui/tokens.css'
 
 const open = ref(false)
 

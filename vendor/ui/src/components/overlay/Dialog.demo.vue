@@ -29,9 +29,7 @@ function inspect(event: MouseEvent, document: string) {
       label="Document name"
     />
     <template #footer="{ close }">
-      <Button @click="close">
-        Done
-      </Button>
+      <Button @click="close"> Done </Button>
     </template>
   </Dialog>
   <div>

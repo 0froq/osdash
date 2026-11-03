@@ -8,3 +8,4 @@ dist
 .eslintcache
 *.log
 .DS_Store
+.zed/

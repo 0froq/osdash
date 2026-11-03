@@ -17,7 +17,11 @@ const items = [
     :items="items"
   >
     <template #default="{ item }">
-      <p>{{ item.value === 'overview' ? 'A small, independent UI library.' : 'Tokens, behavior, and a deliberate skin.' }}</p>
+      <p>{{
+        item.value === 'overview'
+          ? 'A small, independent UI library.'
+          : 'Tokens, behavior, and a deliberate skin.'
+      }}</p>
     </template>
   </Tabs>
 </template>
