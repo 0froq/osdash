@@ -89,7 +89,7 @@ const parts = computed(() =>
       >
         <component
           :is="parts.subContent"
-          class="ui-menu-content ui-menu-sub-content"
+          class="ui ui-menu-content ui-menu-sub-content"
           :aria-label="item.label"
           :side-offset="4"
           :collision-padding="12"
@@ -131,65 +131,60 @@ const parts = computed(() =>
 </template>
 
 <style scoped>
-/*Floating lists share one control-tier surface: hairline, square, no soft elevation.*/
-.ui-menu-content {
-  box-sizing: border-box;
-  z-index: 1001;
-  min-width: min(9.5rem, calc(100vw - 24px));
-  max-width: calc(100vw - 24px);
-  max-height: calc(100dvh - 24px);
-  padding: 4px 0;
-  overflow-y: auto;
-  border: 1px solid var(--ui-line);
-  border-radius: 0;
-  background: var(--ui-bg);
-  box-shadow: none;
-  color: var(--ui-fg);
-  font: 11px/1.3 var(--ui-font-meta);
-  outline: none;
-}
-
-.ui-menu-sub-content {
-  z-index: 1002;
-}
-
 .ui-menu-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding-block: 8px;
-  padding-inline: 36px 16px;
+  gap: 8px;
+  padding-block: 6px;
+  padding-inline: 10px;
   border-radius: 0;
-  cursor: default;
+  color: var(--ui-muted);
+  cursor: pointer;
   outline: none;
   user-select: none;
-  overflow-wrap: anywhere;
+  animation: ui-menu-item-in calc(var(--ui-dur) * 0.9) var(--ui-ease) calc(var(--ui-dur) * 0.35)
+    backwards;
+  transition:
+    color var(--ui-dur) var(--ui-ease),
+    background-color var(--ui-dur) var(--ui-ease);
+}
+
+/* Rows appear one beat after the frame unfolds, like text settling in. */
+@keyframes ui-menu-item-in {
+  from {
+    opacity: 0;
+    translate: 0 -2px;
+  }
 }
 
 .ui-menu-item[data-highlighted] {
-  background: none;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
+  background: color-mix(in srgb, var(--ui-fg) 6%, transparent);
+  color: var(--ui-fg);
 }
 
+.ui-menu-item[aria-current='page'],
+.ui-menu-item :deep([aria-current='page']) {
+  color: var(--ui-fg);
+}
+
+/* Current: the 3px accent capsule at the leading edge, same as Sidebar. */
 .ui-menu-item[aria-current='page']::before,
 .ui-menu-item :deep([aria-current='page']::before) {
   content: '';
   position: absolute;
   top: 50%;
-  inset-inline-start: 16px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
+  inset-inline-start: 0;
+  width: 3px;
+  height: 10px;
+  border-radius: 1px;
   background: var(--ui-accent);
-  transform: translateY(-50%);
+  transform: translate(-30%, -50%);
 }
 
 .ui-menu-item[data-disabled] {
-  color: var(--ui-muted);
-  opacity: 0.6;
+  opacity: 0.5;
+  cursor: default;
 }
 
 .ui-menu-label {
@@ -198,16 +193,30 @@ const parts = computed(() =>
 }
 
 .ui-menu-chevron {
-  color: var(--ui-muted);
+  color: var(--ui-faint);
+  transition: color var(--ui-dur) var(--ui-ease);
 }
 
-.ui-menu-content[dir='rtl'] .ui-menu-chevron {
-  transform: rotate(180deg);
+.ui-menu-item[data-highlighted] .ui-menu-chevron {
+  color: var(--ui-fg);
 }
 
 .ui-menu-separator {
   height: 1px;
-  margin: 4px 16px;
+  margin: 4px 0;
   background: var(--ui-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-menu-item {
+    animation: none;
+  }
+}
+</style>
+
+<!-- The sub-content surface teleports past this scope; its chrome is global. -->
+<style>
+.ui-menu-content[dir='rtl'] .ui-menu-chevron {
+  transform: rotate(180deg);
 }
 </style>

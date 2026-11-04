@@ -85,7 +85,7 @@ function scrollOutside() {
         :disabled="!portalTo && !target"
       >
         <DialogOverlay
-          class="ui-dialog-overlay"
+          class="ui ui-dialog-overlay"
           @wheel.passive="scrollOutside"
           @touchmove.passive="scrollOutside"
         />
