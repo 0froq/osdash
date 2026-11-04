@@ -9,6 +9,7 @@ export type {
   NavigationItem,
   NavigationLinkProps,
   PaginationControlProps,
+  PickOption,
   SidebarGroup,
   SidebarItem,
   SidebarCurrent,

@@ -50,7 +50,7 @@ const delay = computed(() =>
         >
           <TooltipContent
             v-bind="$attrs"
-            class="ui-tooltip-content"
+            class="ui ui-tooltip-content"
             :aria-label="text"
             :side="side"
             :align="align"
@@ -69,21 +69,24 @@ const delay = computed(() =>
 .ui-overlay-scope {
   display: contents;
 }
+</style>
 
+<!-- The tooltip surface teleports past the component scope, so its chrome is global. -->
+<style>
 .ui-tooltip-content {
   box-sizing: border-box;
   z-index: 1001;
   max-width: min(24rem, calc(100vw - 24px));
   padding: 6px 10px;
   overflow-wrap: anywhere;
-  border: 1px solid var(--ui-line);
+  border: 0;
   border-radius: var(--ui-radius);
   background: var(--ui-bg);
+  box-shadow: 0 0 0 1px var(--ui-line);
   color: var(--ui-fg);
   font-family: var(--ui-font-text);
   font-size: 14px;
   font-weight: normal;
   line-height: 1.5;
-  box-shadow: none;
 }
 </style>

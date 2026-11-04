@@ -49,6 +49,7 @@ export { default as ChoiceCircle } from './components/radio/ChoiceCircle.vue'
 export { default as RadioGroup } from './components/radio/RadioGroup.vue'
 export { default as Combobox } from './components/select/Combobox.vue'
 export { default as Select } from './components/select/Select.vue'
+export { default as Pick } from './components/select/Pick.vue'
 export { default as ScrollSelect } from './components/select/ScrollSelect.vue'
 export { default as Toggle } from './components/toggle/Toggle.vue'
 export { default as ToggleGroup } from './components/toggle/ToggleGroup.vue'
@@ -63,6 +64,7 @@ export type {
   NavigationItem,
   NavigationLinkProps,
   PaginationControlProps,
+  PickOption,
   SidebarCurrent,
   SidebarGroup,
   SidebarItem,

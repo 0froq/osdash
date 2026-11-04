@@ -6,8 +6,9 @@ import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
 } from 'reka-ui'
-import { useSlots, useTemplateRef } from 'vue'
+import { useTemplateRef } from 'vue'
 import { usePortalTarget } from '../../vue'
+import Button from '../button/Button.vue'
 import MenuItems from './_internal/MenuItems.vue'
 
 defineOptions({ inheritAttrs: false })
@@ -23,7 +24,7 @@ withDefaults(
     sideOffset?: number
     portalTo?: string | HTMLElement
   }>(),
-  { disabled: false, modal: true, side: 'bottom', align: 'start', sideOffset: 8 },
+  { disabled: false, modal: true, side: 'bottom', align: 'start', sideOffset: 4 },
 )
 const emit = defineEmits<{ select: [item: MenuItem, event: Event] }>()
 defineSlots<{
@@ -31,7 +32,6 @@ defineSlots<{
   item?: (scope: { item: MenuItem }) => unknown
 }>()
 const model = defineModel<boolean>({ default: false })
-const slots = useSlots()
 const scope = useTemplateRef<HTMLElement>('scope')
 const target = usePortalTarget(scope)
 </script>
@@ -47,12 +47,11 @@ const target = usePortalTarget(scope)
       :dir="dir"
     >
       <DropdownMenuTrigger
-        :as-child="Boolean(slots.trigger)"
+        as-child
         :disabled="disabled"
-        class="ui-overlay-trigger"
       >
         <slot name="trigger">
-          {{ label }}
+          <Button :disabled="disabled">{{ label }}</Button>
         </slot>
       </DropdownMenuTrigger>
       <DropdownMenuPortal
@@ -61,7 +60,7 @@ const target = usePortalTarget(scope)
       >
         <DropdownMenuContent
           v-bind="$attrs"
-          class="ui-menu-content"
+          class="ui ui-menu-content"
           :aria-label="label"
           :side="side"
           :align="align"
@@ -92,24 +91,10 @@ const target = usePortalTarget(scope)
 .ui-overlay-scope {
   display: contents;
 }
+</style>
 
-.ui-overlay-trigger {
-  padding: 0 0 1px;
-  border: 0;
-  border-bottom: 1px solid currentColor;
-  background: none;
-  color: var(--ui-fg);
-  font-family: var(--ui-font-text);
-  font-size: inherit;
-  cursor: pointer;
-}
-
-.ui-overlay-trigger:disabled {
-  color: var(--ui-muted);
-  cursor: not-allowed;
-}
-
-/*Floating lists share one control-tier surface: hairline, square, no soft elevation.*/
+<!-- The menu surface teleports past the component scope, so its chrome is global. -->
+<style>
 .ui-menu-content {
   box-sizing: border-box;
   z-index: 1001;
@@ -118,17 +103,16 @@ const target = usePortalTarget(scope)
   max-height: calc(100dvh - 24px);
   padding: 4px 0;
   overflow-y: auto;
-  border: 1px solid var(--ui-line);
+  border: 0;
   border-radius: 0;
   background: var(--ui-bg);
-  box-shadow: none;
+  box-shadow: 0 0 0 1px var(--ui-line);
   color: var(--ui-fg);
-  font: 11px/1.3 var(--ui-font-meta);
+  font: 12px/1.4 var(--ui-font-meta);
   outline: none;
 }
 
-.ui-overlay-trigger:focus-visible {
-  outline: 1px solid var(--ui-accent);
-  outline-offset: 4px;
+.ui-menu-sub-content {
+  z-index: 1002;
 }
 </style>

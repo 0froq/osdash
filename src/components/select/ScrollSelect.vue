@@ -32,6 +32,9 @@ const props = withDefaults(
 defineSlots<{ option?: (scope: { option: ChoiceOption }) => unknown }>()
 
 const ROW = 16
+/* Rows breathe more once the panel opens — the collapsed window keeps the tight
+   16px rhythm so neighbours' slivers stay visible through the mask fade. */
+const OPEN_ROW = 24
 const model = defineModel<string>({ required: true })
 const { wrapperAttrs, controlAttrs } = useControlAttrs()
 const id = useId()
@@ -86,7 +89,7 @@ const inert = computed(() => props.disabled || count.value < 2)
 const shift = ref(index.value * ROW)
 const vars = computed(() => ({
   '--scroll-select-shift': `${shift.value}px`,
-  '--scroll-select-height': `${Math.min(count.value, 8) * ROW + 16}px`,
+  '--scroll-select-height': `${Math.min(count.value, 8) * OPEN_ROW + 16}px`,
 }))
 
 watch(index, at => {
@@ -152,10 +155,10 @@ async function show() {
   open.value = true
   await nextTick()
   /* The list opens scrolled to the top. Scroll just far enough for the current row to be
-     visible: it sits at 8 + index * ROW inside the track's top padding. */
+     visible: it sits at 6 + index * ROW inside the track's top padding. */
   const view = viewport.value
   if (view) {
-    const bottom = 8 + (index.value + 1) * ROW
+    const bottom = 8 + (index.value + 1) * OPEN_ROW
     if (bottom > view.clientHeight) view.scrollTop = bottom - view.clientHeight
   }
   optionRows()[index.value]?.focus({ preventScroll: true })
@@ -485,6 +488,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside))
  */
 .ui-scroll-select-option {
   position: relative;
+  display: flex;
+  align-items: center;
   height: 16px;
   padding: 0 8px;
   overflow: hidden;
@@ -493,12 +498,22 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside))
   white-space: nowrap;
   cursor: pointer;
   transition:
+    height var(--ui-dur) var(--ui-ease),
+    padding var(--ui-dur) var(--ui-ease),
     color var(--ui-dur) var(--ui-ease),
     background-color var(--ui-dur) var(--ui-ease);
 }
 
+/* Open: the rows relax to the roomier list rhythm, the same density the
+   floating lists in Menu/Select use. */
+.is-open .ui-scroll-select-option {
+  height: 24px;
+  padding: 0 10px;
+}
+
 .ui-scroll-select-word {
   display: block;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -529,7 +544,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside))
   inset-inline-start: 0;
   width: 3px;
   height: 10px;
-  max-height: calc(100% - 6px);
   border-radius: 1px;
   background: var(--ui-accent);
   transform: translate(-30%, -50%);

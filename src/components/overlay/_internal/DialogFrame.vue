@@ -10,7 +10,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="ui-dialog-content">
+  <div class="ui ui-dialog-content">
     <header class="ui-dialog-header">
       <DialogTitle class="ui-dialog-title">{{ title }}</DialogTitle>
       <DialogDescription

@@ -84,22 +84,11 @@ export function componentCatalog(): ConceptGroup[] {
   return catalog
 }
 
-export function componentSectionLabel(
-  id: string,
-  translate: (key: 'components.sections.form' | 'components.sections.prose') => string,
-): string {
-  switch (id) {
-    case '':
-      return ''
-    case 'form':
-      return translate('components.sections.form')
-    case 'prose':
-      return translate('components.sections.prose')
-    default: {
-      const unexpected: never = id
-      return unexpected
-    }
-  }
+export function componentSectionLabel(id: string, translate: (key: string) => string): string {
+  if (!id) return ''
+  const key = `components.sections.${id}`
+  const label = translate(key)
+  return label === key ? id : label
 }
 
 /** Concepts sit under a section such as form or prose. A folder with no section is still listed. */

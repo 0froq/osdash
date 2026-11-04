@@ -1,6 +1,5 @@
 import { fileURLToPath } from 'node:url'
 import { defineCollection, defineContentConfig, z } from '@nuxt/content'
-import { defineOgImageSchema } from 'nuxt-og-image/content'
 
 const field = z.object({
   name: z.string(),
@@ -13,7 +12,7 @@ const field = z.object({
 // Optional frontmatter `cover`: a `public/` path or an absolute https URL. It wins over `ogImage.url`.
 const card = {
   cover: z.string().optional(),
-  ogImage: defineOgImageSchema({ z }),
+  ogImage: z.unknown().optional(),
   words: z.number().optional(),
   evergreen: z.boolean().optional(),
   kind: z.string().optional(),

@@ -59,7 +59,7 @@ function update(value: boolean) {
       <HoverCardTrigger
         :as-child="Boolean(slots.trigger)"
         :href="href"
-        class="ui-hover-card-trigger"
+        :class="{ 'ui-hover-card-trigger': !slots.trigger }"
       >
         <slot name="trigger">
           {{ label }}
@@ -71,7 +71,7 @@ function update(value: boolean) {
       >
         <HoverCardContent
           v-bind="$attrs"
-          class="ui-hover-card-content"
+          class="ui ui-hover-card-content"
           aria-hidden="true"
           :side="side"
           :align="align"
@@ -100,7 +100,10 @@ function update(value: boolean) {
   outline: 1px solid var(--ui-accent);
   outline-offset: 4px;
 }
+</style>
 
+<!-- The hover card surface teleports past the component scope, so its chrome is global. -->
+<style>
 .ui-hover-card-content {
   box-sizing: border-box;
   z-index: 1001;
@@ -108,13 +111,13 @@ function update(value: boolean) {
   max-height: calc(100dvh - 24px);
   padding: 16px;
   overflow-y: auto;
-  border: 1px solid var(--ui-line);
+  border: 0;
   border-radius: var(--ui-radius);
   background: var(--ui-bg);
+  box-shadow: 0 0 0 1px var(--ui-line);
   color: var(--ui-fg);
   font-family: var(--ui-font-text);
   font-size: 14px;
   line-height: 1.5;
-  box-shadow: none;
 }
 </style>

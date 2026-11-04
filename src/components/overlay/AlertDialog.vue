@@ -63,10 +63,10 @@ function confirm(event: MouseEvent) {
         :to="portalTo ?? target"
         :disabled="!portalTo && !target"
       >
-        <AlertDialogOverlay class="ui-dialog-overlay" />
+        <AlertDialogOverlay class="ui ui-dialog-overlay" />
         <AlertDialogContent
           v-bind="$attrs"
-          class="ui-dialog-content ui-alert-dialog-content"
+          class="ui ui-dialog-content ui-alert-dialog-content"
           :aria-busy="pending || undefined"
         >
           <header class="ui-dialog-header">

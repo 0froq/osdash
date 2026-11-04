@@ -81,7 +81,7 @@ const renderClose = computed(() => props.dismissible && !hasHandle())
     <template #panel="{ close }">
       <div
         v-if="hasHandle()"
-        class="ui-drawer-shell"
+        class="ui ui-drawer-shell"
         :data-side="side"
         @after-leave="finishClose"
       >

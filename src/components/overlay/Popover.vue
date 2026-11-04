@@ -7,8 +7,9 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from 'reka-ui'
-import { useSlots, useTemplateRef } from 'vue'
+import { useTemplateRef } from 'vue'
 import { usePortalTarget } from '../../vue'
+import Button from '../button/Button.vue'
 
 defineOptions({ inheritAttrs: false })
 withDefaults(
@@ -30,7 +31,6 @@ defineSlots<{
   default?: (scope: { close: () => void }) => unknown
 }>()
 const model = defineModel<boolean>({ default: false })
-const slots = useSlots()
 const scope = useTemplateRef<HTMLElement>('scope')
 const target = usePortalTarget(scope)
 function close() {
@@ -52,12 +52,11 @@ function close() {
       />
       <PopoverTrigger
         v-else
-        :as-child="Boolean(slots.trigger)"
+        as-child
         :disabled="disabled"
-        class="ui-overlay-trigger"
       >
         <slot name="trigger">
-          {{ triggerLabel ?? label }}
+          <Button :disabled="disabled">{{ triggerLabel ?? label }}</Button>
         </slot>
       </PopoverTrigger>
       <PopoverPortal
@@ -66,7 +65,7 @@ function close() {
       >
         <PopoverContent
           v-bind="$attrs"
-          class="ui-popover-content"
+          class="ui ui-popover-content"
           :aria-label="label"
           :side="side"
           :align="align"
@@ -91,36 +90,7 @@ function close() {
   display: contents;
 }
 
-.ui-overlay-trigger {
-  padding: 0 0 1px;
-  border: 0;
-  border-bottom: 1px solid currentColor;
-  background: none;
-  color: var(--ui-fg);
-  font-family: var(--ui-font-text);
-  font-size: inherit;
-  cursor: pointer;
-}
-
-.ui-overlay-trigger:disabled {
-  color: var(--ui-muted);
-  cursor: not-allowed;
-}
-
 /*Non-list overlays: 1px line and --ui-radius. No soft elevation.*/
-.ui-popover-content {
-  box-sizing: border-box;
-  z-index: 1001;
-  padding: 24px;
-  border: 1px solid var(--ui-line);
-  border-radius: var(--ui-radius);
-  background: var(--ui-bg);
-  color: var(--ui-fg);
-  font-family: var(--ui-font-text);
-  line-height: 1.5;
-  box-shadow: none;
-}
-
 .ui-overlay-close {
   position: absolute;
   top: 14px;
@@ -141,21 +111,33 @@ function close() {
   color: var(--ui-fg);
 }
 
-.ui-overlay-trigger:focus-visible,
 .ui-overlay-close:focus-visible {
   outline: 1px solid var(--ui-accent);
   outline-offset: 4px;
+}
+</style>
+
+<!-- The popover surface teleports past the component scope, so its chrome is global. -->
+<style>
+.ui-popover-content {
+  box-sizing: border-box;
+  z-index: 1001;
+  width: min(22rem, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 24px;
+  padding-inline-end: 48px;
+  overflow-y: auto;
+  border: 0;
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  box-shadow: 0 0 0 1px var(--ui-line);
+  color: var(--ui-fg);
+  font-family: var(--ui-font-text);
+  line-height: 1.5;
 }
 
 .ui-popover-content:focus-visible {
   outline: 1px solid var(--ui-accent);
   outline-offset: -1px;
-}
-
-.ui-popover-content {
-  width: min(22rem, calc(100vw - 24px));
-  max-height: calc(100dvh - 24px);
-  overflow-y: auto;
-  padding-inline-end: 48px;
 }
 </style>

@@ -77,6 +77,33 @@ function activate(event: MouseEvent): void {
   translate: 0 1px;
 }
 
+/* A button acting as an overlay trigger is marked twice: a small chevron says
+   a layer lives behind it, and while that layer is open the frame stays solid
+   and the chevron turns up (reka writes data-state on the trigger). */
+.ui-button[data-state='open'] {
+  border-style: solid;
+  color: var(--ui-fg);
+}
+
+.ui-button[data-state]::before {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  margin-inline-start: 2px;
+  content: '';
+  opacity: 0.6;
+  order: 1;
+  transform: rotate(45deg);
+  transform-origin: center;
+  transition: transform var(--ui-dur) var(--ui-ease);
+}
+
+.ui-button[data-state='open']::before {
+  transform: rotate(225deg);
+}
+
 .ui-button:disabled {
   color: var(--ui-muted);
   cursor: not-allowed;

@@ -197,24 +197,7 @@ function clear() {
 </template>
 
 <style scoped>
-/*Floating lists share one control-tier surface: hairline, square, no soft elevation.*/
-.ui-combobox-content {
-  box-sizing: border-box;
-  z-index: 1001;
-  min-width: min(9.5rem, calc(100vw - 24px));
-  max-width: calc(100vw - 24px);
-  max-height: calc(100dvh - 24px);
-  padding: 4px 0;
-  overflow-y: auto;
-  border: 1px solid var(--ui-line);
-  border-radius: 0;
-  background: var(--ui-bg);
-  box-shadow: none;
-  color: var(--ui-fg);
-  font: 11px/1.3 var(--ui-font-meta);
-  outline: none;
-}
-
+/*List chrome and rows share the floating-list language in overlay/surface.css.*/
 .ui-combobox-field {
   display: grid;
   gap: 8px;
@@ -276,7 +259,7 @@ function clear() {
   cursor: not-allowed;
 }
 
-/*Panel and row chrome are the shared lig list (overlay.css, select.css).*/
+/*Panel size overrides the shared surface; row chrome matches Select/Menu.*/
 .ui-combobox-content {
   width: min(20rem, calc(100vw - 24px));
   max-height: min(20rem, calc(100dvh - 24px));
@@ -300,53 +283,56 @@ function clear() {
   font-family: var(--ui-font-text);
 }
 
-/*List chrome is shared with Menu in overlay.css. Rows are shared with Combobox.*/
+/*Rows keep the floating-list language: muted -> fg under the gaze, a faint wash,
+   and the 3px accent capsule marking the checked value.*/
 .ui-combobox-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   margin: 0;
-  padding-block: 8px;
-  padding-inline: 36px 16px;
+  padding-block: 6px;
+  padding-inline: 10px;
   border-radius: 0;
+  color: var(--ui-muted);
   outline: none;
-  cursor: default;
+  cursor: pointer;
   user-select: none;
+  transition:
+    color var(--ui-dur) var(--ui-ease),
+    background-color var(--ui-dur) var(--ui-ease);
 }
 
 .ui-combobox-item[data-highlighted] {
-  background: none;
+  background: color-mix(in srgb, var(--ui-fg) 6%, transparent);
   color: var(--ui-fg);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
-}
-
-.ui-combobox-item:focus-visible {
-  outline: none;
 }
 
 .ui-combobox-item[data-state='checked'] {
-  background: none;
   color: var(--ui-fg);
 }
 
-.ui-combobox-indicator {
+.ui-combobox-item[data-state='checked']::before {
+  content: '';
   position: absolute;
   top: 50%;
-  inset-inline-start: 16px;
-  flex: none;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
+  inset-inline-start: 0;
+  width: 3px;
+  height: 10px;
+  border-radius: 1px;
   background: var(--ui-accent);
-  transform: translateY(-50%);
+  transform: translate(-30%, -50%);
 }
 
 .ui-combobox-item[data-disabled] {
   opacity: 0.5;
   pointer-events: none;
+}
+
+/* The checked marker is the accent capsule above; the reka indicator element
+   stays mounted for a11y but carries no chrome. */
+.ui-combobox-indicator {
+  display: none;
 }
 
 .ui-field-label {
@@ -355,5 +341,25 @@ function clear() {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+</style>
+
+<!-- The dropdown surface teleports past the component scope, so its chrome is global. -->
+<style>
+.ui-combobox-content {
+  box-sizing: border-box;
+  z-index: 1001;
+  min-width: min(9.5rem, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  padding: 4px 0;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 0;
+  background: var(--ui-bg);
+  box-shadow: 0 0 0 1px var(--ui-line);
+  color: var(--ui-fg);
+  font: 12px/1.4 var(--ui-font-meta);
+  outline: none;
 }
 </style>

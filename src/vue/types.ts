@@ -9,6 +9,11 @@ export interface ChoiceOption<T extends string = string> {
   disabled?: boolean
 }
 
+export interface PickOption extends ChoiceOption {
+  /** Optional trailing count rendered in meta type, e.g. a result count. */
+  count?: number
+}
+
 export interface NavigationItem {
   value: string
   label: string
