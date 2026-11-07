@@ -36,6 +36,8 @@ export type StoryLine = {
   body: string | null
   tags: StoryTag[]
   tone: 'plain' | 'good' | 'bad'
+  /** CI only. Keeps the node and the verb off ink. */
+  mark: 'bad' | 'news' | 'run' | 'wait' | 'good' | null
   url: string | null
   /** The other issue or PR named by a mention, when one is known. */
   ref: { repo: string; number: number; url: string } | null
@@ -146,6 +148,33 @@ function checksOf(group: CiGroup | UnitEvent): { failed: string[]; passed: numbe
     passed: events.filter(event => event.ci?.conclusion === 'SUCCESS').length,
     total: events.length,
   }
+}
+
+function ciMark(
+  ci: { conclusion: string | null; status: string } | undefined,
+): NonNullable<StoryLine['mark']> {
+  const conclusion = ci?.conclusion ?? null
+  if (conclusion === 'FAILURE' || conclusion === 'TIMED_OUT') return 'bad'
+  if (conclusion === 'SUCCESS') return 'news'
+  if (
+    conclusion === null ||
+    ci?.status === 'IN_PROGRESS' ||
+    ci?.status === 'QUEUED' ||
+    ci?.status === 'PENDING' ||
+    ci?.status === 'WAITING' ||
+    ci?.status === 'REQUESTED'
+  )
+    return 'run'
+  return 'wait'
+}
+
+function groupCiMark(group: CiGroup | UnitEvent): NonNullable<StoryLine['mark']> {
+  const events = group.kind === 'ci-group' ? group.events : [group]
+  const marks = events.map(event => ciMark(event.ci))
+  if (marks.includes('bad')) return 'bad'
+  if (marks.length > 0 && marks.every(mark => mark === 'news')) return 'news'
+  if (marks.includes('run')) return 'run'
+  return 'wait'
 }
 
 function eventVerb(
@@ -267,6 +296,7 @@ function blankLine(id: string, at: number, item: StoryKey): StoryLine {
     end: null,
     fork: [],
     joins: [],
+    mark: null,
   }
 }
 
@@ -535,6 +565,7 @@ export function buildStory(
       } else {
         line.verb = t('story.checksOther', { count: result.total }, result.total)
       }
+      line.mark = groupCiMark(source.group)
       bySource.set(line.id, source)
       lines.push(line)
       continue
@@ -565,6 +596,7 @@ export function buildStory(
       line.ref = { repo: event.ref.repo, number: event.ref.number, url: event.ref.url }
     if (event.label) line.label = event.label
     Object.assign(line, eventVerb(t, event, viewer))
+    if (event.kind === 'ci') line.mark = ciMark(event.ci)
     if (event.kind === 'comment' || event.kind === 'review' || event.kind === 'review-comment') {
       line.quote = event.excerpt ?? null
       line.body = event.body ?? null
@@ -783,6 +815,7 @@ export type StoryCell = {
   fade: boolean
   /** A dashed, conditional connector. Never styled as an actual merge. */
   projected: boolean
+  mark: 'bad' | 'news' | 'run' | 'wait' | 'good' | null
 }
 
 export function storyRows(story: Story, open: ReadonlySet<string>): StoryRow[] {
@@ -851,6 +884,7 @@ export function storyGrid(
     primary: false,
     fade: false,
     projected: false,
+    mark: null,
   })
 
   if (spine) {
@@ -863,6 +897,7 @@ export function storyGrid(
       cell.fade = r === 0 && !story.primary.createdAt
       if (row.type === 'line') {
         cell.node = lineNode(row)
+        cell.mark = row.line.mark
         const item = story.items.find(i => i.key === row.line.item)
         cell.mine = item ? self(item) : true
       } else if (row.type === 'fold') cell.node = row.open ? 'group' : 'stack'
@@ -910,7 +945,10 @@ export function storyGrid(
       cell.dashed = r > nowRow
       cell.mine = self(item)
       cell.primary = item.role === 'primary'
-      if (row.type === 'line' && row.line.item === item.key) cell.node = lineNode(row)
+      if (row.type === 'line' && row.line.item === item.key) {
+        cell.node = lineNode(row)
+        cell.mark = row.line.mark
+      }
       if (row.type === 'line' && row.line.joins.includes(item.key)) cell.node = 'join'
       if (row.type === 'fold' && row.fold.lines.some(line => line.item === item.key))
         cell.node = row.open ? 'group' : 'stack'

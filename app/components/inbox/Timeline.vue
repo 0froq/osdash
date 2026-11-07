@@ -7,7 +7,7 @@ import type { UnitNote, UnitView } from '#shared/unit'
 const { t } = useI18n()
 import { breakTies, nearestSlot, rowAt, stampAfter } from '~/utils/noteAnchor'
 import type { NoteDrag } from '~/components/inbox/TimelineNotes.vue'
-import { reasonText } from '~/utils/reason'
+import { reasonText, reasonMark } from '~/utils/reason'
 import {
   buildStory,
   railStrokes,
@@ -648,6 +648,7 @@ const nowText = computed(() =>
     ? props.unit.quote
     : reasonText(t, props.unit.reasonCode, props.unit.reasonActor),
 )
+const nowMark = computed(() => reasonMark(props.unit.reasonCode))
 const waited = computed(() =>
   story.value?.turn === 'waiting' ? waitingAge(t, props.unit.ageMs) : null,
 )
@@ -696,6 +697,8 @@ function railOf(line: StoryLine) {
 
 function gutterCells(row: StoryRow, index: number) {
   const cells = grid.value[index] ?? []
+  if (row.type === 'now')
+    return cells.map(cell => (cell.node === 'now' ? { ...cell, mark: nowMark.value } : cell))
   if (row.type !== 'line') return cells
   const lane = laneOf(row.line.item)
   const expandable = Boolean(row.line.body) && !plain.value.has(row.line.id)
@@ -1018,6 +1021,7 @@ function rowClass(row: StoryRow) {
               <p
                 v-else-if="row.type === 'now'"
                 class="st-now"
+                :class="nowMark ? `is-${nowMark}` : undefined"
               >
                 <span class="st-now-label">{{ t('story.now') }}</span>
                 <span class="st-now-text">{{ nowText }}</span>
@@ -1453,6 +1457,26 @@ function rowClass(row: StoryRow) {
 
 .turn-you .st-now-label {
   color: var(--accent);
+}
+
+.st-now.is-bad .st-now-text {
+  color: var(--bad);
+}
+
+.st-now.is-news .st-now-text {
+  color: var(--news);
+}
+
+.st-now.is-run .st-now-text {
+  color: var(--run);
+}
+
+.st-now.is-wait .st-now-text {
+  color: var(--warn);
+}
+
+.st-now.is-good .st-now-text {
+  color: var(--good);
 }
 
 .st-now-wait {

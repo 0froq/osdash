@@ -14,11 +14,16 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
       :key="cell.lane"
       class="st-cell"
       :class="{
-        other: !cell.mine,
-        primary: cell.primary,
-        current: cell.node === 'now',
-        on: focus === cell.lane,
-        dim: focus !== null && focus !== cell.lane,
+        'other': !cell.mine,
+        'primary': cell.primary,
+        'current': cell.node === 'now',
+        'on': focus === cell.lane,
+        'dim': focus !== null && focus !== cell.lane,
+        'mark-bad': cell.mark === 'bad',
+        'mark-news': cell.mark === 'news',
+        'mark-run': cell.mark === 'run',
+        'mark-wait': cell.mark === 'wait',
+        'mark-good': cell.mark === 'good',
       }"
     >
       <i
@@ -270,6 +275,66 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
   background: var(--accent);
 }
 
+.st-cell.mark-bad .n-now {
+  border-color: var(--bad);
+}
+
+.st-cell.mark-bad .n-now::before {
+  background: var(--bad);
+}
+
+.st-cell.mark-news .n-now {
+  border-color: var(--news);
+}
+
+.st-cell.mark-news .n-now::before {
+  background: var(--news);
+}
+
+.st-cell.mark-run {
+  color: var(--run);
+}
+
+.st-cell.mark-run .n-now {
+  border-color: var(--run);
+}
+
+.st-cell.mark-run .n-now::before {
+  background: var(--run);
+}
+
+.st-cell.mark-wait {
+  color: var(--warn);
+}
+
+.st-cell.mark-wait .n-now {
+  border-color: var(--warn);
+}
+
+.st-cell.mark-wait .n-now::before {
+  background: var(--warn);
+}
+
+.st-cell.mark-good {
+  color: var(--good);
+}
+
+.st-cell.mark-good .n-now {
+  border-color: var(--good);
+}
+
+.st-cell.mark-good .n-now::before {
+  background: var(--good);
+}
+
+.st-cell.mark-bad {
+  color: var(--bad);
+}
+
+.st-cell.mark-news {
+  color: var(--news);
+}
+
 .st-cell.dim .n-now {
   border-color: color-mix(in oklab, var(--muted) 22%, transparent);
 }
@@ -284,6 +349,22 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
 
 .turn-you .st-cell.dim .n-now::before {
   background: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.turn-you .st-cell.mark-bad.dim .n-now {
+  border-color: color-mix(in oklab, var(--bad) 45%, transparent);
+}
+
+.turn-you .st-cell.mark-bad.dim .n-now::before {
+  background: color-mix(in oklab, var(--bad) 45%, transparent);
+}
+
+.turn-you .st-cell.mark-news.dim .n-now {
+  border-color: color-mix(in oklab, var(--news) 45%, transparent);
+}
+
+.turn-you .st-cell.mark-news.dim .n-now::before {
+  background: color-mix(in oklab, var(--news) 45%, transparent);
 }
 
 /*.turn-you .n-now::after {

@@ -442,6 +442,7 @@ function strokeCell(partial: Partial<StoryCell> & Pick<StoryCell, 'lane'>): Stor
     primary: false,
     fade: false,
     projected: false,
+    mark: null,
     ...partial,
   }
 }

@@ -8,6 +8,7 @@
   --accent: var(--fg);
   --news: #1f7a3a;
   --bad: #c62828;
+  --run: #1d6fbf;
   --font-display:
     'Instrument Serif', 'Iowan Old Style', Georgia, 'Songti SC', 'Noto Serif SC',
     'Source Han Serif SC', serif;
@@ -42,6 +43,7 @@
   --line: rgba(242, 240, 234, 0.1);
   --news: #5dce7a;
   --bad: #ff6b5c;
+  --run: #6cb6ff;
   --card: #18181a;
   --good: #26c2c1;
   --warn: #dbb800;
@@ -57,6 +59,7 @@
     --line: rgba(242, 240, 234, 0.1);
     --news: #5dce7a;
     --bad: #ff6b5c;
+    --run: #6cb6ff;
     --card: #18181a;
     --good: #26c2c1;
     --warn: #dbb800;

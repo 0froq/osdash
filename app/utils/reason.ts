@@ -60,6 +60,43 @@ export function reasonText(t: TFunc, code: ReasonCode, actor: string | null): st
   }
 }
 
+/** Every current stamp has a color. None of them stay ink. */
+export function reasonMark(code: ReasonCode): 'bad' | 'news' | 'run' | 'wait' | 'good' {
+  switch (code) {
+    case 'ci-failed':
+    case 'ci-lint-failed':
+    case 'cla-failed':
+    case 'changes-requested':
+    case 'coderabbit':
+      return 'bad'
+    case 'mentioned':
+    case 'commented':
+      return 'news'
+    case 'opened-waiting':
+    case 'replied-waiting':
+    case 'pushed-waiting':
+    case 'asked-waiting':
+    case 'pushed':
+    case 'review-dismissed':
+      return 'run'
+    case 'approved':
+    case 'merged':
+      return 'good'
+    case 'claimed-open-pr':
+    case 'claim-pending':
+    case 'asked-pr-or-rebase':
+    case 'already-fixed':
+    case 'workaround':
+    case 'closed':
+    case 'clef':
+      return 'wait'
+    default: {
+      const exhaustive: never = code
+      return exhaustive
+    }
+  }
+}
+
 /**
  * Short status under an issue card while it is waiting.
  * Does not assign the next actor: an issue may be a question or a self-proposed PR.

@@ -115,7 +115,11 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="st-text"
-    :class="[`tone-${line.tone}`, { minor, reason: line.reason, rail: Boolean(rail) }]"
+    :class="[
+      `tone-${line.tone}`,
+      line.mark ? `mark-${line.mark}` : '',
+      { minor, reason: line.reason, rail: Boolean(rail) },
+    ]"
     :style="rail ? { '--lane': String(rail.lane) } : undefined"
   >
     <div
@@ -397,6 +401,22 @@ button.st-head:focus-visible .st-title {
 
 .tone-good .st-verb {
   color: var(--st-good);
+}
+
+.mark-bad .st-verb {
+  color: var(--bad);
+}
+
+.mark-news .st-verb {
+  color: var(--news);
+}
+
+.mark-run .st-verb {
+  color: var(--run);
+}
+
+.mark-wait .st-verb {
+  color: var(--warn);
 }
 
 .st-tag {
