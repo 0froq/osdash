@@ -392,14 +392,12 @@ function onKey(event: KeyboardEvent): void {
     var(--line) 360deg
   );
   pointer-events: none;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
   -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0) content-box xor,
     linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
   animation: note-unsaved 1.4s linear infinite;
 }
 
