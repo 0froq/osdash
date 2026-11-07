@@ -1065,7 +1065,7 @@ function rowClass(row: StoryRow) {
   --st-ink: color-mix(in oklab, var(--fg) 72%, transparent);
   --st-ink-other: color-mix(in oklab, var(--fg) 26%, transparent);
   --st-good: var(--good);
-  --st-bad: light-dark(#b2412f, #ef7a66);
+  --st-bad: var(--bad);
   --st-soft: color-mix(in oklab, var(--fg) 4.5%, transparent);
   --st-bracket: color-mix(in oklab, var(--fg) 16%, transparent);
   display: flex;

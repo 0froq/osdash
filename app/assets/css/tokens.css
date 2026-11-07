@@ -5,7 +5,9 @@
   --muted: #85837c;
   --faint: #cfccc3;
   --line: rgba(26, 25, 23, 0.12);
-  --accent: #e8431f;
+  --accent: var(--fg);
+  --news: #1f7a3a;
+  --bad: #c62828;
   --font-display:
     'Instrument Serif', 'Iowan Old Style', Georgia, 'Songti SC', 'Noto Serif SC',
     'Source Han Serif SC', serif;
@@ -38,7 +40,8 @@
   --muted: #918f88;
   --faint: #32312d;
   --line: rgba(242, 240, 234, 0.1);
-  --accent: #ff6242;
+  --news: #5dce7a;
+  --bad: #ff6b5c;
   --card: #18181a;
   --good: #26c2c1;
   --warn: #dbb800;
@@ -52,7 +55,8 @@
     --muted: #918f88;
     --faint: #32312d;
     --line: rgba(242, 240, 234, 0.1);
-    --accent: #ff6242;
+    --news: #5dce7a;
+    --bad: #ff6b5c;
     --card: #18181a;
     --good: #26c2c1;
     --warn: #dbb800;

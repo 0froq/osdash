@@ -62,9 +62,7 @@ withDefaults(
   height: 100%;
 }
 
-/* Unread inks the glyph to full text colour and adds a small accent dot.
-   Painting the whole glyph in the accent would shout on a list where most
-   cards are unread, and it would compete with the "my turn" red. */
+/* Unread keeps the glyph in the text colour and adds a green dot. */
 .kind-icon.is-unread {
   color: var(--fg);
 }
@@ -77,6 +75,6 @@ withDefaults(
   width: 0.45cap;
   height: 0.45cap;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--news);
 }
 </style>
