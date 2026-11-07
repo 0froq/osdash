@@ -118,7 +118,7 @@ const issueOnly = computed(() => props.unit.kind === 'issue-only')
 }
 
 .unit-card.unread {
-  outline-color: var(--accent);
+  outline-color: var(--news);
 }
 
 .unit-card:not(.mine) {
@@ -158,7 +158,7 @@ const issueOnly = computed(() => props.unit.kind === 'issue-only')
 
 .unit-card.unread:hover,
 .unit-card.unread:has(.card-open:focus-visible) {
-  outline-color: var(--accent);
+  outline-color: var(--news);
 }
 
 .unit-card.selected {
@@ -179,16 +179,16 @@ const issueOnly = computed(() => props.unit.kind === 'issue-only')
 
 .card-title {
   font-family: var(--font-display);
-  font-size: 19px;
+  font-size: 24px;
   font-weight: 400;
-  line-height: 1.32;
-  letter-spacing: -0.005em;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
   overflow-wrap: anywhere;
   text-wrap: pretty;
 }
 
 .unit-card:not(.mine) .card-title {
-  font-size: 17px;
+  font-size: 22px;
 }
 
 .card-status,
@@ -247,7 +247,7 @@ const issueOnly = computed(() => props.unit.kind === 'issue-only')
 @media (max-width: 780px) {
   .card-title,
   .unit-card:not(.mine) .card-title {
-    font-size: 16px;
+    font-size: 20px;
   }
 }
 </style>
