@@ -1,6 +1,3 @@
-import type { H3Event } from 'h3'
-import { parseClefLogins } from './byok'
-import { bindingString, workerEnv } from './bindings'
 import { readCache, writeCache, type CacheStore } from './cache'
 import { loadUnits } from './github'
 import type { NotificationSnapshot } from './notifications'
@@ -50,23 +47,8 @@ export function viewerFromSession(user: SessionUser): InboxViewer {
   }
 }
 
-export async function loadInboxUnits(
-  event: H3Event,
-  user: SessionUser,
-  now: Date,
-  fresh: boolean,
-): Promise<InboxCacheBody> {
-  const loaded = await loadUnits(
-    user.token,
-    user.login,
-    now,
-    {
-      AI: workerEnv(event).AI,
-      viewerLogin: user.login,
-      clefLogins: parseClefLogins(bindingString(event, 'OSDASH_CLEF_LOGINS')),
-    },
-    { fresh },
-  )
+export async function loadInboxUnits(user: SessionUser, now: Date): Promise<InboxCacheBody> {
+  const loaded = await loadUnits(user.token, user.login, now)
   return {
     generatedAt: now.toISOString(),
     truncated: loaded.truncated,

@@ -3,7 +3,7 @@ import { parseNotificationSubject, type ParsedThread } from '../shared/notificat
 
 export const NOTIFICATIONS_TTL_SECONDS = 2 * 60
 const PAGE = 50
-const MAX_PAGES = 6
+const MAX_PAGES = 2
 
 export type NotificationSnapshot = {
   scope: boolean

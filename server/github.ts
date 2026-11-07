@@ -1,5 +1,3 @@
-import { enrichIssueClassificationsForEnv, type ClaimClassifierEnv } from './claim-classifier'
-import { enrichItemsFromRest } from './github-rest'
 import { isSelf } from '../shared/identity'
 import { combineItems } from '../shared/timeline'
 import { buildUnitDrafts, toUnit, type UnitDraft } from '../shared/units'
@@ -20,7 +18,7 @@ import {
 } from '../shared/turn'
 
 const PAGE_SIZE = 25
-const MAX_PAGES = 5
+const MAX_PAGES = 2
 
 export function boardSearchQueries(login: string, since: string): string[] {
   const user = login.trim()
@@ -475,8 +473,8 @@ type IssueByNumberPayload = {
   errors?: Array<{ message?: string }>
 }
 
-const MAX_CLOSING_ISSUE_HYDRATIONS = 20
-const MAX_FIXING_PULL_HYDRATIONS = 20
+const MAX_CLOSING_ISSUE_HYDRATIONS = 8
+const MAX_FIXING_PULL_HYDRATIONS = 8
 
 function parseRepo(nameWithOwner: string): { owner: string; name: string } | null {
   const slash = nameWithOwner.indexOf('/')
@@ -918,12 +916,9 @@ export async function loadUnits(
   token: string,
   viewerLogin: string,
   now: Date,
-  classifierEnv: ClaimClassifierEnv = {},
-  options: { fresh?: boolean } = {},
 ): Promise<{ units: Unit[]; truncated: boolean }> {
   const since = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   const queries = boardSearchQueries(viewerLogin, since)
-  const env = { ...classifierEnv, viewerLogin }
   const seen = new Set<string>()
   const raw: Item[] = []
   let truncated = false
@@ -953,15 +948,6 @@ export async function loadUnits(
   await hydrateMissingClosingIssues(token, viewerLogin, raw, seen)
   await hydrateMissingLinkedPullRequests(token, viewerLogin, raw, seen)
   await hydrateMissingClosingIssues(token, viewerLogin, raw, seen)
-  await enrichItemsFromRest(
-    token,
-    viewerLogin,
-    raw.filter(item => item.kind !== 'pr' || isSelf(item.author, viewerLogin)),
-    classifierEnv.CACHE,
-    now.getTime(),
-    options.fresh === true,
-  )
-  await enrichIssueClassificationsForEnv(raw, env, now.getTime())
 
   const units: Unit[] = []
   for (const draft of buildUnitDrafts(raw)) {

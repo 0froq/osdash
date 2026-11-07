@@ -43,7 +43,7 @@ export default defineEventHandler(async event => {
     if (cached) {
       const stale = nowMs - Date.parse(cached.generatedAt) >= INBOX_STALE_MS
       if (stale) {
-        const revalidate = loadInboxUnits(event, user, new Date(), false)
+        const revalidate = loadInboxUnits(user, new Date())
           .then(body => persistInbox(undefined, user.login, body, Date.now()))
           .catch(error => {
             const message = error instanceof Error ? error.message : 'inbox refresh failed'
@@ -73,7 +73,7 @@ export default defineEventHandler(async event => {
   }
 
   try {
-    const body = await loadInboxUnits(event, user, now, refresh)
+    const body = await loadInboxUnits(user, now)
     await persistInbox(undefined, user.login, body, nowMs)
     return presentInbox(user, body, { cached: false, mock: false }, snapshot)
   } catch (error) {
