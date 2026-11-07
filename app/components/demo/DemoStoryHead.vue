@@ -5,7 +5,7 @@ const props = defineProps<{ story: Story; nowMs: number }>()
 
 const item = computed(() => currentItem(props.story))
 const status = computed(() => {
-  if (props.story.turn === 'you') return 'Your turn'
+  if (props.story.turn === 'you') return 'On you'
   if (props.story.turn === 'them') return 'Waiting'
   return 'Done'
 })

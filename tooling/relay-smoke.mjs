@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { spawn, execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { once } from 'node:events'
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -130,7 +130,7 @@ const root = await mkdtemp(join(tmpdir(), 'osdash-bundled-cli-'))
 const child = spawn(
   process.execPath,
   [program, 'serve', '--foreground', '--root', root, '--port', String(port), '--name', 'Mini'],
-  { stdio: 'ignore' },
+  { stdio: 'ignore', env: { ...process.env, HOME: root, XDG_CONFIG_HOME: join(root, '.config') } },
 )
 try {
   let response
@@ -147,10 +147,8 @@ try {
   }
   assert.equal(response?.status, 200)
   assert.equal((await response.json()).protocol, LOCAL_BRIDGE_PROTOCOL)
-  assert.equal(
-    JSON.parse(await readFile(join(root, '.os/config.json'), 'utf8')).origin,
-    LOCAL_BRIDGE_ORIGIN,
-  )
+  assert.ok((await stat(join(root, 'osdash/notes'))).isDirectory())
+  await assert.rejects(readFile(join(root, '.os/config.json')), error => error.code === 'ENOENT')
   console.log(`Built CLI: help, checksum, startup and protocol ${LOCAL_BRIDGE_PROTOCOL} passed`)
 } finally {
   if (child.exitCode === null && child.signalCode === null) {

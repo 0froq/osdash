@@ -1,26 +1,45 @@
 <script setup lang="ts">
+import { noteKey } from '#shared/device-relay'
 import { compareWaitingUnits, type UnitCategory, type UnitView } from '#shared/unit'
-import { copy } from '~/copy/en'
+import { Collapsible, Drawer } from '@froq/ui'
+const { t } = useI18n()
 import { placeUnit, type InboxSection } from '~/composables/useInbox'
 import type { InboxViewName } from '~/components/inbox/Sidebar.vue'
+import { categoryLabel } from '~/utils/category'
 
 const inbox = useInbox()
 const media = useMedia()
 const prefs = usePrefs(inbox.updateUnit)
 const localBridge = useLocalBridge()
 const storage = useStorageDevice()
-const noteDisabledReason = computed(() =>
-  storage.device.value
-    ? storage.connected.value
-      ? copy.note.loadingLocal
-      : copy.note.storageOffline
-    : copy.note.requiresLocal,
-)
+const { mock: mockMode } = useMockMode()
+const navOpen = ref(false)
+const noteMode = computed<'add' | 'loading' | 'connect' | 'refresh' | 'retry'>(() => {
+  if (mockMode.value) return 'add'
+  const unit = openUnit.value
+  if (unit && prefs.canEditNotesFor(unit)) return 'add'
+  if (!storage.device.value) return 'connect'
+  if (!storage.connected.value) return 'refresh'
+  if (!unit || prefs.notesPending(unit.id) || !prefs.noteError.value) return 'loading'
+  return 'retry'
+})
+
+function refreshNoteAccess(): void {
+  if (storage.device.value && !storage.connected.value) void storage.refresh()
+  else if (openUnit.value) void prefs.loadNotes(openUnit.value)
+}
 const route = useRoute()
 const router = useRouter()
 
 const categories: UnitCategory[] = ['claimed-fix', 'direct-pr', 'reported', 'helped']
 const repo = ref<string[]>([])
+const showOwn = ref(false)
+/** An ended unread card stays put until the preview leaves it. */
+const held = ref<string | null>(null)
+const mineOpen = ref(true)
+const waitingOpen = ref(true)
+const endedOpen = ref(false)
+const ownKey = 'osdash-show-own'
 const menu = ref<{ unit: UnitView; x: number; y: number } | null>(null)
 const settingsOpen = ref(false)
 
@@ -42,7 +61,15 @@ const category = computed<UnitCategory | null>(() => {
   return null
 })
 
+/** Where the user is below home, shown in the header after the brand. */
+const trail = computed<string[]>(() => {
+  if (category.value) return [categoryLabel(t, category.value)]
+  if (view.value === 'ended') return [t('sections.ended')]
+  return []
+})
+
 function placed(unit: UnitView): InboxSection | 'hidden' {
+  if (unit.ended && (unit.unread || unit.id === held.value)) return 'waiting'
   return placeUnit(unit, inbox.nowMs.value)
 }
 
@@ -59,14 +86,28 @@ const categoryCounts = computed(() => {
     'helped': 0,
   }
   for (const unit of inbox.units.value) {
-    if (!onHome(unit)) continue
+    if (!listed(unit) || !onHome(unit)) continue
     totals[unit.category] += 1
   }
   return totals
 })
 
-const homeCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'mine').length)
-const endedCount = computed(() => inbox.units.value.filter(unit => placed(unit) === 'ended').length)
+function setShowOwn(shown: boolean): void {
+  showOwn.value = shown
+  localStorage.setItem(ownKey, shown ? '1' : '0')
+}
+
+function listed(unit: UnitView): boolean {
+  if (showOwn.value) return true
+  const login = inbox.viewer.value?.login
+  if (!login) return true
+  const owner = unit.repo.split('/')[0] ?? ''
+  return owner.toLowerCase() !== login.toLowerCase()
+}
+
+const homeCount = computed(
+  () => inbox.units.value.filter(unit => listed(unit) && placed(unit) === 'mine').length,
+)
 
 function inView(unit: UnitView): boolean {
   if (view.value === 'ended') return placed(unit) === 'ended'
@@ -75,7 +116,7 @@ function inView(unit: UnitView): boolean {
 
 const pool = computed(() =>
   inbox.units.value.filter(
-    unit => inView(unit) && (!category.value || unit.category === category.value),
+    unit => listed(unit) && inView(unit) && (!category.value || unit.category === category.value),
   ),
 )
 
@@ -95,7 +136,12 @@ const visible = computed(() => {
 
 function sectionRows(section: InboxSection): UnitView[] {
   const rows = visible.value.filter(unit => placed(unit) === section)
-  if (section === 'waiting') return rows.sort(compareWaitingUnits)
+  if (section === 'waiting') {
+    return rows.sort((first, second) => {
+      const rank = (unit: UnitView) => (unit.unread || unit.id === held.value ? 0 : 1)
+      return rank(first) - rank(second) || compareWaitingUnits(first, second)
+    })
+  }
   if (section === 'ended') {
     return rows.sort(
       (first, second) => Date.parse(second.closedAt ?? '') - Date.parse(first.closedAt ?? ''),
@@ -126,7 +172,7 @@ function writeQuery(patch: Record<string, string | undefined>): void {
 function selectView(next: InboxViewName): void {
   repo.value = []
   menu.value = null
-  writeQuery({ view: next === 'home' ? undefined : next, cat: undefined })
+  writeQuery({ view: next === 'home' ? undefined : next, cat: undefined, open: undefined })
 }
 
 function selectCategory(next: UnitCategory): void {
@@ -157,6 +203,11 @@ function markLater(unit: UnitView, at: number): void {
   later.snooze(unit, at)
 }
 
+function unmarkLater(unit: UnitView): void {
+  menu.value = null
+  later.clear(unit.id)
+}
+
 function queryRecord(): Record<string, string> {
   const next: Record<string, string> = {}
   for (const [key, value] of Object.entries(route.query)) {
@@ -169,6 +220,11 @@ const selectedId = ref('')
 let pushedOpen = false
 const seen = useSeen(inbox.updateUnit)
 const later = useLater(inbox.updateUnit)
+
+/** Snoozed-until timestamp for a card's Later chip, or undefined when not snoozed. */
+function laterUntil(id: string): number | undefined {
+  return later.snoozed.value.get(id)
+}
 const openId = computed(() => (typeof route.query.open === 'string' ? route.query.open : ''))
 const openUnit = computed(() => inbox.units.value.find(unit => unit.id === openId.value) ?? null)
 watch(
@@ -178,13 +234,6 @@ watch(
   },
   { immediate: true },
 )
-
-const flat = computed(() => {
-  if (!showHome.value) return visible.value
-  return (['mine', 'waiting', 'ended'] as const).flatMap(section =>
-    showSection(sectionRows(section)) ? sectionRows(section) : [],
-  )
-})
 
 function selectUnit(unit: UnitView): void {
   selectedId.value = unit.id
@@ -210,39 +259,18 @@ function closePreview(): void {
   writeQuery({ open: undefined })
 }
 
-function moveTo(id: string): void {
-  selectedId.value = id
-  document.querySelector(`[data-unit="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' })
-}
-
-function selectedUnit(): UnitView | undefined {
-  return inbox.units.value.find(unit => unit.id === selectedId.value)
-}
-
 watch([openId, () => inbox.units.value], () => {
   const id = openId.value
-  if (!id) return
+  if (!id) {
+    held.value = null
+    return
+  }
   selectedId.value = id
+  if (held.value && held.value !== id) held.value = null
   const unit = inbox.units.value.find(item => item.id === id)
-  if (unit) seen.mark(unit)
-})
-
-useShortcuts({
-  flat,
-  selectedId,
-  move: moveTo,
-  open() {
-    const unit = flat.value.find(item => item.id === selectedId.value) ?? flat.value[0]
-    if (unit) selectUnit(unit)
-  },
-  close: closePreview,
-  read() {
-    const unit = selectedUnit()
-    if (unit) seen.mark(unit)
-  },
-  home() {
-    selectView('home')
-  },
+  if (!unit) return
+  if (unit.ended && unit.unread) held.value = unit.id
+  seen.mark(unit)
 })
 
 function addNote(unit: UnitView): void {
@@ -253,7 +281,7 @@ function saveNote(
   unit: UnitView,
   payload: { id: string; text: string; version: string | null },
 ): void {
-  const existing = prefs.notesOf(unit).find(note => note.id === payload.id)
+  const existing = prefs.notesOf(unit).find(note => noteKey(note) === payload.id)
   if (!existing) return
   void prefs.saveNote(unit, { ...existing, text: payload.text, version: payload.version })
 }
@@ -304,6 +332,7 @@ onBeforeUnmount(() => {
   void localBridge.reset()
 })
 onMounted(() => {
+  showOwn.value = localStorage.getItem(ownKey) === '1'
   void inbox.load(false)
 })
 </script>
@@ -313,43 +342,50 @@ onMounted(() => {
     :mobile="media.isMobile.value"
     :data-intro="intro ? '1' : undefined"
   >
-    <template #sidebar>
-      <Sidebar
-        v-if="inbox.viewer.value"
+    <template #header>
+      <AppHeader
         :viewer="inbox.viewer.value"
         :pending="inbox.pending.value"
-        :view="view"
-        :category="category"
-        :home-count="homeCount"
-        :ended-count="endedCount"
-        :category-counts="categoryCounts"
+        :expanded="navOpen"
+        :trail="trail"
+        @home="selectView('home')"
+        @toggle="navOpen = !navOpen"
         @refresh="inbox.load(true)"
         @logout="logout"
         @settings="settingsOpen = true"
-        @view="selectView"
-        @category="selectCategory"
       />
-      <MobileNav
+      <Drawer
         v-if="inbox.viewer.value"
-        :viewer="inbox.viewer.value"
-        :pending="inbox.pending.value"
-        :view="view"
-        :category="category"
-        :home-count="homeCount"
-        :ended-count="endedCount"
-        :category-counts="categoryCounts"
-        @refresh="inbox.load(true)"
-        @logout="logout"
-        @settings="settingsOpen = true"
-        @view="selectView"
-        @category="selectCategory"
-      />
+        id="inbox-navigation"
+        v-model="navOpen"
+        side="left"
+        :show-trigger="false"
+        :aria-label="t('nav.section')"
+        :close-label="t('nav.close')"
+        close-on-scroll-outside
+        style="width: min(16rem, calc(100vw - 24px))"
+      >
+        <Sidebar
+          :view="view"
+          :category="category"
+          :home-count="homeCount"
+          :category-counts="categoryCounts"
+          @view="
+            (next: InboxViewName) => {
+              navOpen = false
+              selectView(next)
+            }
+          "
+          @category="
+            (next: UnitCategory) => {
+              navOpen = false
+              selectCategory(next)
+            }
+          "
+        />
+      </Drawer>
     </template>
-    <p
-      v-if="inbox.pending.value && !inbox.viewer.value"
-      class="inbox-status"
-      >{{ copy.loading }}</p
-    >
+    <InboxSkeleton v-if="inbox.pending.value && !inbox.viewer.value" />
     <p
       v-if="inbox.error.value"
       class="inbox-status error"
@@ -370,120 +406,134 @@ onMounted(() => {
         class="inbox-status"
       >
         <span class="status-dot pulse" />
-        {{ copy.updating }}
+        {{ t('updating') }}
       </p>
       <p
         v-if="inbox.truncated.value"
         class="inbox-status"
-        >{{ copy.truncated }}</p
+        >{{ t('truncated') }}</p
       >
       <FilterChips
         :repos="repoChips"
         :active="repo"
+        :show-own="showOwn"
         @select="selectRepo"
+        @own="setShowOwn"
       />
       <EmptyState
         v-if="!inbox.pending.value && inbox.units.value.length === 0"
-        :text="copy.emptyInbox"
+        :text="t('emptyInbox')"
       />
       <template v-else-if="showHome">
-        <Section
+        <Collapsible
           v-if="showSection(sectionRows('mine'))"
-          :title="copy.sections.mine"
-          :count="sectionRows('mine').length"
-          layout="mine"
+          v-model="mineOpen"
+          :label="`${t('sections.mine')} ${sectionRows('mine').length}`"
+          class="section"
+          data-layout="mine"
         >
-          <UnitCard
-            v-for="(unit, index) in sectionRows('mine')"
-            :viewer="inbox.viewer.value.login"
-            :key="unit.id"
-            :index="index"
-            :unit="unit"
-            :selected="unit.id === selectedId"
-            @select="selectUnit(unit)"
-            @menu="openMenu(unit, $event)"
-          />
-        </Section>
-        <Section
-          v-if="showSection(sectionRows('waiting'))"
-          :title="copy.sections.waiting"
-          :count="sectionRows('waiting').length"
-          layout="waiting"
-        >
-          <TransitionGroup name="waiting">
+          <div class="section-body">
             <UnitCard
-              v-for="(unit, index) in sectionRows('waiting')"
+              v-for="(unit, index) in sectionRows('mine')"
               :viewer="inbox.viewer.value.login"
               :key="unit.id"
               :index="index"
               :unit="unit"
               :selected="unit.id === selectedId"
+              :later-at="laterUntil(unit.id)"
               @select="selectUnit(unit)"
               @menu="openMenu(unit, $event)"
             />
-          </TransitionGroup>
-        </Section>
-        <Section
-          v-if="showSection(sectionRows('ended'))"
-          :title="copy.sections.ended"
-          :count="sectionRows('ended').length"
-          layout="ended"
-          collapsible
+            <EmptyState
+              v-if="sectionRows('mine').length === 0"
+              :text="t('emptySection')"
+            />
+          </div>
+        </Collapsible>
+        <Collapsible
+          v-if="showSection(sectionRows('waiting'))"
+          v-model="waitingOpen"
+          :label="`${t('sections.waiting')} ${sectionRows('waiting').length}`"
+          class="section"
+          data-layout="waiting"
         >
-          <UnitCard
-            v-for="(unit, index) in sectionRows('ended')"
-            :viewer="inbox.viewer.value.login"
-            :key="unit.id"
-            :index="index"
-            :unit="unit"
-            :selected="unit.id === selectedId"
-            @select="selectUnit(unit)"
-            @menu="openMenu(unit, $event)"
-          />
-        </Section>
+          <div class="section-body">
+            <TransitionGroup name="waiting">
+              <UnitCard
+                v-for="(unit, index) in sectionRows('waiting')"
+                :viewer="inbox.viewer.value.login"
+                :key="unit.id"
+                :index="index"
+                :unit="unit"
+                :selected="unit.id === selectedId"
+                :later-at="laterUntil(unit.id)"
+                @select="selectUnit(unit)"
+                @menu="openMenu(unit, $event)"
+              />
+            </TransitionGroup>
+            <EmptyState
+              v-if="sectionRows('waiting').length === 0"
+              :text="t('emptySection')"
+            />
+          </div>
+        </Collapsible>
+        <Collapsible
+          v-if="showSection(sectionRows('ended'))"
+          v-model="endedOpen"
+          :label="`${t('sections.ended')} ${sectionRows('ended').length}`"
+          class="section"
+          data-layout="ended"
+        >
+          <div class="section-body">
+            <UnitCard
+              v-for="(unit, index) in sectionRows('ended')"
+              :viewer="inbox.viewer.value.login"
+              :key="unit.id"
+              :index="index"
+              :unit="unit"
+              :selected="unit.id === selectedId"
+              :later-at="laterUntil(unit.id)"
+              @select="selectUnit(unit)"
+              @menu="openMenu(unit, $event)"
+            />
+            <EmptyState
+              v-if="sectionRows('ended').length === 0"
+              :text="t('emptySection')"
+            />
+          </div>
+        </Collapsible>
       </template>
-      <Section
-        v-else
-        :title="copy.sections.ended"
-        :count="visible.length"
-        layout="ended"
-      >
-        <UnitCard
-          :viewer="inbox.viewer.value.login"
-          v-for="(unit, index) in visible"
-          :key="unit.id"
-          :index="index"
-          :unit="unit"
-          :selected="unit.id === selectedId"
-          @select="selectUnit(unit)"
-          @menu="openMenu(unit, $event)"
-        />
-      </Section>
     </template>
     <CardMenu
       v-if="menu"
       :unit="menu.unit"
       :x="menu.x"
       :y="menu.y"
+      :later-at="laterUntil(menu.unit.id)"
       @close="menu = null"
       @read="markRead(menu.unit)"
       @later="markLater(menu.unit, $event)"
+      @clear-later="unmarkLater(menu.unit)"
     />
     <template #preview>
       <PreviewPanel
         :unit="openUnit"
         :viewer="inbox.viewer.value?.login ?? ''"
+        :loading="inbox.pending.value && !inbox.viewer.value"
         :mobile="media.isMobile.value"
         :backdrop="media.isMobile.value || media.isOverlay.value"
+        :later-at="openUnit ? laterUntil(openUnit.id) : undefined"
         :notes="openUnit ? prefs.notesOf(openUnit) : []"
         :notes-editable="!!openUnit && prefs.canEditNotesFor(openUnit)"
         :editable-note-ids="openUnit ? prefs.editableNoteIds(openUnit) : []"
-        :note-disabled-reason="noteDisabledReason"
+        :note-mode="noteMode"
         :note-error="prefs.noteError.value"
-        @notes-reload="openUnit && prefs.loadNotes(openUnit)"
+        @notes-reload="refreshNoteAccess"
         @device-settings="settingsOpen = true"
         @close="closePreview"
         @note-add="openUnit && addNote(openUnit)"
+        @later="openUnit && markLater(openUnit, $event)"
+        @clear-later="openUnit && unmarkLater(openUnit)"
         @note-save="openUnit && saveNote(openUnit, $event)"
         @note-move="openUnit && moveNote(openUnit, $event)"
         @note-delete="openUnit && deleteNote(openUnit, $event)"
@@ -498,6 +548,25 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.section {
+  min-width: 0;
+  margin-top: 30px;
+}
+
+/* The library pins an open section title at top: 0. The site header is sticky
+   too, so pin it just below the header instead of behind it. The extra classes
+   outrank the library's own selector. */
+.section.ui-collapsible.is-open > :deep(.ui-collapsible-trigger) {
+  top: var(--header-h);
+}
+
+.section-body {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 0 4px;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .waiting-move {
     transition:

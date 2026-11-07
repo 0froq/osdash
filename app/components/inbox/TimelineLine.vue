@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { copy } from '~/copy/en'
+const { t } = useI18n()
 import type { StoryLine } from '~/utils/story'
 
 const props = defineProps<{
@@ -24,11 +24,11 @@ const props = defineProps<{
   expandable?: boolean
 }>()
 
-const emit = defineEmits<{ toggle: [] }>()
+const emit = defineEmits<{ toggle: []; plain: [value: boolean] }>()
 
 const who = computed(() => {
   if (props.line.actor === 'checks') return ''
-  return props.line.self ? copy.story.you : props.line.actor
+  return props.line.self ? t('story.you') : props.line.actor
 })
 
 function person(login: string | null | undefined, avatar?: string | null, href?: string | null) {
@@ -44,24 +44,72 @@ const linePerson = computed(() => person(props.line.login, props.line.avatar, pr
 const railPerson = computed(() => person(props.rail?.login))
 
 const long = computed(() => Boolean(props.line.body))
+/** A comment folds only when its text runs past one line. */
+const breaks = computed(() => /[\r\n]/.test(props.line.body ?? ''))
+const overflows = ref(false)
+const canFold = computed(
+  () => Boolean(props.expandable) && long.value && (breaks.value || overflows.value),
+)
+const plainLine = computed(() => Boolean(props.expandable && props.line.body) && !canFold.value)
+
+watch(plainLine, value => emit('plain', value), { immediate: true })
+const probe = ref<HTMLElement | null>(null)
 const box = ref<HTMLElement | null>(null)
 const full = ref(0)
 const shut = 34
+let observer: ResizeObserver | null = null
+let widthObserver: ResizeObserver | null = null
 
 function measure(): void {
   const inner = box.value?.firstElementChild
   if (inner instanceof HTMLElement) full.value = inner.offsetHeight
 }
 
+/** One line that fits the column stays open in the comment box. Anything wider folds. */
+function checkFold(): void {
+  const el = probe.value
+  if (!el) return
+  overflows.value = el.scrollWidth > el.clientWidth + 1
+}
+
 watch(
   () => props.open,
-  () => nextTick(measure),
+  async value => {
+    await nextTick()
+    measure()
+    const inner = box.value?.firstElementChild
+    if (!(inner instanceof HTMLElement)) return
+    if (value) {
+      observer ??= new ResizeObserver(measure)
+      observer.observe(inner)
+    } else {
+      observer?.disconnect()
+      observer = null
+    }
+  },
 )
 watch(
   () => props.line.body,
-  () => nextTick(measure),
+  () =>
+    nextTick(() => {
+      measure()
+      checkFold()
+    }),
 )
-onMounted(() => nextTick(measure))
+onMounted(() =>
+  nextTick(() => {
+    measure()
+    checkFold()
+    const el = probe.value
+    if (!el) return
+    widthObserver = new ResizeObserver(checkFold)
+    widthObserver.observe(el)
+  }),
+)
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  widthObserver?.disconnect()
+})
 </script>
 
 <template>
@@ -70,6 +118,18 @@ onMounted(() => nextTick(measure))
     :class="[`tone-${line.tone}`, { minor, reason: line.reason, rail: Boolean(rail) }]"
     :style="rail ? { '--lane': String(rail.lane) } : undefined"
   >
+    <div
+      v-if="expandable && line.body && !breaks"
+      class="st-measure"
+    >
+      <p
+        ref="probe"
+        class="st-probe"
+        aria-hidden="true"
+      >
+        {{ line.body }}
+      </p>
+    </div>
     <span
       v-if="rail"
       class="st-rail-mark"
@@ -77,38 +137,35 @@ onMounted(() => nextTick(measure))
     >
       <KindIcon :kind="rail.kind" />
     </span>
-    <p
+    <component
+      :is="canFold ? 'button' : 'p'"
       v-if="rail"
+      :type="canFold ? 'button' : undefined"
       class="st-head"
+      :class="{ 'st-line-hit': canFold }"
+      :aria-expanded="canFold ? open : undefined"
+      @click="canFold && emit('toggle')"
     >
       <span class="st-rail-line">
-        <a
+        <SheetLink
           v-if="railPerson"
-          class="st-person"
-          :href="railPerson.href"
-          target="_blank"
-          rel="noreferrer"
+          :url="railPerson.href"
+          :avatar="railPerson.avatar"
+          @click.stop
         >
-          <img
-            class="st-avatar"
-            :src="railPerson.avatar"
-            alt=""
-          />
-          <span class="st-who">{{ rail.who }}</span>
-        </a>
+          {{ rail.who }}
+        </SheetLink>
         <span
           v-else
           class="st-who"
           >{{ rail.who }}</span
         >
-        <span>{{ copy.story.openedItem }}</span>
-        <a
-          class="st-num"
-          :href="rail.url"
+        <span>{{ t('story.openedItem') }}</span>
+        <SheetLink
+          :url="rail.url"
           :title="rail.title || undefined"
-          target="_blank"
-          rel="noreferrer"
-          >#{{ rail.number }}</a
+          @click.stop
+          >#{{ rail.number }}</SheetLink
         >
       </span>
       <TimelineTime
@@ -116,32 +173,25 @@ onMounted(() => nextTick(measure))
         :now-ms="nowMs"
         :url="line.url"
       />
-    </p>
+    </component>
     <component
-      :is="expandable ? 'button' : 'p'"
+      :is="canFold ? 'button' : 'p'"
       v-else
-      :type="expandable ? 'button' : undefined"
+      :type="canFold ? 'button' : undefined"
       class="st-head"
-      :class="{ 'st-line-hit': expandable }"
-      :aria-expanded="expandable ? open : undefined"
-      @click="expandable && emit('toggle')"
+      :class="{ 'st-line-hit': canFold }"
+      :aria-expanded="canFold ? open : undefined"
+      @click="canFold && emit('toggle')"
     >
       <span class="st-title">
-        <a
+        <SheetLink
           v-if="linePerson"
-          class="st-person"
-          :href="linePerson.href"
-          target="_blank"
-          rel="noreferrer"
+          :url="linePerson.href"
+          :avatar="linePerson.avatar"
           @click.stop
         >
-          <img
-            class="st-avatar"
-            :src="linePerson.avatar"
-            alt=""
-          />
-          <span class="st-who">{{ who }}</span>
-        </a>
+          {{ who }}
+        </SheetLink>
         <span
           v-else-if="who"
           class="st-who"
@@ -154,20 +204,17 @@ onMounted(() => nextTick(measure))
           :style="{ '--label': `#${line.label.color}` }"
           >{{ line.label.name }}</span
         >
-        <a
+        <SheetLink
           v-if="line.ref"
-          class="st-ref"
-          :href="line.ref.url"
-          target="_blank"
-          rel="noreferrer"
-          >#{{ line.ref.number }}</a
+          :url="line.ref.url"
+          >#{{ line.ref.number }}</SheetLink
         >
         <span
           v-for="tag in line.tags"
           :key="tag"
           class="st-tag"
           :class="`t-${tag}`"
-          >{{ copy.story.tag[tag] }}</span
+          >{{ t(`story.tag.${tag}`) }}</span
         >
       </span>
       <TimelineTime
@@ -177,7 +224,7 @@ onMounted(() => nextTick(measure))
       />
     </component>
     <div
-      v-if="long"
+      v-if="canFold"
       ref="box"
       class="st-long"
       :class="{ open }"
@@ -192,6 +239,18 @@ onMounted(() => nextTick(measure))
         </p>
         <MarkdownBody
           v-else
+          :source="line.body!"
+          :base-url="line.url ?? undefined"
+        />
+      </div>
+    </div>
+    <!-- One line still sits in the opened comment box. It just cannot fold. -->
+    <div
+      v-else-if="long"
+      class="st-long is-plain"
+    >
+      <div class="st-long-in">
+        <MarkdownBody
           :source="line.body!"
           :base-url="line.url ?? undefined"
         />
@@ -223,6 +282,30 @@ onMounted(() => nextTick(measure))
 </template>
 
 <style scoped>
+/* The probe needs a containing block of its own. Positioning .st-text would
+   pull the issue and PR marks off the rail: they are offset from the row. */
+.st-measure {
+  position: relative;
+  height: 0;
+}
+
+/* Same width as the comment box. If this line overflows, the comment folds. */
+.st-probe {
+  position: absolute;
+  z-index: -1;
+  width: 100%;
+  height: 0;
+  margin: 0;
+  padding: 0 12px;
+  overflow: hidden;
+  box-sizing: border-box;
+  font-size: 13.5px;
+  line-height: 1.55;
+  white-space: nowrap;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 button.st-head {
   width: 100%;
   padding: 0;
@@ -290,24 +373,6 @@ button.st-head:focus-visible .st-title {
   transform: translateY(-50%);
 }
 
-.st-num,
-.st-ref {
-  border-bottom: 1px solid color-mix(in oklab, currentColor 28%, transparent);
-  color: var(--fg);
-  font-family: var(--font-meta);
-  font-weight: 500;
-  line-height: 1.1;
-  text-decoration: none;
-  transition: border-color var(--dur-2) var(--ease);
-}
-
-.st-num:hover,
-.st-num:focus-visible,
-.st-ref:hover,
-.st-ref:focus-visible {
-  border-bottom-color: currentColor;
-}
-
 .st-state {
   font-family: var(--font-meta);
   font-size: 10.5px;
@@ -322,30 +387,8 @@ button.st-head:focus-visible .st-title {
   color: var(--good);
 }
 
-.st-person {
-  display: inline-flex;
-  gap: 5px;
-  align-items: center;
-  color: inherit;
-  text-decoration: none;
-}
-
 .st-who {
-  border-bottom: 1px solid color-mix(in oklab, currentColor 28%, transparent);
   line-height: 1.1;
-  transition: border-color var(--dur-2) var(--ease);
-}
-
-.st-person:hover .st-who,
-.st-person:focus-visible .st-who {
-  border-bottom-color: currentColor;
-}
-
-.st-avatar {
-  width: 1.35em;
-  height: 1.35em;
-  border-radius: 50%;
-  border: 1px solid var(--line);
 }
 
 .tone-bad .st-verb {

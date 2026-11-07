@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { UnitView } from '#shared/unit'
-import { copy } from '~/copy/en'
-import { boardLabel, markLabel, stateLabel, tagLabel } from '~/utils/category'
-import { issueStatus, reasonText } from '~/utils/reason'
+const { t } = useI18n()
+import { stateLabel } from '~/utils/category'
 import { absoluteDay, relativeAge } from '~/utils/time'
 
 const props = defineProps<{
@@ -10,6 +9,8 @@ const props = defineProps<{
   viewer: string
   selected?: boolean
   index?: number
+  /** Timestamp this card is snoozed until; absent means it is not marked later. */
+  laterAt?: number
 }>()
 
 const emit = defineEmits<{
@@ -17,33 +18,18 @@ const emit = defineEmits<{
   menu: [event: MouseEvent]
 }>()
 
-const line = computed(() => {
-  if (props.unit.reasonCode === 'clef' && props.unit.quote) return props.unit.quote
-  return reasonText(props.unit.reasonCode, props.unit.reasonActor)
-})
-
 const endedWhen = computed(() =>
-  props.unit.closedAt ? absoluteDay(props.unit.closedAt) : relativeAge(props.unit.ageMs),
+  props.unit.closedAt ? absoluteDay(props.unit.closedAt) : relativeAge(t, props.unit.ageMs),
 )
 
-const time = computed(() => (props.unit.ended ? endedWhen.value : relativeAge(props.unit.ageMs)))
+const activeAge = computed(() => {
+  const at = props.unit.lastOwnActivityAt
+  const parsed = at ? Date.parse(at) : Number.NaN
+  const age = Number.isNaN(parsed) ? props.unit.ageMs : Date.now() - parsed
+  return relativeAge(t, Math.max(0, age))
+})
 
 const issueOnly = computed(() => props.unit.kind === 'issue-only')
-
-const status = computed(() => {
-  if (props.unit.ended) return stateLabel(props.unit.state)
-  return issueOnly.value ? issueStatus(props.unit.reasonCode) : line.value
-})
-
-const hasNotes = computed(
-  () =>
-    (issueOnly.value && !props.unit.fixedBy) ||
-    props.unit.tags.length > 0 ||
-    props.unit.marks.length > 0 ||
-    props.unit.labels.length > 0 ||
-    Boolean(props.unit.fixedBy) ||
-    props.unit.issues.length > 0,
-)
 </script>
 
 <template>
@@ -73,45 +59,22 @@ const hasNotes = computed(
           ><span class="card-mark">{{ unit.title }}</span></button
         >
       </h3>
-      <p class="card-meta"
-        ><span class="card-status">{{ status }}</span
-        ><span class="card-when">{{ time }}</span></p
+      <p
+        v-if="unit.ended"
+        class="card-meta"
+        ><span class="card-status">{{ stateLabel(t, unit.state) }}</span
+        ><span class="card-when">{{ endedWhen }}</span></p
       >
       <p
-        v-if="hasNotes"
-        class="card-notes"
+        v-else
+        class="card-meta"
       >
-        <span v-if="issueOnly && !unit.fixedBy">{{ copy.noPr }}</span>
-        <span
-          v-for="tag in unit.tags"
-          :key="tag"
-          >{{ tagLabel(tag) }}</span
-        >
-        <span
-          v-for="mark in unit.marks"
-          :key="mark"
-          >{{ markLabel(mark) }}</span
-        >
-        <span
-          v-for="label in unit.labels"
-          :key="label"
-          >{{ boardLabel(label) }}</span
-        >
-        <a
-          v-if="unit.fixedBy"
-          class="card-fixed"
-          :href="unit.fixedBy.url"
-          target="_blank"
-          rel="noreferrer"
-          @click.stop
-          >{{ copy.fixedBy(unit.fixedBy.authorLogin, unit.fixedBy.number) }}</a
-        >
-        <span
-          v-for="issue in unit.issues"
-          :key="issue.url"
-          >{{ copy.related(issue.number) }}</span
-        >
+        <span class="card-when">{{ t('activeFor', { age: activeAge }) }}</span>
       </p>
+      <UnitTags
+        :unit="unit"
+        :later-at="laterAt"
+      />
     </div>
     <CardTimeline
       class="card-rail"
@@ -135,27 +98,27 @@ const hasNotes = computed(
   gap: 7px 32px;
   margin-inline: -14px;
   padding: 16px 20px 16px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius);
   cursor: pointer;
-  /* At rest a sheet is only a hairline. The shadow is reserved for the sheet
-     under the pointer, so a list of ten never looks like ten lifted cards. */
-  box-shadow: 0 0 0 1px var(--line);
+  /* The card is a 1px ring drawn outside its box, like the old shadow ring but
+     with a line style: solid when we have a PR, dashed when there is only an
+     issue. Hover, unread and selected change its color. */
+  outline: 1px solid var(--line);
   transition:
     background-color var(--dur-2) var(--ease),
-    box-shadow var(--dur-2) var(--ease);
+    outline-color var(--dur-2) var(--ease);
+}
+
+.unit-card.issue {
+  outline-style: dashed;
 }
 
 .unit-card {
   --st-paper: var(--bg);
 }
 
-.unit-card.mine {
-  background: var(--card);
-  --st-paper: var(--card);
-}
-
 .unit-card.unread {
-  box-shadow: 0 0 0 1px var(--accent);
+  outline-color: var(--accent);
 }
 
 .unit-card:not(.mine) {
@@ -183,24 +146,23 @@ const hasNotes = computed(
   border-left: 1px solid var(--line);
 }
 
-.unit-card:not(.mine):hover {
+.unit-card:hover {
   background: color-mix(in oklab, var(--fg) 2.5%, transparent);
   --st-paper: color-mix(in oklab, var(--fg) 2.5%, var(--bg));
 }
 
 .unit-card:hover,
 .unit-card:has(.card-open:focus-visible) {
-  box-shadow:
-    0 1px 1px color-mix(in oklab, var(--fg) 6%, transparent),
-    0 14px 30px -20px color-mix(in oklab, var(--fg) 34%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--fg) 24%, var(--line));
+  outline-color: color-mix(in oklab, var(--fg) 24%, var(--line));
+}
+
+.unit-card.unread:hover,
+.unit-card.unread:has(.card-open:focus-visible) {
+  outline-color: var(--accent);
 }
 
 .unit-card.selected {
-  box-shadow:
-    0 1px 1px color-mix(in oklab, var(--fg) 7%, transparent),
-    0 14px 30px -20px color-mix(in oklab, var(--fg) 36%, transparent),
-    0 0 0 1px var(--fg);
+  outline-color: var(--fg);
 }
 
 .card-kicker {
@@ -250,31 +212,6 @@ const hasNotes = computed(
   font-variant-numeric: tabular-nums;
 }
 
-/* Project-specific context stays below the demo's contribution column. */
-.card-notes {
-  display: flex;
-  grid-column: 1;
-  flex-wrap: wrap;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.card-notes > * {
-  max-width: 100%;
-  padding: 3px 9px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  overflow-wrap: anywhere;
-}
-
-.card-fixed:hover {
-  color: var(--fg);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .card-open {
   display: block;
   width: 100%;
@@ -291,20 +228,26 @@ const hasNotes = computed(
   outline-offset: 3px;
 }
 
-@media (max-width: 780px) {
+/* The rail wants about 420px of its own. When the list column is narrower than
+   that plus the info column (docked preview, tablet, phone), hide the rail
+   and keep only the meta. The card keeps its -14px inline margin: the hairline
+   ring is a box-shadow outside the card, and Collapsible clips its body flush
+   at the right edge, so a card pinned to that edge loses its right ring. */
+@container inbox (max-width: 740px) {
   .unit-card {
-    column-gap: 16px;
-    margin-inline: 0;
+    grid-template-columns: minmax(0, 1fr);
     padding: 15px 16px 14px;
   }
 
+  .card-rail {
+    display: none;
+  }
+}
+
+@media (max-width: 780px) {
   .card-title,
   .unit-card:not(.mine) .card-title {
     font-size: 16px;
-  }
-
-  .card-rail {
-    padding-left: 12px;
   }
 }
 </style>

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { UnitNote, UnitView } from '#shared/unit'
-import { copy } from '~/copy/en'
+import { Paper } from '@froq/ui'
+const { t } = useI18n()
 
 const props = defineProps<{
   unit: UnitView | null
   viewer: string
+  /** First load: keep the empty panel blank instead of prompting for a card. */
+  loading?: boolean
   mobile: boolean
   /** True when the preview covers the list (phone sheet or tablet overlay). */
   backdrop: boolean
@@ -12,12 +15,17 @@ const props = defineProps<{
   notesEditable?: boolean
   editableNoteIds?: string[]
   noteError?: string
-  noteDisabledReason?: string
+  /** What the header's note button does until notes can be edited. */
+  noteMode?: 'add' | 'loading' | 'connect' | 'refresh' | 'retry'
+  /** Timestamp this unit is snoozed until; absent means it is not marked later. */
+  laterAt?: number
 }>()
 
 const emit = defineEmits<{
   close: []
   noteAdd: []
+  later: [at: number]
+  clearLater: []
   noteSave: [payload: { id: string; text: string; version: string | null }]
   noteMove: [payload: { id: string; anchor: string }]
   noteDelete: [id: string]
@@ -90,7 +98,7 @@ function onUp(): void {
         v-if="unit && backdrop"
         class="preview-mask"
         type="button"
-        :aria-label="copy.preview.close"
+        :aria-label="t('preview.close')"
         @click="emit('close')"
       />
     </Transition>
@@ -105,131 +113,85 @@ function onUp(): void {
         class="preview"
         :style="drag ? { '--drag': `${drag}px` } : undefined"
       >
-        <div
-          v-if="unit === null"
-          class="preview-empty"
-        >
-          {{ copy.preview.empty }}
-        </div>
-        <div
-          v-else
-          :key="unit.id"
-          class="preview-body"
+        <Paper
+          fixed
+          class="preview-paper"
         >
           <div
-            class="preview-grab"
-            @pointerdown="onDown"
-            @pointermove="onMove"
-            @pointerup="onUp"
-            @pointercancel="onUp"
+            v-if="unit === null"
+            class="preview-empty"
           >
-            <span class="grabber" />
+            {{ loading ? '' : t('preview.empty') }}
           </div>
-          <PreviewHeader
-            :unit="unit"
-            :notes-editable="notesEditable"
-            :note-disabled-reason="noteDisabledReason"
-            @note="emit('noteAdd')"
-          />
-          <div class="preview-scroll">
-            <p
-              v-if="!notesEditable"
-              class="note-access"
-            >
-              {{ noteDisabledReason ?? copy.note.requiresLocal }}
-              <button
-                type="button"
-                @click="emit('deviceSettings')"
-                >{{ copy.note.deviceSettings }}</button
-              >
-            </p>
-            <p
-              v-if="notesEditable"
-              class="note-access"
-            >
-              <span v-if="unit.notes?.length">{{ copy.note.legacyReadOnly }}</span>
-              <button
-                type="button"
-                @click="emit('notesReload')"
-                >{{ copy.note.reloadLocal }}</button
-              >
-            </p>
-            <p
-              v-if="noteError"
-              class="note-access"
-              role="alert"
-            >
-              {{ noteError }}
-              <button
-                v-if="!notesEditable"
-                type="button"
-                @click="emit('notesReload')"
-                >{{ copy.note.reloadLocal }}</button
-              >
-            </p>
+          <div
+            v-else
+            :key="unit.id"
+            class="preview-body"
+          >
             <div
-              v-if="timeline.pending.value && !timeline.payload.value"
-              class="tl-skeleton"
-              aria-hidden="true"
+              class="preview-grab"
+              @pointerdown="onDown"
+              @pointermove="onMove"
+              @pointerup="onUp"
+              @pointercancel="onUp"
             >
-              <span /><span /><span />
+              <span class="grabber" />
             </div>
-            <p
-              v-if="timeline.error.value"
-              class="inbox-status error"
-            >
-              {{ copy.preview.failed }}
-              <button
-                type="button"
-                @click="timeline.load(unit.id, true)"
-                >{{ copy.preview.retry }}</button
-              >
-            </p>
-            <Timeline
-              v-if="timeline.payload.value"
-              :key="timeline.payload.value.id"
-              :entries="timeline.payload.value.entries"
-              :items="timeline.payload.value.items ?? []"
+            <PreviewHeader
               :unit="unit"
-              :viewer="viewer"
-              :truncated="timeline.payload.value.truncated"
-              :original-url="unit.url"
-              :notes="notes ?? unit.notes ?? []"
-              :notes-editable="notesEditable"
-              :editable-note-ids="editableNoteIds"
-              @note-save="emit('noteSave', $event)"
-              @note-move="emit('noteMove', $event)"
-              @note-delete="emit('noteDelete', $event)"
-              @note-cancel="emit('noteCancel', $event)"
+              :note-mode="noteMode ?? 'add'"
+              :later-at="laterAt"
+              @note="emit('noteAdd')"
+              @note-connect="emit('deviceSettings')"
+              @note-refresh="emit('notesReload')"
+              @later="emit('later', $event)"
+              @clear-later="emit('clearLater')"
             />
+            <div class="preview-scroll">
+              <div
+                v-if="timeline.pending.value && !timeline.payload.value"
+                class="tl-skeleton"
+                aria-hidden="true"
+              >
+                <span /><span /><span />
+              </div>
+              <p
+                v-if="timeline.error.value"
+                class="inbox-status error"
+              >
+                {{ t('preview.failed') }}
+                <AppButton
+                  variant="link"
+                  @click="timeline.load(unit.id, true)"
+                  >{{ t('preview.retry') }}</AppButton
+                >
+              </p>
+              <Timeline
+                v-if="timeline.payload.value"
+                :key="timeline.payload.value.id"
+                :entries="timeline.payload.value.entries"
+                :items="timeline.payload.value.items ?? []"
+                :unit="unit"
+                :viewer="viewer"
+                :truncated="timeline.payload.value.truncated"
+                :original-url="unit.url"
+                :notes="notes ?? unit.notes ?? []"
+                :notes-editable="notesEditable"
+                :editable-note-ids="editableNoteIds"
+                @note-save="emit('noteSave', $event)"
+                @note-move="emit('noteMove', $event)"
+                @note-delete="emit('noteDelete', $event)"
+                @note-cancel="emit('noteCancel', $event)"
+              />
+            </div>
           </div>
-        </div>
+        </Paper>
       </aside>
     </Transition>
   </div>
 </template>
 
 <style scoped>
-.note-access {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.note-access button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--fg);
-  cursor: pointer;
-  font: inherit;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .inbox-status {
   display: flex;
   gap: 8px;
@@ -270,15 +232,6 @@ function onUp(): void {
   }
 }
 
-.inbox-status button {
-  padding: 0;
-  border: 0;
-  color: var(--fg);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .preview-root {
   display: none;
   min-width: 0;
@@ -289,7 +242,22 @@ function onUp(): void {
   flex-direction: column;
   min-width: 0;
   height: 100%;
-  background: var(--bg);
+}
+
+/* The panel pins to the viewport edge, so the grain pins with it (fixed). */
+.preview-paper {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Paper's body is `flex: 1 0 auto; min-height: 100%`, so it grows with its
+   content and nothing below it ever scrolls. Let it shrink to the panel so the
+   timeline scroller inside gets a bounded height. */
+.preview-paper :deep(.ui-paper-body) {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .preview-body {
@@ -315,33 +283,6 @@ function onUp(): void {
   justify-content: center;
   padding: 10px 0 2px;
   touch-action: none;
-}
-
-.preview-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.preview-actions button,
-.preview-actions a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--fg);
-  cursor: pointer;
-  font-size: 13px;
-  transition: background-color var(--dur-1) var(--ease);
-}
-
-.preview-actions button:hover,
-.preview-actions a:hover {
-  background: var(--soft);
 }
 
 .preview-scroll {
@@ -415,11 +356,12 @@ function onUp(): void {
     grid-template-columns: 216px minmax(0, 1fr) 460px;
   }
 
+  /* Docked under the site header, so it sticks below it instead of behind it. */
   .preview-root {
     display: block;
     position: sticky;
-    top: 0;
-    height: 100vh;
+    top: var(--header-h);
+    height: calc(100vh - var(--header-h));
   }
 
   .preview {

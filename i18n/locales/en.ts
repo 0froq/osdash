@@ -1,6 +1,4 @@
-/** User-visible copy. Swap this module to change language. */
-
-export const copy = {
+export default {
   brand: 'osdash',
   loading: 'Loading',
   updating: 'Updating',
@@ -12,6 +10,7 @@ export const copy = {
     "No PRs or issues in other people's repos yet. osdash looks at public repos: everything still open, and anything closed in the last 14 days.",
   emptySection: 'None',
   noPr: 'No PR yet',
+  tagsLabel: 'Status',
   issuePrefix: 'issue',
   someone: 'someone',
   justNow: 'just now',
@@ -19,14 +18,49 @@ export const copy = {
   afternoon: 'Good afternoon',
   evening: 'Good evening',
   sections: {
-    mine: 'Your turn',
+    mine: 'On you',
     activity: 'New activity',
-    waiting: 'Not my turn',
+    waiting: 'Waiting',
     ended: 'Done',
   },
   nav: {
     home: 'Home',
     kinds: 'Kinds',
+    notes: 'Notes',
+    section: 'Navigation',
+    path: 'Current location',
+    close: 'Close',
+  },
+  notes: {
+    title: 'Notes',
+    description: 'All your notes, including past contributions.',
+    search: 'Search notes',
+    allRepos: 'All repositories',
+    allSources: 'All sources',
+    sort: 'Sort notes',
+    updated: 'Recently edited',
+    reload: 'Reload notes',
+    empty: 'No notes found.',
+    settings: 'Storage settings',
+    readonly: 'Read-only',
+    copyGlobal: 'Copy to global notes',
+    new: 'New note',
+    repo: 'Repository (owner/repo)',
+    number: 'PR or issue number',
+    kind: 'Kind',
+    anchor: 'Timeline position',
+    create: 'Create in global notes',
+    cancel: 'Cancel',
+    timeline: 'View timeline',
+    github: 'Open on GitHub',
+    unavailable: 'Connect your storage device to read all notes.',
+    failed: 'Could not read all notes. Check your device and reload.',
+    saveFailed:
+      'Could not confirm the save. Your draft is kept here. Reload to check the file before retrying.',
+    conflict: 'The file changed. Your edit is kept as an unsaved global draft beside the original.',
+    deleteFailed: 'Could not confirm deletion. Reload notes before retrying.',
+    unsaved: 'Unsaved draft',
+    saveDraft: 'Save draft to global notes',
   },
   categories: {
     'claimed-fix': 'Claimed fix',
@@ -35,7 +69,7 @@ export const copy = {
     'helped': 'Helped',
   },
   tags: {
-    'claim': 'Claim',
+    'claim': 'Claimed',
     'proposal': 'Proposal',
     'help': 'Help',
     'non-code': 'Non-code',
@@ -71,6 +105,7 @@ export const copy = {
     laterTonight: 'Tonight',
     laterTomorrow: 'Tomorrow',
     laterWeek: 'Next week',
+    laterClear: 'Clear',
   },
   repos: {
     label: 'Repository',
@@ -78,6 +113,7 @@ export const copy = {
     showAll: 'Show all',
     showLess: 'Show less',
     invert: 'Invert',
+    own: 'Own repos',
   },
   note: {
     add: 'Add a note',
@@ -86,9 +122,10 @@ export const copy = {
     cancel: 'Cancel',
     remove: 'Delete note',
     move: 'Move note',
+    drag: 'Drag to move, or press ↑ ↓',
     edit: 'Edit',
-    at: 'at',
-    current: 'Current position',
+    after: 'after {where}',
+    hint: '⌘/Ctrl ↵ save · Esc cancel',
     label: 'Note',
     unsaved: 'Unsaved',
     requiresLocal:
@@ -105,6 +142,8 @@ export const copy = {
     empty: 'Select a card to see its timeline',
     close: 'Close',
     openGithub: 'Open on GitHub',
+    markLater: 'Mark for later',
+    addNote: 'Add a note',
     source: 'Source ↗',
     truncated: 'Older activity was not loaded',
     loading: 'Loading timeline',
@@ -117,42 +156,29 @@ export const copy = {
     justNow: 'now',
     permalink: 'Open on GitHub',
     now: 'Now',
+    expand: 'Expand',
+    collapse: 'Collapse',
+    all: 'all',
     expandAll: 'Expand all',
     collapseAll: 'Collapse all',
     readComment: 'Read comment',
     readLess: 'Hide comment',
-    foldLabel(count: number, open: boolean): string {
-      return `${open ? 'Hide' : 'Show'} ${count} events`
-    },
-    events(count: number): string {
-      return count === 1 ? '1 event' : `${count} events`
-    },
+    foldShow: 'Show {count} events',
+    foldHide: 'Hide {count} events',
+    events: '1 event | {count} events',
     related: 'Related',
     kind: { pr: 'PR', issue: 'issue' },
     state: { open: 'open', closed: 'closed', merged: 'merged' },
     tag: { maintainer: 'maintainer' },
-    on(number: number): string {
-      return `on #${number}`
-    },
+    on: 'on #{number}',
     openedItem: 'opened',
-    opened(kind: 'pr' | 'issue', number: number): string {
-      return `opened ${kind === 'pr' ? 'PR' : 'issue'} #${number}`
-    },
-    closes(number: number): string {
-      return `closes #${number}`
-    },
-    mentions(number: number): string {
-      return `mentions #${number}`
-    },
-    merged(number: number): string {
-      return `merged #${number}`
-    },
-    closed(number: number): string {
-      return `closed #${number}`
-    },
-    reopened(number: number): string {
-      return `reopened #${number}`
-    },
+    openedPr: 'opened PR #{number}',
+    openedIssue: 'opened issue #{number}',
+    closes: 'closes #{number}',
+    mentions: 'mentions #{number}',
+    merged: 'merged #{number}',
+    closed: 'closed #{number}',
+    reopened: 'reopened #{number}',
     commented: 'commented',
     commentedOnCode: 'commented on the code',
     approved: 'approved',
@@ -161,117 +187,61 @@ export const copy = {
     dismissed: 'dismissed a review',
     committed: 'pushed a commit',
     forcePushed: 'force-pushed',
-    assigned(login: string): string {
-      return `assigned ${login}`
-    },
-    unassigned(login: string): string {
-      return `unassigned ${login}`
-    },
-    reviewRequested(login: string): string {
-      return `requested review from ${login}`
-    },
+    assigned: 'assigned {login}',
+    unassigned: 'unassigned {login}',
+    reviewRequested: 'requested review from {login}',
     addedLabel: 'added',
     removedLabel: 'removed',
-    crossRef(): string {
-      return 'mentioned this in'
-    },
-    connected(): string {
-      return 'linked'
-    },
+    crossRef: 'mentioned this in',
+    connected: 'linked',
     renamed: 'renamed the title',
-    checksPassed(count: number): string {
-      return count === 1 ? '1 check passed' : `${count} checks passed`
-    },
-    checksFailed(names: string[]): string {
-      return `checks failed: ${names.join(', ')}`
-    },
-    checksOther(count: number): string {
-      return count === 1 ? '1 check finished' : `${count} checks finished`
-    },
+    checksPassed: '1 check passed | {count} checks passed',
+    checksFailed: 'checks failed: {names}',
+    checksOther: '1 check finished | {count} checks finished',
     relation: {
       yourPr: 'your PR',
       yourIssue: 'your issue',
       theirIssue: 'issue you joined',
-      closes(number: number): string {
-        return `#${number} closes it`
-      },
+      closes: '#{number} closes it',
       mention: 'mentioned',
       history: 'earlier PR, same issue',
-      fixedBy(login: string): string {
-        return login ? `${login}'s PR` : 'fixing PR'
-      },
+      fixedBy: "{login}'s PR",
+      fixedByAnon: 'fixing PR',
     },
     summary: {
-      comments(count: number): string {
-        return count === 1 ? '1 comment' : `${count} comments`
-      },
-      commits(count: number): string {
-        return count === 1 ? '1 commit' : `${count} commits`
-      },
+      comments: '1 comment | {count} comments',
+      commits: '1 commit | {count} commits',
       checksPassed: 'checks passed',
       checksFailed: 'checks failed',
-      reviews(count: number): string {
-        return count === 1 ? '1 review' : `${count} reviews`
-      },
+      reviews: '1 review | {count} reviews',
       reviewRequested: 'review requested',
-      labels(count: number): string {
-        return count === 1 ? '1 label' : `${count} labels`
-      },
-      mentions(numbers: number[]): string {
-        return `mentioned in ${numbers.map(number => `#${number}`).join(', ')}`
-      },
-      bots(count: number): string {
-        return count === 1 ? '1 bot' : `${count} bots`
-      },
-      other(count: number): string {
-        return `${count} other`
-      },
+      labels: '1 label | {count} labels',
+      mentions: 'mentioned in {numbers}',
+      bots: '1 bot | {count} bots',
+      other: '{count} other',
     },
     next: {
       you: 'You',
       maintainers: 'Maintainers',
       anyone: 'Anyone',
       reviewer: 'Reviewer',
-      push(number: number): string {
-        return `push to #${number}`
-      },
+      push: 'push to #{number}',
       reviewAgain: 'reviews again',
-      fixCheck(number: number): string {
-        return `fix the failing check on #${number}`
-      },
-      signCla(number: number): string {
-        return `sign the CLA on #${number}`
-      },
+      fixCheck: 'fix the failing check on #{number}',
+      signCla: 'sign the CLA on #{number}',
       answerBot: 'answer the CodeRabbit comments',
-      reply(number: number): string {
-        return `reply on #${number}`
-      },
-      openPr(number: number): string {
-        return `open a PR for #${number}`
-      },
-      openClosingPr(number: number): string {
-        return `open a PR that closes #${number}`
-      },
-      confirmClaim(number: number): string {
-        return `confirm the claim on #${number}`
-      },
-      merge(number: number): string {
-        return `merge #${number}`
-      },
+      reply: 'reply on #{number}',
+      openPr: 'open a PR for #{number}',
+      openClosingPr: 'open a PR that closes #{number}',
+      confirmClaim: 'confirm the claim on #{number}',
+      merge: 'merge #{number}',
       reviewCommits: 'review the new commits',
     },
   },
-  shortcuts: 'j / k move · Enter / o open · Esc close · e read · g h home',
-  shortcutsLabel: 'Shortcuts',
-  openedFor(age: string): string {
-    return `Opened ${age}`
-  },
-  sourcePr(number: number): string {
-    return `PR #${number}`
-  },
-  sourceIssue(number: number): string {
-    return `issue #${number}`
-  },
+  openedFor: 'Opened {age}',
+  activeFor: 'Active {age}',
+  sourcePr: 'PR #{number}',
+  sourceIssue: 'issue #{number}',
   event: {
     opened: 'opened',
     comment: 'commented',
@@ -304,52 +274,41 @@ export const copy = {
     ciTimedOut: 'timed out',
     ciStale: 'stale',
   },
-  greet(period: string, name: string): string {
-    return `${period}, ${name}`
-  },
-  yourTurn(count: number): string {
-    return `Your turn · ${count}`
-  },
-  stats(merged: number, open: number, reply: string): string {
-    return `Merged ${merged} in 14 days · ${open} open · Avg first reply ${reply}`
-  },
+  greet: '{period}, {name}',
+  greetOnYou: 'on you',
+  greetMerged: 'merged in 14 days',
+  greetOpen: 'open',
+  greetReply: 'to first reply',
   none: '—',
-  days(count: number): string {
-    return count === 1 ? '1 day' : `${count} days`
-  },
-  related(number: number): string {
-    return `Related #${number}`
-  },
-  fixedBy(login: string, number: number): string {
-    return `Fixed by @${login} in #${number} ↗`
-  },
+  days: '1 day | {count} days',
+  related: 'Related #{number}',
+  fixedBy: 'Fixed by {login} in #{number} ↗',
+  laterUntil: 'Later · {when}',
   reason: {
     claimedOpenPr: 'Claimed, no PR yet',
     claimPending: 'Claim awaiting approval',
     ciFailed: 'CI failed',
     ciLintFailed: 'Lint failed',
     claFailed: 'CLA check failed',
-    changesRequested: (actor: string) => `${actor} requested changes`,
+    changesRequested: '{actor} requested changes',
     coderabbit: 'CodeRabbit requested changes',
-    mentioned: (actor: string) => `${actor} mentioned you`,
-    askedPr: (actor: string) => `${actor} asked for a PR or rebase`,
+    mentioned: '{actor} mentioned you',
+    askedPr: '{actor} asked for a PR or rebase',
     askedWaiting: 'Asked a question',
     alreadyFixed: 'Noted a fix',
     workaround: 'Noted a workaround',
     openedWaiting: 'Just opened',
     repliedWaiting: 'Replied',
     pushedWaiting: 'Pushed',
-    commented: (actor: string) => `${actor} commented`,
-    approved: (actor: string) => `${actor} approved`,
-    reviewDismissed: (actor: string) => `${actor} dismissed the review`,
-    pushed: (actor: string) => `${actor} pushed commits`,
+    commented: '{actor} commented',
+    approved: '{actor} approved',
+    reviewDismissed: '{actor} dismissed the review',
+    pushed: '{actor} pushed commits',
     merged: 'Merged',
     closed: 'Closed',
     clef: 'Needs a look',
   },
-  avatarLabel(name: string): string {
-    return `${name} menu`
-  },
+  avatarLabel: '{name} menu',
   localConnection: {
     title: 'Storage device',
     optional:
@@ -397,20 +356,7 @@ export const copy = {
   },
   settings: {
     title: 'Settings',
-    classifier: 'Classifier',
-    intro:
-      'The built-in classifier is only enabled for some accounts. You can add your own OpenAI-compatible endpoint for turns the rules cannot decide.',
-    enabled: 'Site classifier is enabled',
-    baseUrl: 'Endpoint',
-    model: 'Model',
-    apiKey: 'API key',
-    save: 'Save',
-    clear: 'Clear',
     close: 'Close',
-    saved: 'Saved',
-    cleared: 'Cleared',
-    loadFailed: 'Could not load settings',
-    saveFailed: 'Could not save',
   },
   login: {
     tagline: 'See where your PRs and issues stand',

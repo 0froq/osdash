@@ -188,7 +188,7 @@ git subtree pull --prefix=vendor/ui https://github.com/0froq/ui.git main --squas
 2. 行为。不依赖 DOM 结构的逻辑放进 `vendor/ui/src/core/`，不要引用 Vue。需要 Vue、但不关心样子的逻辑放进 `vendor/ui/src/vue/`，并从 `vendor/ui/src/vue/index.ts` 导出。已有 `useChoice` 或其他函数能用就用，不要复制一份。有动效时用 `vendor/ui/src/core` 里的 `prefersReducedMotion`。
 3. 皮肤。在 `vendor/ui/src/components/<concept>/<Name>.vue` 写模板和样式，只读那十二个 `--ui-*` 变量。不要写本项目的类名、色值或字号。组件根上不要写 `ui`，由使用方加在外层。样式加进 `vendor/ui/src/style.css`。已有概念就放进那个目录，对不上时先问，不要自己新开一个概念。
 4. 从 `vendor/ui/src/index.ts` 导出该组件。共享类型从 `vendor/ui/src/vue/index.ts` 导出。
-5. 在组件旁边加 `vendor/ui/src/components/<concept>/<Name>.demo.vue`，以及 `<Name>.md`（英文说明）和 `<Name>.zh.md`（中文说明）。文档站生成概念页 `/components/<concept>` 和组件页 `/components/<concept>/<name>`。概念页放这个目录里每个组件的 demo，组件页渲染旁边的说明。左侧目录有三层：form、prose 这种分组名不是页面；概念和组件都是页面。不要另写一份 demo 名单。
+5. 在组件旁边加 `vendor/ui/src/components/<concept>/<Name>.demo.vue`，以及 `<Name>.md`（英文说明）和 `<Name>.zh.md`（中文说明）。文档站生成概念页 `/components/<concept>` 和组件页 `/components/<concept>/<name>`。概念页放这个目录里每个组件的 demo，组件页渲染旁边的说明。左侧目录有三层：foundation、chrome、control、pattern 这种层级名不是页面；概念和组件都是页面。层级和审查顺序登记在 `vendor/ui/docs/app/utils/components.ts` 的 `TIERS`，没登记的组件落在末尾「未分类」。设计状态写在组件 md 的 `designStatus`（`ai-draft` 或 `reviewed`）。不要另写一份 demo 名单。
 6. 换本项目的引用。调用处改为从 `@froq/ui` 导入，并引入 `style.css`（项目里还没有这份样式时才加）。文案和数据留在调用处。本项目里不再有旧文件的引用之后，删掉旧的组件文件。只负责使用它的页面代码留着。
 7. 在本项目根目录提交。同一次提交同时包含 `vendor/ui` 的新组件和本项目换引用的改动。提交说明写抽了哪个组件。然后把本项目推到它自己的远程。不要执行 `subtree push`。
 

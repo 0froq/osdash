@@ -1,6 +1,7 @@
 import { isClaimComment } from '#shared/claim-keywords'
 import { isMaintainerAssociation } from '#shared/claim-types'
 import type { ReasonCode } from '#shared/reason'
+import type { TFunc } from '#shared/i18n'
 import { reasonText } from '~/utils/reason'
 
 /*
@@ -749,7 +750,7 @@ const NEXT: Partial<Record<ReasonCode, (c: { primary: RawItem; actor: string | n
     ],
   }
 
-function derive(s: Scenario, nowMs: number): Contribution {
+function derive(t: TFunc, s: Scenario, nowMs: number): Contribution {
   const items = new Map(s.items.map(item => [item.key, item]))
   const ctx: Ctx = { s, items }
   const primaryRaw = items.get(s.primary)!
@@ -838,7 +839,7 @@ function derive(s: Scenario, nowMs: number): Contribution {
     blocks,
     turn: s.turn,
     now: {
-      text: reasonText(s.reason.code, s.reason.actor),
+      text: reasonText(t, s.reason.code, s.reason.actor),
       at: at(reasonEvent.h),
       days: Math.floor(reasonEvent.h / 24),
       source: `judge → ${s.reason.code} · reasonText()`,
@@ -848,8 +849,8 @@ function derive(s: Scenario, nowMs: number): Contribution {
   }
 }
 
-export function demoContributions(nowMs: number): Contribution[] {
-  return SCENARIOS.map(s => derive(s, nowMs))
+export function demoContributions(t: TFunc, nowMs: number): Contribution[] {
+  return SCENARIOS.map(s => derive(t, s, nowMs))
 }
 
 export function shortAgo(at: number, nowMs: number): string {

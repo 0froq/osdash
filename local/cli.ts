@@ -1,13 +1,15 @@
-import { resolve } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { createServiceManager, type ServiceConfig } from './service.ts'
 
 import { createLocalBridge, validateBridgeOrigin } from './bridge.ts'
-import { openWorkspace } from './workspace.ts'
+import { openConfiguredWorkspace } from './notes.ts'
+import { loadUserConfig, homePath } from './config.ts'
+import { homedir } from 'node:os'
 import { verifyRemoteAccount } from './account.ts'
 import { createDeviceClient } from './device-client.ts'
-import { LOCAL_BRIDGE_ORIGIN } from '../shared/local-bridge.ts'
+import { startNotificationPolling } from './notifications.ts'
 
 async function reportService(
   manager: ReturnType<typeof createServiceManager>,
@@ -20,8 +22,9 @@ async function reportService(
     process.stdout.write(
       `Storage service is already running (PID ${result.pid}).\nWorkspace: ${config.root}\n`,
     )
+  const profileFlag = config.profile ? ` --profile ${config.profile}` : ''
   process.stdout.write(
-    `Runs in the background. You can close Terminal.\nUse os- status, os- restart (fresh pairing code), or os- stop.\nLogs: ${manager.paths.log}\n`,
+    `Runs in the background. You can close Terminal.\nUse os- status${profileFlag}, os- restart${profileFlag} (fresh pairing code), or os- stop${profileFlag}.\nLogs: ${manager.paths.log}\n`,
   )
 }
 
@@ -32,9 +35,11 @@ async function main() {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
     options: {
-      origin: { type: 'string', default: LOCAL_BRIDGE_ORIGIN },
-      port: { type: 'string', default: '47831' },
-      root: { type: 'string', default: '.' },
+      origin: { type: 'string' },
+      config: { type: 'string' },
+      profile: { type: 'string', default: 'default' },
+      port: { type: 'string' },
+      root: { type: 'string' },
       name: { type: 'string', default: 'My storage device' },
       help: { type: 'boolean' },
       foreground: { type: 'boolean' },
@@ -42,14 +47,14 @@ async function main() {
   })
   if (values.help) {
     process.stdout.write(
-      'Usage: os- serve [--root <directory>] [--name <device name>] [--origin <origin>] [--port <port>] [--foreground]\n       os- status | stop | restart\n\nserve installs and starts a per-user background service on macOS/Linux.\n--foreground keeps this process attached to the terminal without installing a service.\n',
+      'Usage: os- serve [--profile <name>] [--config <file>] [--root <legacy workspace>] [--name <device name>] [--origin <origin>] [--port <port>] [--foreground]\n       os- status | stop | restart [--profile <name>]\n\nserve installs and starts a per-user background service on macOS/Linux.\n--foreground keeps this process attached to the terminal without installing a service.\n',
     )
     return
   }
   if (positionals.length !== 1 || !['serve', 'status', 'stop', 'restart'].includes(positionals[0]!))
     throw new Error('Expected serve, status, stop or restart. Use --help for usage.')
+  const manager = createServiceManager({ profile: values.profile })
   if (positionals[0] !== 'serve') {
-    const manager = createServiceManager()
     const config = await manager.saved()
     if (!config) {
       process.stdout.write('No background service is installed. Run os- serve first.\n')
@@ -74,33 +79,54 @@ async function main() {
     }
     return
   }
-  const port = Number(values.port)
+  const port = Number(values.port ?? (values.profile === 'local' ? '47832' : '47831'))
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Invalid bridge port')
   // Validate the origin before creating workspace files.
-  validateBridgeOrigin(values.origin)
+  const cliPath = (path: string) =>
+    path.startsWith('~') ? homePath(path, homedir()) : resolve(path)
+  const configHome =
+    process.env.XDG_CONFIG_HOME && isAbsolute(process.env.XDG_CONFIG_HOME)
+      ? process.env.XDG_CONFIG_HOME
+      : join(homedir(), '.config')
+  const configPath = values.config
+    ? cliPath(values.config)
+    : values.profile !== 'default'
+      ? join(configHome, 'osdash/profiles', `${values.profile}.json`)
+      : undefined
+  const selected = await loadUserConfig({ path: configPath })
+  const origin = values.origin ?? selected.config.origin
+  validateBridgeOrigin(origin)
   if (!values.name.trim() || values.name.length > 64)
     throw new Error('Device name must be 1–64 characters')
-  const workspace = await openWorkspace(resolve(values.root), values.origin)
+  const workspace = await openConfiguredWorkspace({
+    path: configPath,
+    root: values.root ? cliPath(values.root) : undefined,
+    origin,
+  })
   if (!values.foreground) {
-    await reportService(createServiceManager(), {
+    await reportService(manager, {
       version: 1,
+      ...(values.profile === 'default' ? {} : { profile: values.profile }),
       root: workspace.root,
-      origin: values.origin,
+      origin,
+      configured: !values.root,
+      userConfigPath: selected.path ?? undefined,
       port,
       name: values.name,
       node: process.execPath,
       entry: fileURLToPath(import.meta.url),
+      environmentPath: process.env.PATH,
     })
     return
   }
-  const device = createDeviceClient(workspace, values.origin, values.name, message =>
+  const device = createDeviceClient(workspace, origin, values.name, message =>
     process.stdout.write(`${message}\n`),
   )
   const bridge = createLocalBridge({
-    origin: values.origin,
+    origin,
     readConfig: workspace.readConfig,
     workspace,
-    verifyAccount: (grant, challenge) => verifyRemoteAccount(values.origin, grant, challenge),
+    verifyAccount: (grant, challenge) => verifyRemoteAccount(origin, grant, challenge),
     onPair: (account, grant, challenge) => device.bind(account, grant, challenge),
   })
   await new Promise<void>((resolve, reject) => {
@@ -108,11 +134,18 @@ async function main() {
     bridge.server.listen(port, '127.0.0.1', resolve)
   })
   await device.start()
+  const stopNotifications = startNotificationPolling(
+    workspace,
+    async () => (await loadUserConfig({ path: selected.path ?? configPath })).config,
+    message => process.stdout.write(`${message}\n`),
+  )
   process.stdout.write(
     [
       `Bridge: http://127.0.0.1:${port}`,
       `Workspace: ${workspace.root}`,
-      `Allowed website: ${values.origin}`,
+      `Allowed website: ${origin}`,
+      `Config: ${selected.path ?? '(built-in defaults)'}`,
+      `New notes: ${selected.config.notesDirectory}`,
       'Storage: account-linked Markdown files. Bound workspaces reconnect automatically.',
       `Pairing code (one use, expires in 5 minutes): ${bridge.pairingCode}`,
       'Paste the code only into the allowed website. Restart this command to pair again.',
@@ -120,6 +153,7 @@ async function main() {
     ].join('\n'),
   )
   const stop = () => {
+    stopNotifications()
     device.stop()
     bridge.server.close()
     bridge.server.closeAllConnections()

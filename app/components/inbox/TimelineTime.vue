@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { copy } from '~/copy/en'
+const { t } = useI18n()
 import { absoluteTime, shortAge } from '~/utils/time'
 
 const props = defineProps<{ at: string; nowMs: number; url?: string | null }>()
 
 const title = computed(() => {
   const full = absoluteTime(props.at)
-  return props.url ? `${full} · ${copy.story.permalink}` : full
+  return props.url ? `${full} · ${t('story.permalink')}` : full
 })
 </script>
 
@@ -18,14 +18,14 @@ const title = computed(() => {
     :title="title"
     target="_blank"
     rel="noreferrer"
-    ><time :datetime="at">{{ shortAge(at, nowMs) }}</time></a
+    ><time :datetime="at">{{ shortAge(t, at, nowMs) }}</time></a
   >
   <time
     v-else
     class="st-when"
     :datetime="at"
     :title="title"
-    >{{ shortAge(at, nowMs) }}</time
+    >{{ shortAge(t, at, nowMs) }}</time
   >
 </template>
 

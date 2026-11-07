@@ -120,6 +120,12 @@ export default { async fetch(request, env) {
     assert.equal((await call('/request?account=456', { action: 'list', unit })).body.status, 503)
     const snapshot = (await call('/request', { action: 'list', unit })).body
     assert.equal(snapshot.body.versions[note.id], first.body.version)
+    const revisionBeforeCatalog = (await call('/status')).body.revision
+    const catalog = (await call('/request', { action: 'catalog' })).body
+    assert.equal(catalog.status, 200)
+    assert.equal(catalog.body.entries[0].unit, unit)
+    assert.deepEqual(catalog.body.entries[0].note, note)
+    assert.equal((await call('/status')).body.revision, revisionBeforeCatalog)
     const changed = { ...note, text: 'Changed from Air', anchor: '2026-10-27T00:00:00.000Z' }
     const second = (
       await call('/request', { action: 'save', unit, note: changed, version: first.body.version })

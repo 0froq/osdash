@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { greetingCount, greetingTitle, statsLine } from '~/utils/greeting'
+import { greetingFacts, greetingTitle } from '~/utils/greeting'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   name: string
@@ -9,29 +11,30 @@ const props = defineProps<{
   averageFirstReplyMs: number | null
 }>()
 
-const parts = computed(() => {
-  const text = `${greetingCount(props.mine)} · ${statsLine(props.merged, props.open, props.averageFirstReplyMs)}`
-  return text
-    .split(/(\d+(?:\.\d+)?)/)
-    .filter(Boolean)
-    .map(value => ({ value, num: /^\d/.test(value) }))
-})
+const facts = computed(() =>
+  greetingFacts(t, props.mine, props.merged, props.open, props.averageFirstReplyMs),
+)
 </script>
 
 <template>
   <header class="greeting">
-    <h1>{{ greetingTitle(name) }}</h1>
-    <p class="greeting-stats"
-      ><template
-        v-for="(part, index) in parts"
-        :key="index"
-        ><span
-          v-if="part.num"
-          class="num"
-          >{{ part.value }}</span
-        ><template v-else>{{ part.value }}</template></template
-      ></p
-    >
+    <h1>{{ greetingTitle(t, name) }}</h1>
+    <p class="greeting-stats">
+      <template
+        v-for="(fact, index) in facts"
+        :key="fact.label"
+      >
+        <span
+          v-if="index"
+          class="sep"
+          aria-hidden="true"
+          >·</span
+        >
+        <span class="fact"
+          ><span class="num">{{ fact.figure }}</span> {{ fact.label }}</span
+        >
+      </template>
+    </p>
   </header>
 </template>
 
@@ -48,13 +51,28 @@ const parts = computed(() => {
 }
 
 .greeting-stats {
-  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-top: 10px;
   color: var(--muted);
   font-size: 13px;
+  line-height: 1.45;
+}
+
+.fact {
+  white-space: nowrap;
+}
+
+.sep {
+  padding: 0 0.45em;
+  color: var(--faint);
 }
 
 .greeting-stats .num {
+  color: var(--fg);
   font-family: var(--font-meta);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 760px) {

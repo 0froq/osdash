@@ -100,48 +100,28 @@ defineProps<{ cells: StoryCell[]; focus: number | null }>()
   background: var(--st-paper, var(--bg));
 }
 
-.n-dot::after {
+.n-open {
+  border-color: currentColor;
+  background: var(--st-paper, var(--bg));
+}
+
+.n-dot::after,
+.n-open::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: 50%;
   background: currentColor;
   transform-origin: center;
-  animation: st-fill 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  transition:
+    transform 300ms var(--ease),
+    opacity 200ms var(--ease);
 }
 
-.n-open {
-  border-color: currentColor;
-  background: var(--st-paper, var(--bg));
-  animation: st-ring 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
-}
-
-@keyframes st-fill {
-  from {
-    transform: scale(0.45);
-  }
-
-  60% {
-    transform: scale(1.28);
-  }
-
-  to {
-    transform: scale(1);
-  }
-}
-
-@keyframes st-ring {
-  from {
-    transform: translate(-50%, -50%) scale(0.45);
-  }
-
-  60% {
-    transform: translate(-50%, -50%) scale(1.28);
-  }
-
-  to {
-    transform: translate(-50%, -50%) scale(1);
-  }
+/* Same move as a group opening: the solid disc eases away and the ring is left. */
+.n-open::after {
+  opacity: 0;
+  transform: scale(0.45);
 }
 
 .n-minor {

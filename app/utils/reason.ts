@@ -1,58 +1,58 @@
 import type { ReasonCode } from '#shared/reason'
-import { copy } from '~/copy/en'
+import type { TFunc } from '#shared/i18n'
 
-function actorName(actor: string | null): string {
-  return actor && actor.length > 0 ? actor : copy.someone
+function actorName(t: TFunc, actor: string | null): string {
+  return actor && actor.length > 0 ? actor : t('someone')
 }
 
 /** Reason line for a card. Clef quotes are shown by the caller when present. */
-export function reasonText(code: ReasonCode, actor: string | null): string {
-  const name = actorName(actor)
+export function reasonText(t: TFunc, code: ReasonCode, actor: string | null): string {
+  const name = actorName(t, actor)
   switch (code) {
     case 'claimed-open-pr':
-      return copy.reason.claimedOpenPr
+      return t('reason.claimedOpenPr')
     case 'claim-pending':
-      return copy.reason.claimPending
+      return t('reason.claimPending')
     case 'ci-failed':
-      return copy.reason.ciFailed
+      return t('reason.ciFailed')
     case 'ci-lint-failed':
-      return copy.reason.ciLintFailed
+      return t('reason.ciLintFailed')
     case 'cla-failed':
-      return copy.reason.claFailed
+      return t('reason.claFailed')
     case 'changes-requested':
-      return copy.reason.changesRequested(name)
+      return t('reason.changesRequested', { actor: name })
     case 'coderabbit':
-      return copy.reason.coderabbit
+      return t('reason.coderabbit')
     case 'mentioned':
-      return copy.reason.mentioned(name)
+      return t('reason.mentioned', { actor: name })
     case 'asked-pr-or-rebase':
-      return copy.reason.askedPr(name)
+      return t('reason.askedPr', { actor: name })
     case 'asked-waiting':
-      return copy.reason.askedWaiting
+      return t('reason.askedWaiting')
     case 'already-fixed':
-      return copy.reason.alreadyFixed
+      return t('reason.alreadyFixed')
     case 'workaround':
-      return copy.reason.workaround
+      return t('reason.workaround')
     case 'opened-waiting':
-      return copy.reason.openedWaiting
+      return t('reason.openedWaiting')
     case 'replied-waiting':
-      return copy.reason.repliedWaiting
+      return t('reason.repliedWaiting')
     case 'pushed-waiting':
-      return copy.reason.pushedWaiting
+      return t('reason.pushedWaiting')
     case 'commented':
-      return copy.reason.commented(name)
+      return t('reason.commented', { actor: name })
     case 'approved':
-      return copy.reason.approved(name)
+      return t('reason.approved', { actor: name })
     case 'review-dismissed':
-      return copy.reason.reviewDismissed(name)
+      return t('reason.reviewDismissed', { actor: name })
     case 'pushed':
-      return copy.reason.pushed(name)
+      return t('reason.pushed', { actor: name })
     case 'merged':
-      return copy.reason.merged
+      return t('reason.merged')
     case 'closed':
-      return copy.reason.closed
+      return t('reason.closed')
     case 'clef':
-      return copy.reason.clef
+      return t('reason.clef')
     default: {
       const exhaustive: never = code
       return exhaustive
@@ -61,10 +61,10 @@ export function reasonText(code: ReasonCode, actor: string | null): string {
 }
 
 /**
- * Short status under an issue card in "Not my turn".
+ * Short status under an issue card while it is waiting.
  * Does not assign the next actor: an issue may be a question or a self-proposed PR.
  */
-export function issueStatus(code: ReasonCode): string {
-  if (code === 'opened-waiting') return copy.status.justOpened
-  return copy.status.open
+export function issueStatus(t: TFunc, code: ReasonCode): string {
+  if (code === 'opened-waiting') return t('status.justOpened')
+  return t('status.open')
 }

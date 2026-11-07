@@ -14,6 +14,19 @@ export interface PickOption extends ChoiceOption {
   count?: number
 }
 
+export interface TagItem {
+  value: string
+  label: string
+  /** `accent` marks a tag that asks for a look; the default stays quiet. */
+  tone?: 'muted' | 'accent'
+  /** Not done yet. Drawn with a dashed underline. */
+  pending?: boolean
+  /** Renders the tag as a link. */
+  href?: string
+  /** Open `href` in a new tab without a referrer. */
+  external?: boolean
+}
+
 export interface NavigationItem {
   value: string
   label: string

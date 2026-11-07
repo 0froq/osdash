@@ -61,7 +61,7 @@ const legend = computed(() =>
 )
 
 const word = computed(() => {
-  if (props.c.turn === 'you') return 'Your turn'
+  if (props.c.turn === 'you') return 'On you'
   if (props.c.turn === 'done') return 'Done'
   return `Waiting ${props.c.now.days}d`
 })

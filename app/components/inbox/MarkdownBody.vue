@@ -3,7 +3,13 @@ import { renderMarkdown } from '#shared/markdown'
 
 const props = defineProps<{ source: string; baseUrl?: string }>()
 // The shared renderer parses raw HTML, sanitizes it, and validates every link.
-const html = computed(() => renderMarkdown(props.source, props.baseUrl))
+// Bot reports hide their tables behind a collapsed <details>; show them.
+const html = computed(() =>
+  renderMarkdown(props.source, props.baseUrl).replace(
+    /<details(?![^>]*\bopen\b)/g,
+    '<details open',
+  ),
+)
 </script>
 
 <template>
@@ -111,9 +117,9 @@ const html = computed(() => renderMarkdown(props.source, props.baseUrl))
 }
 
 .markdown-body :deep(table) {
-  display: block;
+  display: table;
+  width: max-content;
   max-width: 100%;
-  overflow-x: auto;
   border-collapse: collapse;
   font-size: 0.92em;
 }

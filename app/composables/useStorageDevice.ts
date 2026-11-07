@@ -1,6 +1,13 @@
 import { computed, readonly, ref } from 'vue'
 import { isLocalAccount } from '#shared/local-bridge'
-import { validNote, validVersion, type DeviceInfo, type NoteSnapshot } from '#shared/device-relay'
+import {
+  noteKey,
+  validNote,
+  validVersion,
+  type DeviceInfo,
+  type NoteSnapshot,
+  type NoteCatalog,
+} from '#shared/device-relay'
 import type { UnitNote } from '#shared/unit'
 
 const device = ref<DeviceInfo | null>(null)
@@ -72,6 +79,10 @@ function start(login: string) {
     if (!document.hidden) void refresh()
   }, 15_000)
 }
+function withSource(note: UnitNote, source?: string): UnitNote {
+  if (note.source) return note
+  return { ...note, source: source ?? 'global', writable: note.writable ?? true }
+}
 async function request(
   path: string,
   options: { method?: 'POST' | 'DELETE'; body?: Record<string, unknown> } = {},
@@ -95,12 +106,19 @@ async function listNotes(unit: string): Promise<UnitNote[]> {
     !body.notes.every(validNote) ||
     !body.versions ||
     body.notes.some(
-      note => !validVersion(body.versions[note.id]) || body.versions[note.id] === null,
+      note =>
+        !validVersion(body.versions[noteKey(note)] ?? body.versions[note.id]) ||
+        (body.versions[noteKey(note)] ?? body.versions[note.id]) === null,
     )
   )
     throw new Error('Invalid storage response')
   if (operation === session.value) versions.set(unit, body.versions)
-  return body.notes.map(note => ({ ...note, version: body.versions[note.id] }))
+  return body.notes.map(note =>
+    withSource({
+      ...note,
+      version: body.versions[noteKey(note)] ?? body.versions[note.id],
+    }),
+  )
 }
 async function saveNote(unit: string, note: UnitNote): Promise<UnitNote> {
   const operation = session.value
@@ -109,7 +127,8 @@ async function saveNote(unit: string, note: UnitNote): Promise<UnitNote> {
     body: {
       unit,
       note,
-      version: note.version === undefined ? (versions.get(unit)?.[note.id] ?? null) : note.version,
+      version:
+        note.version === undefined ? (versions.get(unit)?.[noteKey(note)] ?? null) : note.version,
     },
   })) as { note: UnitNote; version: string }
   if (
@@ -119,22 +138,49 @@ async function saveNote(unit: string, note: UnitNote): Promise<UnitNote> {
     !result.version
   )
     throw new Error('Invalid storage response')
+  const stored = withSource(
+    { ...result.note, source: note.source, version: result.version },
+    note.source,
+  )
   if (operation === session.value)
-    versions.set(unit, { ...versions.get(unit), [note.id]: result.version })
-  return { ...result.note, version: result.version }
+    versions.set(unit, { ...versions.get(unit), [noteKey(stored)]: result.version })
+  return stored
 }
 async function deleteNote(
   unit: string,
   id: string,
   version: string | null = versions.get(unit)?.[id] ?? null,
+  source?: string,
 ) {
   const operation = session.value
-  await request('/api/device/notes', { method: 'DELETE', body: { unit, noteId: id, version } })
+  await request('/api/device/notes', {
+    method: 'DELETE',
+    body: { unit, noteId: id, version, source },
+  })
   if (operation === session.value && versions.has(unit)) {
     const next = { ...versions.get(unit) }
-    delete next[id]
+    delete next[noteKey({ id, source })]
     versions.set(unit, next)
   }
+}
+async function catalog(after?: string): Promise<NoteCatalog> {
+  const query = new URLSearchParams(after ? { after } : {})
+  const body = (await request(`/api/device/catalog?${query}`)) as NoteCatalog
+  if (
+    !Array.isArray(body.entries) ||
+    !Array.isArray(body.sources) ||
+    !Array.isArray(body.warnings) ||
+    (body.next !== null && typeof body.next !== 'string') ||
+    body.entries.some(
+      row =>
+        typeof row.unit !== 'string' ||
+        !validNote(row.note) ||
+        !validVersion(row.version) ||
+        row.version === null,
+    )
+  )
+    throw new Error('Invalid note catalog')
+  return body
 }
 async function unlink() {
   if (!device.value) return
@@ -163,6 +209,7 @@ export function useStorageDevice() {
     reset,
     refresh,
     listNotes,
+    catalog,
     saveNote,
     deleteNote,
     unlink,

@@ -63,6 +63,8 @@ export type Unit = {
   tone: Tone
   lastActivityAt: string
   lastOtherActivityAt: string | null
+  /** The viewer's own latest action across the card's members. Creation counts. */
+  lastOwnActivityAt: string | null
   ageMs: number
   firstReplyMs: number | null
   links: { item: string; comment: string | null; ci: string | null }
@@ -80,6 +82,8 @@ export type Unit = {
     authorLogin?: string
     createdAt?: string
     closedAt?: string | null
+    /** Opening text of the issue or pull request. */
+    body?: string
     /** storyKey list of issues this item closes or is connected to. */
     closes?: string[]
   }>
@@ -89,6 +93,10 @@ export type Unit = {
 /** A note the viewer wrote on a card, placed on the story by time. */
 export type UnitNote = {
   id: string
+  /** Device-selected source. New notes omit this and always use global storage. */
+  source?: string
+  writable?: boolean
+  updatedAt?: string
   /** Client-only file fingerprint captured when editing starts. */
   version?: string | null
   /** Client-only state. Cleared after the device acknowledges a save. */

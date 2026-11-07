@@ -21,6 +21,7 @@ const session = ref(0)
 let token: string | null = null
 let expiry: ReturnType<typeof setTimeout> | undefined
 let generation = 0
+let bridgeUrl = LOCAL_BRIDGE_URL
 
 function clearConnection() {
   generation += 1
@@ -42,7 +43,7 @@ async function request(
   const operation = generation
   const headers = new Headers(init.headers)
   if (credential) headers.set('Authorization', `Bearer ${credential}`)
-  const response = await fetch(`${LOCAL_BRIDGE_URL}${path}`, {
+  const response = await fetch(`${bridgeUrl}${path}`, {
     ...init,
     headers,
     mode: 'cors',
@@ -220,6 +221,8 @@ async function deleteNote(unit: string, id: string) {
 }
 
 export function useLocalBridge() {
+  const configured = useRuntimeConfig().public.osdashLocalBridgeUrl
+  if (typeof configured === 'string' && configured) bridgeUrl = configured
   return {
     status: readonly(status),
     config: readonly(config),

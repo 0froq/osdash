@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { UnitView } from '#shared/unit'
-import { copy } from '~/copy/en'
+const { t } = useI18n()
 
 const props = defineProps<{ unit: UnitView; viewer: string }>()
 const timeline = useTimeline()
@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
           class="timeline-status"
           :role="timeline.error.value ? 'status' : undefined"
         >
-          {{ timeline.error.value ? copy.preview.failed : copy.loading }}
+          {{ timeline.error.value ? t('preview.failed') : t('loading') }}
         </p>
       </div>
     </div>

@@ -25,6 +25,8 @@ export type StoryItem = {
   /** Null when the item is only known through closingIssuesReferences. */
   createdAt: string | null
   closedAt: string | null
+  /** Opening text, when the board item still has it. */
+  body?: string
   /** primary: the card. issue: a linked issue. history: an earlier viewer PR. fixed-by: someone else's PR. */
   role: 'primary' | 'issue' | 'history' | 'fixed-by'
   /** Issues only. closing = closingIssuesReferences or connected. mention = cross-referenced only. */
@@ -90,6 +92,7 @@ export function storyItems(unit: StoryUnit): StoryItem[] {
     authorLogin: primaryMember?.authorLogin ?? '',
     createdAt: unit.createdAt,
     closedAt: unit.closedAt,
+    ...(primaryMember?.body ? { body: primaryMember.body } : {}),
     role: 'primary',
     link: null,
     closes: primaryMember?.closes ?? [],
@@ -112,6 +115,7 @@ export function storyItems(unit: StoryUnit): StoryItem[] {
       authorLogin: member?.authorLogin ?? '',
       createdAt: member?.createdAt ?? null,
       closedAt: old.closedAt,
+      ...(member?.body ? { body: member.body } : {}),
       role: 'history',
       link: null,
       closes: member?.closes ?? closingKeys,
@@ -132,6 +136,7 @@ export function storyItems(unit: StoryUnit): StoryItem[] {
       authorLogin: issue.authorLogin,
       createdAt: member?.createdAt ?? null,
       closedAt: member?.closedAt ?? null,
+      ...(member?.body ? { body: member.body } : {}),
       role: 'issue',
       link: issue.link,
       closes: [],

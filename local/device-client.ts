@@ -2,6 +2,8 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import type { LocalAccount } from '../shared/local-bridge.ts'
 import {
   DEVICE_PROTOCOL,
+  LOCAL_RELAY_HEADER,
+  deviceSocketOrigin,
   MAX_RELAY_BYTES,
   parseNoteOperation,
   type DeviceCredential,
@@ -17,6 +19,8 @@ export async function runDeviceCommand(
   try {
     const operation = parseNoteOperation(input)
     await workspace.readConfig()
+    if (operation.action === 'catalog')
+      return { status: 200, body: await workspace.catalog(account, operation.after) }
     if (operation.action === 'list')
       return { status: 200, body: await workspace.snapshot(account, operation.unit) }
     if (operation.action === 'save')
@@ -29,7 +33,13 @@ export async function runDeviceCommand(
           operation.version,
         ),
       }
-    await workspace.remove(account, operation.unit, operation.noteId, operation.version)
+    await workspace.remove(
+      account,
+      operation.unit,
+      operation.noteId,
+      operation.version,
+      operation.source,
+    )
     return { status: 200, body: { ok: true } }
   } catch (error) {
     return {
@@ -95,7 +105,10 @@ export function createDeviceClient(
         return
       }
       if (probe.status !== 204) throw new Error('Relay unavailable')
-      const url = new URL('/api/device/socket', origin)
+      const url = new URL(
+        '/api/device/socket',
+        deviceSocketOrigin(origin, probe.headers.get(LOCAL_RELAY_HEADER)),
+      )
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
       const active = new WebSocket(url, protocols)
       socket = active

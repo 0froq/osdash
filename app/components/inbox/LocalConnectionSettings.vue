@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { LOCAL_BRIDGE_ORIGIN } from '#shared/local-bridge'
-import { copy } from '~/copy/en'
+import { Button } from '@froq/ui'
+const { t } = useI18n()
 
 const props = defineProps<{ viewerLogin: string }>()
 const bridge = useLocalBridge()
@@ -16,11 +17,13 @@ const headingId = useId()
 function shellQuote(value: string) {
   return `'${value.replaceAll("'", "'\\''")}'`
 }
-const command = computed(() =>
-  origin.value === LOCAL_BRIDGE_ORIGIN
+const command = computed(() => {
+  if (origin.value === 'http://localhost:3000' || origin.value === 'http://127.0.0.1:3000')
+    return 'os- serve --profile local --root ~/osdash'
+  return origin.value === LOCAL_BRIDGE_ORIGIN
     ? 'os- serve'
-    : `os- serve --origin ${shellQuote(origin.value)}`,
-)
+    : `os- serve --origin ${shellQuote(origin.value)}`
+})
 const installCommand = computed(
   () =>
     `curl -fsS ${shellQuote(`${origin.value}/install.sh`)} | ${origin.value === LOCAL_BRIDGE_ORIGIN ? '' : `OS_INSTALL_BASE_URL=${shellQuote(origin.value)} `}sh`,
@@ -30,9 +33,9 @@ const busy = computed(
 )
 const statusText = computed(() => {
   if (storage.device.value)
-    return storage.device.value.online ? copy.localConnection.online : copy.localConnection.offline
-  if (bridge.status.value === 'connecting') return copy.localConnection.connecting
-  return bridge.connected.value ? copy.localConnection.connected : copy.localConnection.disconnected
+    return storage.device.value.online ? t('localConnection.online') : t('localConnection.offline')
+  if (bridge.status.value === 'connecting') return t('localConnection.connecting')
+  return bridge.connected.value ? t('localConnection.connected') : t('localConnection.disconnected')
 })
 
 onMounted(() => {
@@ -54,7 +57,7 @@ async function readConfig() {
   try {
     await bridge.refreshConfig()
   } catch {
-    configError.value = copy.localConnection.configFailed
+    configError.value = t('localConnection.configFailed')
   } finally {
     reading.value = false
   }
@@ -68,7 +71,7 @@ async function unlink() {
     unlinkConfirm.value = false
     await bridge.reset()
   } catch {
-    configError.value = copy.localConnection.unlinkFailed
+    configError.value = t('localConnection.unlinkFailed')
   } finally {
     unlinking.value = false
   }
@@ -90,8 +93,8 @@ async function disconnect() {
     class="device-settings"
     :aria-labelledby="headingId"
   >
-    <h3 :id="headingId">{{ copy.localConnection.title }}</h3>
-    <p class="device-note">{{ copy.localConnection.optional }}</p>
+    <h3 :id="headingId">{{ t('localConnection.title') }}</h3>
+    <p class="device-note">{{ t('localConnection.optional') }}</p>
     <p
       class="device-status"
       role="status"
@@ -100,42 +103,46 @@ async function disconnect() {
     >
     <template v-if="storage.device.value">
       <dl class="device-config">
-        <dt>{{ copy.localConnection.name }}</dt
-        ><dd>{{ storage.device.value.name }}</dd> <dt>{{ copy.localConnection.account }}</dt
+        <dt>{{ t('localConnection.name') }}</dt
+        ><dd>{{ storage.device.value.name }}</dd> <dt>{{ t('localConnection.account') }}</dt
         ><dd>{{ viewerLogin }}</dd>
       </dl>
       <div class="device-actions">
-        <button
+        <Button
           type="button"
           :disabled="busy"
           @click="storage.refresh()"
-          >{{ copy.localConnection.refreshStatus }}</button
         >
-        <button
+          {{ t('localConnection.refreshStatus') }}
+        </Button>
+        <Button
           v-if="!unlinkConfirm"
           type="button"
           :disabled="busy"
           @click="unlinkConfirm = true"
-          >{{ copy.localConnection.unlink }}</button
         >
+          {{ t('localConnection.unlink') }}
+        </Button>
       </div>
       <p
         v-if="unlinkConfirm"
         class="device-note"
       >
-        {{ copy.localConnection.unlinkWarning }}
-        <button
-          type="button"
+        {{ t('localConnection.unlinkWarning') }}
+        <AppButton
+          variant="link"
           :disabled="busy"
           @click="unlink"
-          >{{ copy.localConnection.confirmUnlink }}</button
         >
-        <button
-          type="button"
+          {{ t('localConnection.confirmUnlink') }}
+        </AppButton>
+        <AppButton
+          variant="link"
           :disabled="busy"
           @click="unlinkConfirm = false"
-          >{{ copy.localConnection.keepDevice }}</button
         >
+          {{ t('localConnection.keepDevice') }}
+        </AppButton>
       </p>
     </template>
     <template v-if="!storage.device.value && !bridge.connected.value">
@@ -143,21 +150,21 @@ async function disconnect() {
         class="device-setup"
         open
       >
-        <summary>{{ copy.localConnection.setup }}</summary>
-        <p>{{ copy.localConnection.install }}</p>
+        <summary>{{ t('localConnection.setup') }}</summary>
+        <p>{{ t('localConnection.install') }}</p>
         <pre><code>{{ installCommand }}</code></pre>
-        <p>{{ copy.localConnection.workspace }}</p>
+        <p>{{ t('localConnection.workspace') }}</p>
         <pre><code>{{ command }}</code></pre>
         <a
           href="https://github.com/0froq/osdash"
           target="_blank"
           rel="noreferrer"
-          >{{ copy.localConnection.source }}</a
+          >{{ t('localConnection.source') }}</a
         >
-        <p>{{ copy.localConnection.instructions }}</p>
+        <p>{{ t('localConnection.instructions') }}</p>
       </details>
       <label class="device-code">
-        <span>{{ copy.localConnection.pairingCode }}</span>
+        <span>{{ t('localConnection.pairingCode') }}</span>
         <input
           v-model="code"
           type="password"
@@ -171,55 +178,57 @@ async function disconnect() {
       <p
         v-if="!viewerLogin"
         class="device-note"
-        >{{ copy.localConnection.signedOut }}</p
+        >{{ t('localConnection.signedOut') }}</p
       >
       <div class="device-actions">
-        <button
+        <Button
           type="button"
           :disabled="busy || !viewerLogin || !code.trim()"
           @click="pair"
         >
-          {{ copy.localConnection.connect }}
-        </button>
-        <button
+          {{ t('localConnection.connect') }}
+        </Button>
+        <Button
           v-if="bridge.status.value === 'connecting'"
           type="button"
           @click="bridge.reset()"
         >
-          {{ copy.localConnection.cancel }}
-        </button>
+          {{ t('localConnection.cancel') }}
+        </Button>
       </div>
-      <p class="device-note">{{ copy.localConnection.permissions }}</p>
+      <p class="device-note">{{ t('localConnection.permissions') }}</p>
     </template>
     <template v-if="bridge.connected.value">
       <dl
         v-if="bridge.config.value"
         class="device-config"
       >
-        <dt>{{ copy.localConnection.account }}</dt>
+        <dt>{{ t('localConnection.account') }}</dt>
         <dd>{{ bridge.account.value?.login }}</dd>
-        <dt>{{ copy.localConnection.locale }}</dt>
+        <dt>{{ t('localConnection.locale') }}</dt>
         <dd>{{ bridge.config.value.locale }}</dd>
-        <dt>{{ copy.localConnection.notesDirectory }}</dt>
+        <dt>{{ t('localConnection.notesDirectory') }}</dt>
         <dd>{{
           bridge.config.value.notesConfigured
-            ? copy.localConnection.configured
-            : copy.localConnection.notConfigured
+            ? t('localConnection.configured')
+            : t('localConnection.notConfigured')
         }}</dd>
       </dl>
       <div class="device-actions">
-        <button
+        <Button
           type="button"
           :disabled="busy"
           @click="readConfig"
-          >{{ copy.localConnection.refresh }}</button
         >
-        <button
+          {{ t('localConnection.refresh') }}
+        </Button>
+        <Button
           type="button"
           :disabled="busy"
           @click="disconnect"
-          >{{ copy.localConnection.disconnect }}</button
         >
+          {{ t('localConnection.disconnect') }}
+        </Button>
       </div>
     </template>
     <div
@@ -228,10 +237,10 @@ async function disconnect() {
       role="alert"
     >
       <p>{{ configError || storage.error.value || bridge.error.value }}</p>
-      <p>{{ copy.localConnection.troubleshooting }}</p>
+      <p>{{ t('localConnection.troubleshooting') }}</p>
     </div>
-    <p class="device-note">{{ copy.localConnection.scope }}</p>
-    <p class="device-note">{{ copy.localConnection.lifetime }}</p>
+    <p class="device-note">{{ t('localConnection.scope') }}</p>
+    <p class="device-note">{{ t('localConnection.lifetime') }}</p>
   </section>
 </template>
 
@@ -245,8 +254,11 @@ async function disconnect() {
 }
 
 .device-settings h3 {
-  font-size: 17px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
 .device-note,
@@ -279,8 +291,10 @@ async function disconnect() {
 }
 
 .device-setup pre {
-  padding: 10px;
-  background: var(--soft);
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--ui-radius);
   font-family: var(--font-meta);
   font-size: 12px;
   white-space: pre-wrap;
@@ -290,8 +304,30 @@ async function disconnect() {
 .device-setup a {
   display: inline-block;
   margin-top: 8px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--fg) 28%, transparent);
+  background-color: transparent;
+  background-image: linear-gradient(
+    100deg,
+    transparent 0.2em,
+    color-mix(in oklab, var(--accent) 18%, transparent) 0.35em,
+    color-mix(in oklab, var(--accent) 18%, transparent) calc(100% - 0.35em),
+    transparent calc(100% - 0.15em)
+  );
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0 42%;
+  color: var(--fg);
+  font: inherit;
+  transition:
+    background-size var(--dur-2) var(--ease),
+    border-color var(--dur-1) var(--ease);
+}
+
+.device-setup a:hover {
+  border-bottom-color: var(--fg);
+  background-size: 100% 42%;
 }
 
 .device-code {
@@ -301,15 +337,32 @@ async function disconnect() {
   font-size: 13px;
 }
 
+.device-code span {
+  color: var(--muted);
+  font-family: var(--font-meta);
+  font-size: 12px;
+}
+
 .device-code input {
   min-width: 0;
-  min-height: 38px;
-  padding: 0 12px;
+  min-height: 36px;
+  padding: 0 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
+  border-radius: var(--ui-radius);
+  background: transparent;
   color: var(--fg);
   font: inherit;
+  transition: border-color var(--dur-1) var(--ease);
+}
+
+.device-code input:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--fg) 28%, transparent);
+}
+
+.device-code input:focus-visible {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .device-actions {
@@ -318,23 +371,6 @@ async function disconnect() {
   gap: 10px;
 }
 
-.device-actions button {
-  min-height: 32px;
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--fg);
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-}
-
-.device-actions button:hover:not(:disabled) {
-  background: var(--soft);
-}
-
-.device-actions button:disabled,
 .device-code input:disabled {
   cursor: default;
   opacity: 0.5;
@@ -344,6 +380,11 @@ async function disconnect() {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 6px 12px;
+}
+
+.device-config dt {
+  font-family: var(--font-meta);
+  font-size: 12px;
 }
 
 .device-config dd {

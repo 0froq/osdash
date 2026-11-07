@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { constants } from 'node:fs'
+import { constants, existsSync } from 'node:fs'
 import { chmod, lstat, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, join } from 'node:path'
@@ -14,6 +14,10 @@ export type ServiceConfig = {
   name: string
   node: string
   entry: string
+  configured?: boolean
+  userConfigPath?: string
+  environmentPath?: string
+  profile?: string
 }
 const execute = promisify(execFile)
 const marker = 'Managed by os-'
@@ -27,14 +31,30 @@ const xml = (value: string) =>
 const unitValue = (value: string) => JSON.stringify(value.replaceAll('%', '%%'))
 const unitArg = (value: string) => unitValue(value.replaceAll('$', () => '$$'))
 
-export function servicePaths(home = homedir(), platform = process.platform) {
+export function servicePaths(home = homedir(), platform = process.platform, profile = 'default') {
+  if (!/^[a-z][a-z0-9-]{0,31}$/.test(profile)) throw new Error('Invalid service profile')
   if (platform !== 'darwin' && platform !== 'linux')
     throw new Error(
       'Background services require macOS launchd or Linux systemd. Use serve --foreground on this platform.',
     )
-  const label = `me.froq.osdash.${createHash('sha256').update(home).digest('hex').slice(0, 12)}`
-  const directory = join(home, '.local/state/os')
+  const identity = profile === 'default' ? home : `${home}\0${profile}`
+  const label = `me.froq.osdash.${createHash('sha256').update(identity).digest('hex').slice(0, 12)}`
+  const currentDirectory = join(
+    home,
+    '.local/state/osdash',
+    ...(profile === 'default' ? [] : ['profiles', profile]),
+  )
+  const legacyDirectory = join(home, '.local/state/os')
+  // Keep finding a previously installed service. Renaming defaults must not start a second one.
+  const directory =
+    profile === 'default' &&
+    !existsSync(join(currentDirectory, 'service.json')) &&
+    existsSync(join(legacyDirectory, 'service.json'))
+      ? legacyDirectory
+      : currentDirectory
   return {
+    home,
+    profile,
     platform,
     label,
     directory,
@@ -57,8 +77,9 @@ export function serviceDefinition(
     config.entry,
     'serve',
     '--foreground',
-    '--root',
-    config.root,
+    ...(config.profile ? ['--profile', config.profile] : []),
+    ...(config.configured ? [] : ['--root', config.root]),
+    ...(config.userConfigPath ? ['--config', config.userConfigPath] : []),
     '--origin',
     config.origin,
     '--port',
@@ -74,6 +95,7 @@ export function serviceDefinition(
 <key>Label</key><string>${paths.label}</string>
 <key>ProgramArguments</key><array>${args.map(value => `<string>${xml(value)}</string>`).join('')}</array>
 <key>WorkingDirectory</key><string>${xml(config.root)}</string>
+<key>EnvironmentVariables</key><dict><key>HOME</key><string>${xml(paths.home)}</string>${config.environmentPath ? `<key>PATH</key><string>${xml(config.environmentPath)}</string>` : ''}</dict>
 <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
 <key>ThrottleInterval</key><integer>10</integer><key>Umask</key><integer>63</integer>
 <key>StandardOutPath</key><string>${xml(paths.log)}</string>
@@ -86,6 +108,8 @@ Description=osdash storage device
 [Service]
 ExecStart=${args.map(unitArg).join(' ')}
 WorkingDirectory=${unitValue(config.root)}
+Environment=${unitValue(`HOME=${paths.home}`)}
+${config.environmentPath ? `Environment=${unitValue(`PATH=${config.environmentPath}`)}` : ''}
 Restart=always
 RestartSec=10
 UMask=0077
@@ -118,10 +142,11 @@ export function createServiceManager(
   options: {
     home?: string
     platform?: NodeJS.Platform
+    profile?: string
     run?: (command: string, args: string[]) => Promise<string>
   } = {},
 ) {
-  const paths = servicePaths(options.home, options.platform)
+  const paths = servicePaths(options.home, options.platform, options.profile)
   const domain = `gui/${process.getuid?.()}`
   const run =
     options.run ??
@@ -149,10 +174,16 @@ export function createServiceManager(
       const value = JSON.parse(await file.readFile('utf8')) as ServiceConfig
       if (
         value.version !== 1 ||
+        (value.profile ?? 'default') !== paths.profile ||
         ![value.root, value.node, value.entry].every(
           item => typeof item === 'string' && isAbsolute(item),
         ) ||
         typeof value.origin !== 'string' ||
+        (value.configured !== undefined && typeof value.configured !== 'boolean') ||
+        (value.environmentPath !== undefined &&
+          (typeof value.environmentPath !== 'string' || /[\r\n\0]/.test(value.environmentPath))) ||
+        (value.userConfigPath !== undefined &&
+          (typeof value.userConfigPath !== 'string' || !isAbsolute(value.userConfigPath))) ||
         !Number.isInteger(value.port) ||
         value.port < 1024 ||
         value.port > 65535 ||
@@ -204,7 +235,7 @@ export function createServiceManager(
     if (
       current.running &&
       (!previous ||
-        ['root', 'origin', 'port', 'name'].some(
+        ['root', 'origin', 'port', 'name', 'configured', 'userConfigPath', 'profile'].some(
           key => previous[key as keyof ServiceConfig] !== config[key as keyof ServiceConfig],
         ))
     )
@@ -235,7 +266,21 @@ export function createServiceManager(
     const offset = (await lstat(paths.log)).size
     if (paths.platform === 'darwin') {
       await native(['enable', `${domain}/${paths.label}`], [])
-      await native(['bootstrap', domain, paths.definition], [])
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await native(['bootstrap', domain, paths.definition], [])
+          break
+        } catch (error) {
+          // launchd can return EIO while the previous job is still being torn down.
+          if (
+            !previous ||
+            attempt >= 4 ||
+            !/Bootstrap failed: 5:/.test((error as { stderr?: string }).stderr ?? '')
+          )
+            throw error
+          await new Promise(resolve => setTimeout(resolve, 150 * 2 ** attempt))
+        }
+      }
     } else {
       await native([], ['daemon-reload'])
       await native([], ['enable', '--now', `${paths.label}.service`])

@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { noteKey } from '#shared/device-relay'
+import { ToggleButton, Toggle, WordSwap } from '@froq/ui'
 import type { TimelineEntry } from '#shared/events'
 import type { StoryItem } from '#shared/story'
 import type { UnitNote, UnitView } from '#shared/unit'
-import { copy } from '~/copy/en'
+const { t } = useI18n()
+import { breakTies, nearestSlot, rowAt, stampAfter } from '~/utils/noteAnchor'
+import type { NoteDrag } from '~/components/inbox/TimelineNotes.vue'
 import { reasonText } from '~/utils/reason'
 import {
   buildStory,
@@ -44,6 +48,7 @@ const focus = ref<number | null>(null)
 
 const story = computed(() =>
   buildStory(
+    t,
     props.entries,
     props.items,
     {
@@ -195,33 +200,62 @@ onMounted(() => {
 onBeforeUnmount(() => railObserver?.disconnect())
 watch(rows, () => nextTick(measureRails))
 
+/**
+ * Every event's stamp, in story order and folded events included, so a
+ * collapsed and an open timeline agree on all of them. Ties are broken (see
+ * `breakTies`). The NOW row stands one millisecond after the newest event, not
+ * at the render clock: a note carries its creation time as its anchor, and
+ * against a render-time NOW a fresh note sorted below NOW, then above it after
+ * the next mount.
+ */
+const stamps = computed(() => {
+  const lines = (story.value?.blocks ?? []).flatMap(block =>
+    block.type === 'line' ? [block.line] : block.fold.lines,
+  )
+  const times = breakTies(lines.map(line => line.at))
+  const byId = new Map(lines.map((line, index) => [line.id, times[index]!]))
+  const now = (times.at(-1) ?? (Date.parse(props.unit.lastActivityAt) || 0)) + 1
+  return { byId, order: [...times, now], now }
+})
+
 /** Each story row's time, so a note can be placed by stamp instead of by id. */
 function rowTime(row: StoryRow): number | null {
-  if (row.type === 'line') return row.line.at
-  if (row.type === 'now') return nowMs
+  if (row.type === 'line') return stamps.value.byId.get(row.line.id) ?? row.line.at
+  if (row.type === 'now') return stamps.value.now
+  // A collapsed group stands at its last event, so a note can sit below the group.
+  // An open one has no time of its own: its lines carry them.
+  if (row.type === 'fold' && !row.open) {
+    const last = row.fold.lines.at(-1)
+    return last ? (stamps.value.byId.get(last.id) ?? last.at) : null
+  }
   return null
 }
 
 /**
  * Notes are placed by time: a note sits after the last row that is not newer
- * than it. The `at` row is the anchor; notes keep their own stamp so they
- * survive rows disappearing from the data.
+ * than it. NOW is not such a row: it is the story's own tail, stamped at the
+ * newest event, so anything stamped later than it would be a note about the
+ * future — and would jump backwards the moment a new event pushed NOW ahead.
+ * Notes stay above NOW, under the newest event.
  */
+const timedRows = computed(() =>
+  rows.value
+    .map(row => ({ row, time: rowTime(row) }))
+    .filter(
+      (entry): entry is { row: StoryRow; time: number } =>
+        entry.time !== null && entry.row.type !== 'now',
+    ),
+)
+
 const notesAfter = computed(() => {
   const map = new Map<string, UnitNote[]>()
-  const timed = rows.value
-    .map((row, index) => ({ row, index, time: rowTime(row) }))
-    .filter((entry): entry is { row: StoryRow; index: number; time: number } => entry.time !== null)
+  const timed = timedRows.value
 
+  const places = timed.map(entry => ({ id: entry.row.id, time: entry.time }))
   for (const note of props.notes) {
     const stamp = Date.parse(note.anchor)
     if (Number.isNaN(stamp)) continue
-    // The last timed row at or before the note; falls back to the first row.
-    let target = timed[0]?.row.id ?? rows.value[0]?.id
-    for (const entry of timed) {
-      if (entry.time <= stamp) target = entry.row.id
-      else break
-    }
+    const target = rowAt(places, stamp) ?? rows.value[0]?.id
     if (!target) continue
     const list = map.get(target) ?? []
     list.push(note)
@@ -231,19 +265,362 @@ const notesAfter = computed(() => {
   return map
 })
 
-/** Every row a note can be moved to, keyed by that row's time. */
-const anchors = computed(() =>
-  rows.value.flatMap(row => {
-    const time = rowTime(row)
-    if (time === null) return []
-    return [
-      {
-        id: new Date(time).toISOString(),
-        label: row.type === 'line' ? `${row.line.actor} ${row.line.verb}` : copy.story.now,
-      },
+/** The row a note currently sits under. */
+function rowOfNote(key: string): string | undefined {
+  for (const [rowId, list] of notesAfter.value)
+    if (list.some(note => noteKey(note) === key)) return rowId
+}
+
+/**
+ * The anchor for a note dropped right after the timed row at `index`. The next
+ * event is taken from every event in the story, not from the rows on screen:
+ * between two visible rows there may be a folded group, and a note stamped past
+ * the group's first event would jump into it the moment it is expanded.
+ */
+function anchorAfter(index: number): string {
+  const prev = timedRows.value[index]?.time ?? 0
+  const order = stamps.value.order
+  const at = order.indexOf(prev)
+  const next = at >= 0 ? (order[at + 1] ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY
+  return new Date(stampAfter(prev, next)).toISOString()
+}
+
+function moveNoteTo(key: string, rowId: string): void {
+  const index = timedRows.value.findIndex(entry => entry.row.id === rowId)
+  if (index < 0 || rowOfNote(key) === rowId) return
+  emit('noteMove', { id: key, anchor: anchorAfter(index) })
+}
+
+/**
+ * Where a drop would put this note, or null when it would stay put. `anchor` is
+ * the stamp the dragged note itself will wear, so the card can show it before
+ * it lands.
+ */
+function dropPlan(
+  key: string,
+  rowId: string,
+  index: number,
+): { anchor: string; swap?: { id: string; anchor: string } } | null {
+  const from = rowOfNote(key)
+  if (!from) return null
+  const list = notesAfter.value.get(rowId) ?? []
+  const selfIndex = list.findIndex(note => noteKey(note) === key)
+  if (from === rowId && index === selfIndex) return null
+  const others = list.filter(note => noteKey(note) !== key)
+  const prev = others[index - 1]
+  const next = others[index]
+  const rowIndex = timedRows.value.findIndex(entry => entry.row.id === rowId)
+  const rowTime = timedRows.value[rowIndex]?.time ?? 0
+  const order = stamps.value.order
+  const at = order.indexOf(rowTime)
+  const nextEvent = at >= 0 ? (order[at + 1] ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY
+  const lower = prev ? Date.parse(prev.anchor) : rowTime
+  const upper = Math.min(next ? Date.parse(next.anchor) : Number.POSITIVE_INFINITY, nextEvent)
+  const self = list[selfIndex]
+  if (from === rowId && self && lower >= upper - 1) {
+    const other = index < selfIndex ? next : prev
+    if (!other) return null
+    return { anchor: other.anchor, swap: { id: noteKey(other), anchor: self.anchor } }
+  }
+  return { anchor: new Date(stampAfter(lower, upper)).toISOString() }
+}
+
+/** Drop the note at `index` among the row's notes, not counting itself. */
+function dropNote(key: string, rowId: string, index: number): void {
+  const plan = dropPlan(key, rowId, index)
+  if (!plan) return
+  emit('noteMove', { id: key, anchor: plan.anchor })
+  if (plan.swap) emit('noteMove', { id: plan.swap.id, anchor: plan.swap.anchor })
+}
+
+/**
+ * Notes under one row are ordered by their anchor, so two notes swap places by
+ * swapping anchors. Two `noteMove` emits: each note keeps its own stamp.
+ */
+function swapNote(key: string, step: -1 | 1): void {
+  const rowId = rowOfNote(key)
+  const list = rowId === undefined ? [] : (notesAfter.value.get(rowId) ?? [])
+  const index = list.findIndex((note: UnitNote) => noteKey(note) === key)
+  const other = list[index + step]
+  const self = list[index]
+  if (!other || !self) return
+  emit('noteMove', { id: key, anchor: other.anchor })
+  emit('noteMove', { id: noteKey(other), anchor: self.anchor })
+}
+
+/**
+ * One step up or down, for the keyboard: the next note under the same row when
+ * there is one, else the next row.
+ */
+function nudgeNote(key: string, step: -1 | 1): void {
+  const rowId = rowOfNote(key)
+  const list = rowId === undefined ? [] : (notesAfter.value.get(rowId) ?? [])
+  const index = list.findIndex((note: UnitNote) => noteKey(note) === key)
+  if (list[index + step]) {
+    swapNote(key, step)
+    return
+  }
+  const at = timedRows.value.findIndex(entry => entry.row.id === rowId)
+  const next = timedRows.value[at + step]
+  if (at >= 0 && next) moveNoteTo(key, next.row.id)
+}
+
+/**
+ * A note being dragged. Pointer events rather than HTML drag and drop, so it
+ * also works by touch and the card can follow the pointer.
+ *
+ * Every insertion point — before each note, and after the last note of a row —
+ * is measured once, at pick-up. `nearestSlot` reads the pointer against that
+ * frozen list, so the gap opening and closing never feeds back into the choice.
+ * The gap itself is only a height: the same push between two notes as between
+ * two rows.
+ */
+const drag = ref<NoteDrag | null>(null)
+let dragSlots: Array<{ rowId: string; index: number; top: number }> = []
+let dragOrigin = 0
+let dragFlat = 0
+let dragFromIndex = 0
+let dragFootprint = 0
+let dragGrab = 0
+let dragPointerY = 0
+let dragPointerId = -1
+let dragStartedAt = 0
+let dragScroller: HTMLElement | null = null
+let dragFrame = 0
+let settleToken = 0
+/** True while a gap is inserted or removed without a height animation. */
+const releasing = ref(false)
+const lifting = ref(false)
+
+/** The card follows the pointer without a reactive write, which would re-render
+ * the list on every frame and restart its transition. */
+function placeCard(): void {
+  const root = group.value
+  const card = root?.querySelector<HTMLElement>('.note.is-dragging')
+  const parent = card?.offsetParent
+  if (!root || !card || !(parent instanceof HTMLElement)) return
+  root.style.setProperty(
+    '--note-drag-top',
+    `${dragPointerY - dragGrab - parent.getBoundingClientRect().top}px`,
+  )
+}
+
+function onDragPointerMove(event: PointerEvent): void {
+  if (event.pointerId !== dragPointerId) return
+  dragPointerY = event.clientY
+}
+
+function onDragPointerUp(event: PointerEvent): void {
+  if (event.pointerId !== dragPointerId) return
+  // Lifting the card out of the list releases pointer capture and some browsers
+  // report that as a cancel in the same turn the drag started.
+  if (event.type === 'pointercancel' && performance.now() - dragStartedAt < 80) return
+  endDrag(event.type !== 'pointercancel')
+}
+
+function stopDragListeners(): void {
+  window.removeEventListener('pointermove', onDragPointerMove)
+  window.removeEventListener('pointerup', onDragPointerUp)
+  window.removeEventListener('pointercancel', onDragPointerUp)
+}
+
+/** Per frame, so the page keeps scrolling while the pointer rests near an edge. */
+function dragStep(): void {
+  const current = drag.value
+  if (!current) return
+  if (dragScroller) {
+    const box = dragScroller.getBoundingClientRect()
+    const edge = 56
+    let speed = 0
+    if (dragPointerY < box.top + edge) speed = -(box.top + edge - dragPointerY) / edge
+    else if (dragPointerY > box.bottom - edge) speed = (dragPointerY - (box.bottom - edge)) / edge
+    if (speed !== 0) dragScroller.scrollTop += Math.round(speed * 14)
+  }
+  placeCard()
+  const flat = nearestSlot(
+    dragSlots.map(slot => slot.top),
+    dragOrigin,
+    dragFlat,
+    dragFootprint,
+    dragPointerY + (dragScroller?.scrollTop ?? 0),
+  )
+  dragFlat = flat
+  const slot = dragSlots[flat]
+  if (slot) {
+    const insertIndex =
+      slot.rowId === current.from && slot.index > dragFromIndex ? slot.index - 1 : slot.index
+    if (slot.rowId !== current.target || insertIndex !== current.insertIndex) {
+      current.target = slot.rowId
+      current.insertIndex = insertIndex
+    }
+  }
+  dragFrame = requestAnimationFrame(dragStep)
+}
+
+function startDrag(key: string, event: PointerEvent): void {
+  const from = rowOfNote(key)
+  const card = (event.target as HTMLElement | null)?.closest<HTMLElement>('.note')
+  if (!from || !card || !group.value) return
+  dragScroller = card.closest<HTMLElement>('.preview-scroll')
+  const scrolled = dragScroller?.scrollTop ?? 0
+  const box = card.getBoundingClientRect()
+  const parent = card.offsetParent
+  dragSlots = []
+  for (const marker of group.value.querySelectorAll<HTMLElement>('.note-slot')) {
+    const rowId = marker.dataset.slot ?? ''
+    const notes = [
+      ...(marker.nextElementSibling?.querySelectorAll<HTMLElement>(':scope > .note') ?? []),
     ]
-  }),
-)
+    notes.forEach((note, index) => {
+      dragSlots.push({ rowId, index, top: note.getBoundingClientRect().top + scrolled })
+    })
+    const last = notes.at(-1)
+    dragSlots.push({
+      rowId,
+      index: notes.length,
+      top: last
+        ? last.getBoundingClientRect().bottom + scrolled + 20
+        : marker.getBoundingClientRect().top + scrolled,
+    })
+  }
+  dragFromIndex = Math.max(
+    0,
+    [...(card.parentElement?.querySelectorAll<HTMLElement>(':scope > .note') ?? [])].indexOf(card),
+  )
+  dragOrigin = Math.max(
+    0,
+    dragSlots.findIndex(slot => slot.rowId === from && slot.index === dragFromIndex),
+  )
+  dragFlat = dragOrigin
+  const ownTop = box.top + scrolled
+  const nextSlot = dragSlots.find(slot => slot.rowId === from && slot.index === dragFromIndex + 1)
+  // How far the next slot sits below this note: the room the list actually
+  // closes when the note leaves, collapsed margins included.
+  dragFootprint = nextSlot ? nextSlot.top - ownTop : box.height + 20
+  dragGrab = event.clientY - box.top
+  dragPointerY = event.clientY
+  dragPointerId = event.pointerId
+  dragStartedAt = performance.now()
+  if (parent instanceof HTMLElement) {
+    group.value.style.setProperty('--note-drag-width', `${box.width}px`)
+    group.value.style.setProperty(
+      '--note-drag-left',
+      `${box.left - parent.getBoundingClientRect().left}px`,
+    )
+    group.value.style.setProperty(
+      '--note-drag-top',
+      `${box.top - parent.getBoundingClientRect().top}px`,
+    )
+  }
+  // The card leaves the list on the next render, and with it the pointer
+  // capture. These keep the drag alive.
+  window.addEventListener('pointermove', onDragPointerMove)
+  window.addEventListener('pointerup', onDragPointerUp)
+  window.addEventListener('pointercancel', onDragPointerUp)
+  // The first paint removes the card and inserts the gap together. With the
+  // list transition off, the gap is already full height and the column does
+  // not collapse first.
+  lifting.value = true
+  drag.value = {
+    key,
+    from,
+    target: from,
+    insertIndex: dragFromIndex,
+    height: box.height,
+    width: box.width,
+  }
+  void nextTick(() => {
+    lifting.value = false
+  })
+  dragFrame = requestAnimationFrame(dragStep)
+}
+
+function moveDrag(y: number): void {
+  dragPointerY = y
+}
+
+function endDrag(commit: boolean): void {
+  cancelAnimationFrame(dragFrame)
+  stopDragListeners()
+  const done = drag.value
+  if (!done || !commit) {
+    clearDrag()
+    return
+  }
+  // The gap is already the card's size. Slide the same card into it, then
+  // swap. Nothing about the label or the height changes on the way.
+  const token = ++settleToken
+  const card = draggingCard()
+  const gap = group.value?.querySelector<HTMLElement>('.note-gap')
+  const parent = card?.offsetParent
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!card || !gap || !(parent instanceof HTMLElement) || !group.value || reduce) {
+    finish(token, done)
+    return
+  }
+  const origin = parent.getBoundingClientRect()
+  const from = card.getBoundingClientRect()
+  const hole = gap.getBoundingClientRect()
+  const startTop = from.top - origin.top
+  const startLeft = from.left - origin.left
+  const endTop = hole.top - origin.top
+  const endLeft = hole.left - origin.left
+  if (Math.abs(endTop - startTop) < 1 && Math.abs(endLeft - startLeft) < 1) {
+    finish(token, done)
+    return
+  }
+  const started = performance.now()
+  const step = (now: number) => {
+    if (token !== settleToken || !group.value) return
+    const t = Math.min(1, (now - started) / 180)
+    const eased = 1 - (1 - t) ** 3
+    group.value.style.setProperty('--note-drag-top', `${startTop + (endTop - startTop) * eased}px`)
+    group.value.style.setProperty(
+      '--note-drag-left',
+      `${startLeft + (endLeft - startLeft) * eased}px`,
+    )
+    if (t < 1) dragFrame = requestAnimationFrame(step)
+    else finish(token, done)
+  }
+  dragFrame = requestAnimationFrame(step)
+}
+
+function draggingCard(): HTMLElement | null {
+  return group.value?.querySelector<HTMLElement>('.note.is-dragging') ?? null
+}
+
+/** The note takes the gap's place in one paint. The gap does not ease shut. */
+function finish(token: number, done: NoteDrag): void {
+  if (token !== settleToken) return
+  settleToken += 1
+  cancelAnimationFrame(dragFrame)
+  dropNote(done.key, done.target, done.insertIndex)
+  releasing.value = true
+  lifting.value = false
+  drag.value = null
+  void nextTick(() => {
+    releasing.value = false
+    dragScroller = null
+    dragSlots = []
+    dragPointerId = -1
+  })
+}
+
+function clearDrag(): void {
+  settleToken += 1
+  cancelAnimationFrame(dragFrame)
+  drag.value = null
+  releasing.value = false
+  lifting.value = false
+  dragScroller = null
+  dragSlots = []
+  dragPointerId = -1
+}
+
+onBeforeUnmount(() => {
+  cancelAnimationFrame(dragFrame)
+  stopDragListeners()
+})
 
 const foldIds = computed(() =>
   (story.value?.blocks ?? []).flatMap(block => (block.type === 'fold' ? [block.fold.id] : [])),
@@ -259,17 +636,20 @@ function toggle(id: string): void {
   open.value = next
 }
 
-function toggleAll(): void {
-  open.value = allOpen.value ? new Set() : new Set(foldIds.value)
-}
+const foldsOpen = computed({
+  get: () => allOpen.value,
+  set: (value: boolean) => {
+    open.value = value ? new Set(foldIds.value) : new Set()
+  },
+})
 
 const nowText = computed(() =>
   props.unit.reasonCode === 'clef' && props.unit.quote
     ? props.unit.quote
-    : reasonText(props.unit.reasonCode, props.unit.reasonActor),
+    : reasonText(t, props.unit.reasonCode, props.unit.reasonActor),
 )
 const waited = computed(() =>
-  story.value?.turn === 'waiting' ? waitingAge(props.unit.ageMs) : null,
+  story.value?.turn === 'waiting' ? waitingAge(t, props.unit.ageMs) : null,
 )
 
 function laneOf(key: string): number {
@@ -306,7 +686,7 @@ function railOf(line: StoryLine) {
   return {
     kind: item.kind,
     login: item.authorLogin,
-    who: self ? copy.story.you : item.authorLogin,
+    who: self ? t('story.you') : item.authorLogin,
     number: item.number,
     url: item.url,
     title: item.title,
@@ -318,10 +698,14 @@ function gutterCells(row: StoryRow, index: number) {
   const cells = grid.value[index] ?? []
   if (row.type !== 'line') return cells
   const lane = laneOf(row.line.item)
-  const expandable = Boolean(row.line.body)
+  const expandable = Boolean(row.line.body) && !plain.value.has(row.line.id)
   return cells.map(cell => {
     if (cell.lane !== lane) return cell
     if (row.line.start) return { ...cell, node: null }
+    if (plain.value.has(row.line.id) && (cell.node === 'dot' || cell.node === 'minor')) {
+      const node: StoryCell['node'] = 'open'
+      return { ...cell, node }
+    }
     if (!expandable || (cell.node !== 'dot' && cell.node !== 'minor')) return cell
     const node: StoryCell['node'] = long.value.has(row.line.id) ? 'open' : 'dot'
     return { ...cell, node }
@@ -337,6 +721,16 @@ function foldCells(row: Extract<StoryRow, { type: 'fold' }>, index: number) {
 }
 
 const long = ref(new Set<string>())
+/** Comments that fit on one line. Their dot stays hollow: a solid dot means it folds. */
+const plain = ref(new Set<string>())
+
+function setPlain(id: string, value: boolean): void {
+  if (plain.value.has(id) === value) return
+  const next = new Set(plain.value)
+  if (value) next.add(id)
+  else next.delete(id)
+  plain.value = next
+}
 
 function toggleLong(id: string): void {
   const next = new Set(long.value)
@@ -355,9 +749,13 @@ function leaveRow(row: StoryRow) {
 }
 
 function rowClass(row: StoryRow) {
-  const dim =
-    focus.value !== null &&
-    (row.type === 'line' ? laneOf(row.line.item) !== focus.value : row.type !== 'fold')
+  // Hovering a rail dims the lines of the other rails. Group and NOW rows never dim:
+  // NOW states where the whole contribution stands, whichever rail is in focus, and
+  // the notes under it are the reader's own. Dimming it on every hover, as it did,
+  // made the current state the one thing you could not read while looking at a rail.
+  const dim = focus.value !== null && row.type === 'line' && laneOf(row.line.item) !== focus.value
+  // The row that holds a note being dragged paints above the rows it passes over.
+  const lift = drag.value?.from === row.id
   if (row.type === 'line') {
     return [
       'row-line',
@@ -367,13 +765,18 @@ function rowClass(row: StoryRow) {
         'fold-first': row.first,
         'fold-last': row.last,
         dim,
+        lift,
       },
     ]
   }
-  if (row.type === 'fold') return ['row-fold', { open: row.open, dim }]
+  if (row.type === 'fold') return ['row-fold', { open: row.open, dim, lift }]
   return [
     `row-${row.type}`,
-    { dim, converging: row.type === 'future' && Boolean(story.value?.tail.converge.length) },
+    {
+      dim,
+      lift,
+      converging: row.type === 'future' && Boolean(story.value?.tail.converge.length),
+    },
   ]
 }
 </script>
@@ -389,14 +792,14 @@ function rowClass(row: StoryRow) {
       v-if="truncated && !compact"
       class="st-truncated"
     >
-      {{ copy.preview.truncated }}
+      {{ t('preview.truncated') }}
       ·
       <a
         class="card-link"
         :href="originalUrl"
         target="_blank"
         rel="noreferrer"
-        >{{ copy.preview.source }}</a
+        >{{ t('preview.source') }}</a
       >
     </p>
 
@@ -411,21 +814,19 @@ function rowClass(row: StoryRow) {
       v-if="story.related.length && !compact"
       class="st-related"
     >
-      <span class="st-related-label">{{ copy.story.related }}</span>
+      <span class="st-related-label">{{ t('story.related') }}</span>
       <ul>
         <li
           v-for="item in story.related"
           :key="item.key"
         >
-          <KindIcon :kind="item.kind" />
-          <a
-            :href="item.url"
-            target="_blank"
-            rel="noreferrer"
-            >#{{ item.number }}</a
-          >
-          <span>{{ copy.story.state[item.state] }}</span>
-          <span class="st-related-rel">{{ relationOf(item, story, viewer) }}</span>
+          <KindIcon
+            :kind="item.kind"
+            :scale="0.95"
+          />
+          <SheetLink :url="item.url">#{{ item.number }}</SheetLink>
+          <span>{{ t(`story.state.${item.state}`) }}</span>
+          <span class="st-related-rel">{{ relationOf(t, item, story, viewer) }}</span>
         </li>
       </ul>
     </div>
@@ -434,13 +835,19 @@ function rowClass(row: StoryRow) {
       v-if="foldIds.length && !compact"
       class="st-tools"
     >
-      <button
-        type="button"
-        :aria-pressed="allOpen"
-        @click="toggleAll"
+      <ToggleButton
+        v-model="foldsOpen"
+        :label="foldsOpen ? t('story.collapseAll') : t('story.expandAll')"
+        :on-text="t('story.collapseAll')"
+        :off-text="t('story.expandAll')"
       >
-        {{ allOpen ? copy.story.collapseAll : copy.story.expandAll }}
-      </button>
+        <!-- <WordSwap
+          :on='foldsOpen'
+          :off-label="t('story.expand')"
+          :on-label="t('story.collapse')"
+        ></WordSwap>
+        all -->
+      </ToggleButton>
     </div>
 
     <ol
@@ -524,28 +931,65 @@ function rowClass(row: StoryRow) {
           @pointerenter="enterRow(row)"
           @pointerleave="leaveRow(row)"
         >
-          <component
-            :is="compact ? 'div' : 'button'"
-            v-if="row.type === 'fold'"
-            :type="compact ? undefined : 'button'"
-            class="st-row-in st-fold"
-            :aria-expanded="compact ? undefined : row.open"
-            :aria-label="
-              compact ? undefined : copy.story.foldLabel(row.fold.lines.length, row.open)
-            "
-            @click="!compact && toggle(row.id)"
-          >
-            <TimelineGutter
-              :cells="foldCells(row, r)"
-              :focus="focus"
-            />
-            <span class="st-body">
-              <span class="st-title">
-                <span class="st-fold-count">{{ copy.story.events(row.fold.lines.length) }}</span>
-                <span class="st-fold-sum">{{ row.fold.summary }}</span>
+          <template v-if="row.type === 'fold'">
+            <component
+              :is="compact ? 'div' : 'button'"
+              :type="compact ? undefined : 'button'"
+              class="st-row-in st-fold"
+              :aria-expanded="compact ? undefined : row.open"
+              :aria-label="
+                compact
+                  ? undefined
+                  : t(row.open ? 'story.foldHide' : 'story.foldShow', {
+                      count: row.fold.lines.length,
+                    })
+              "
+              @click="!compact && toggle(row.id)"
+            >
+              <TimelineGutter
+                :cells="foldCells(row, r)"
+                :focus="focus"
+              />
+              <span class="st-body">
+                <span class="st-title">
+                  <span class="st-fold-count">{{
+                    t(
+                      'story.events',
+                      { count: row.fold.lines.length },
+                      { plural: row.fold.lines.length },
+                    )
+                  }}</span>
+                  <span class="st-fold-sum">{{ row.fold.summary }}</span>
+                </span>
               </span>
-            </span>
-          </component>
+            </component>
+            <!-- Notes under a collapsed group. Open, the last line of the group carries them. -->
+            <div
+              v-if="!row.open && (notesEditable || notesAfter.has(row.id))"
+              class="st-row-in st-fold-notes"
+            >
+              <div
+                class="st-body st-fold-body"
+                :class="{ 'has-notes': notesAfter.has(row.id) }"
+              >
+                <TimelineNotes
+                  :row-id="row.id"
+                  :notes="notesAfter.get(row.id) ?? []"
+                  :editable="Boolean(notesEditable)"
+                  :editable-ids="editableNoteIds"
+                  :drag="drag"
+                  :release="releasing || lifting"
+                  @save="(id, payload) => emit('noteSave', { id, ...payload })"
+                  @remove="id => emit('noteDelete', id)"
+                  @cancel="id => emit('noteCancel', id)"
+                  @drag-start="startDrag"
+                  @drag-move="moveDrag"
+                  @drag-end="endDrag"
+                  @nudge="nudgeNote"
+                />
+              </div>
+            </div>
+          </template>
           <div
             v-else
             class="st-row-in"
@@ -569,12 +1013,13 @@ function rowClass(row: StoryRow) {
                 :open="long.has(row.line.id)"
                 :expandable="Boolean(row.line.body) && !compact"
                 @toggle="toggleLong(row.line.id)"
+                @plain="setPlain(row.line.id, $event)"
               />
               <p
                 v-else-if="row.type === 'now'"
                 class="st-now"
               >
-                <span class="st-now-label">{{ copy.story.now }}</span>
+                <span class="st-now-label">{{ t('story.now') }}</span>
                 <span class="st-now-text">{{ nowText }}</span>
                 <span
                   v-if="waited"
@@ -582,16 +1027,21 @@ function rowClass(row: StoryRow) {
                   >{{ waited }}</span
                 >
               </p>
-              <NoteCard
-                v-for="note in notesAfter.get(row.id) ?? []"
-                :key="note.id"
-                :note="note"
-                :editable="notesEditable && editableNoteIds?.includes(note.id)"
-                :anchors="anchors"
-                @save="emit('noteSave', { id: note.id, ...$event })"
-                @move="emit('noteMove', { id: note.id, anchor: $event })"
-                @remove="emit('noteDelete', note.id)"
-                @cancel="emit('noteCancel', note.id)"
+              <TimelineNotes
+                v-if="row.type === 'line'"
+                :row-id="row.id"
+                :notes="notesAfter.get(row.id) ?? []"
+                :editable="Boolean(notesEditable)"
+                :editable-ids="editableNoteIds"
+                :drag="drag"
+                :release="releasing || lifting"
+                @save="(id, payload) => emit('noteSave', { id, ...payload })"
+                @remove="id => emit('noteDelete', id)"
+                @cancel="id => emit('noteCancel', id)"
+                @drag-start="startDrag"
+                @drag-move="moveDrag"
+                @drag-end="endDrag"
+                @nudge="nudgeNote"
               />
             </div>
           </div>
@@ -636,10 +1086,11 @@ function rowClass(row: StoryRow) {
 .st-related {
   display: flex;
   gap: 10px;
-  align-items: baseline;
+  align-items: center;
   margin: 0 0 14px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .st-related-label {
@@ -660,19 +1111,14 @@ function rowClass(row: StoryRow) {
 
 .st-related li {
   display: inline-flex;
+  flex: none;
   gap: 6px;
-  align-items: baseline;
+  align-items: center;
 }
 
-.st-related a {
-  color: var(--fg);
-  font-variant-numeric: tabular-nums;
-  text-decoration: none;
-}
-
-.st-related a:hover {
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.st-related :deep(.kind-icon) {
+  flex: none;
+  vertical-align: 0;
 }
 
 .st-related-rel::before {
@@ -683,20 +1129,14 @@ function rowClass(row: StoryRow) {
 /* Legend */
 .st-tools {
   display: flex;
+  gap: 0.35em;
+  align-items: baseline;
   justify-content: flex-end;
   margin: 0 0 4px;
-}
-
-.st-tools button {
-  padding: 2px 0;
-  border: 0;
-  background: none;
   color: var(--muted);
-  cursor: pointer;
   font-family: var(--font-meta);
   font-size: 11px;
   letter-spacing: 0.02em;
-  transition: color 160ms var(--ease);
 }
 
 .st-tools button:hover,
@@ -1058,5 +1498,25 @@ function rowClass(row: StoryRow) {
 
 .card-link:hover {
   color: var(--fg);
+}
+
+/* The row holding a dragged note stands above the rows it passes over; each row
+   is its own stacking context, so the note alone cannot. */
+.st-row.lift {
+  z-index: 5;
+}
+
+/* Notes under a collapsed group sit in the body column, with no room of their own
+   until there is a note or a gap in it. */
+.st-fold-notes .st-body {
+  grid-column: 2;
+}
+
+.st-fold-body {
+  padding: 0;
+}
+
+.st-fold-body.has-notes {
+  padding: 0 0 14px;
 }
 </style>

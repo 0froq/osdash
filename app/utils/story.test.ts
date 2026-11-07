@@ -10,6 +10,15 @@ import {
   type StoryCell,
   type StoryRow,
 } from './story'
+import type { TFunc } from '#shared/i18n'
+import { createI18n } from 'vue-i18n'
+import en from '../../i18n/locales/en'
+
+const t = createI18n({
+  legacy: false,
+  locale: 'en',
+  messages: { en },
+}).global.t as TFunc
 
 const NOW = Date.parse('2026-10-24T00:00:00Z')
 const at = (hours: number) => new Date(NOW - hours * 3_600_000).toISOString()
@@ -126,6 +135,7 @@ const card: StoryCard = {
 it('carries full Markdown into story lines without replacing plain summaries', () => {
   const body = '<details><summary>Report</summary><p>**Full body**</p></details>'
   const story = buildStory(
+    t,
     [event('markdown', 220, 'comment', 1, VIEWER, { body, excerpt: 'Report Full body' })],
     items,
     card,
@@ -139,7 +149,7 @@ it('carries full Markdown into story lines without replacing plain summaries', (
 })
 
 describe('buildStory', () => {
-  const story = buildStory(entries, items, card, VIEWER)!
+  const story = buildStory(t, entries, items, card, VIEWER)!
 
   it('keeps only derivable key lines visible', () => {
     const keys = story.blocks.flatMap(block =>
@@ -241,7 +251,7 @@ describe('current state and conditional tails', () => {
       createdAt: at(60),
     })
   const draw = (members: StoryItem[], events: TimelineEntry[] = [], current = card) => {
-    const story = buildStory(events, members, current, VIEWER)!
+    const story = buildStory(t, events, members, current, VIEWER)!
     const rows = storyRows(story, new Set())
     return { story, rows, grid: storyGrid(story, rows, VIEWER, story.rails.length <= 1) }
   }
@@ -402,6 +412,7 @@ describe('merges', () => {
       }),
     ]
     const story = buildStory(
+      t,
       [event('m', 300, 'merged', 10, 'zk'), event('ic', 30, 'closed', 10, 'zk')],
       merged,
       { ...card, ended: true, myTurn: false, reasonCode: 'merged', reasonActor: null },

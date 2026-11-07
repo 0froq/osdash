@@ -2,7 +2,7 @@
 
 The public Web app uses `https://osdash.froq.me`. One storage device, such as Mini, holds an account's Markdown notes. Every browser signed into that GitHub account uses that device through an authenticated Cloudflare relay. Air does not need its own CLI or local pairing.
 
-The matching account-relay Web build and CLI are deployed at the public origin. The first native Durable Object migration required `pnpm run deploy --atomic`. Void completed the atomic release and readiness check successfully. Public HTTP checks confirmed the installer, CLI checksum and device endpoints. Existing OAuth configuration, secrets and KV notes were not changed. Signed-in Mini/Air behavior still needs manual acceptance.
+The account relay was deployed previously. The multi-source Notes implementation described in [notes.md](notes.md) has been verified locally and requires a matching Web/CLI release. Local build success does not mean that new behavior has been deployed.
 
 ## Install and bind
 
@@ -10,11 +10,10 @@ Requires `curl` and Node 24.21.0 or Node 26+. Stop any older CLI process, update
 
 ```sh
 curl -fsS https://osdash.froq.me/install.sh | sh
-mkdir -p ~/os
-os- serve --root "$HOME/os" --name Mini
+os- serve --name Mini
 ```
 
-`~/os` is separate from mo-managed source repositories in `~/code`. A root must already exist. Without `--root`, the CLI uses its current directory. It does not scan repositories or parent directories.
+The default workspace is `~/osdash`, with new notes under `~/osdash/notes`. Configure it through the first existing user configuration file, normally `~/.config/osdash/config.json`. Repository note sources are optional and read-only by default. See [Configuration and multi-source notes](notes.md) for the fallback order, source globs, fork identity and notifications. Explicit `--root <directory>` retains an existing legacy workspace without moving its files.
 
 `os- serve` installs a per-user background service and then exits. On macOS it uses launchd. On Linux it uses a systemd user service. The service starts after OS login and restarts if the process exits. Close Terminal after the pairing instructions print. The service runs the same program with `serve --foreground`. Use `--foreground` yourself only for scripts or platforms without launchd or a systemd user session.
 
@@ -22,17 +21,23 @@ On Mini, sign into the Web app, open Settings → Storage device, and paste the 
 
 After binding, Air only needs to sign into the same GitHub account. The Web uses the account's storage device, not Air's loopback. Mini keeps an outbound WebSocket open. No inbound port, public tunnel or router configuration is required.
 
-Browser reloads and browser sign-out do not unbind it. Sleep, shutdown or logging out of the OS user takes the device offline. Running a second `os- serve` does not replace a healthy service. Change the workspace only after `os- stop`. Service files live under `~/.local/state/os/` and the platform's per-user service directory. Logs are private. The CLI refuses to overwrite an unmanaged service definition.
+Browser reloads and browser sign-out do not unbind it. Sleep, shutdown or logging out of the OS user takes the device offline. Running a second `os- serve` does not replace a healthy service. Change the workspace only after `os- stop`. New service files live under `~/.local/state/osdash/` and the platform's per-user service directory. Existing service descriptors under `~/.local/state/os/` retain their paths until deliberately migrated. Logs are private. The CLI refuses to overwrite an unmanaged service definition.
 
 An account can bind one device. To replace it, explicitly unlink the old device in Settings, then bind the new one. Files are not copied automatically. Unlinking revokes the cloud credential and closes its connection but does not delete local files. A workspace also belongs to one saved device identity. Use a separate workspace for another account.
 
 ## Installation and updates
 
-The installer writes `~/.local/share/os/bridge.mjs` and `~/.local/bin/os-`. It verifies SHA-256 before replacing program files. This is download-integrity checking, not an independent publisher signature. It does not use sudo, modify shell configuration or create workspace data. Add `~/.local/bin` to PATH yourself if needed. Run the same installer to update.
+The installer writes `~/.local/share/osdash/bridge.mjs` and `~/.local/bin/os-`. It leaves an old `~/.local/share/os/` installation intact so an existing service can still restart from its saved program path. It verifies SHA-256 before replacing program files. This is download-integrity checking, not an independent publisher signature. It does not use sudo, modify shell configuration or create workspace data. Add `~/.local/bin` to PATH yourself if needed. Run the same installer to update.
 
 `OS_INSTALL_HOME` and `OS_BIN_DIR` override program directories. `OS_INSTALL_BASE_URL` selects another deployment's distribution origin. HTTP is accepted only for loopback development. These settings do not move workspace data.
 
-## Workspace files
+## Notes catalog and configuration
+
+The Web's Notes navigation opens `/?view=notes`, which lists notes from all configured sources, including contributions outside the inbox window. New notes save globally. Existing notes save to their original writable source. Read-only repo notes can be copied into global drafts. Direct entry uses the existing session profile endpoint without refreshing the GitHub inbox. Search, repo/source filters and edit-time/timeline-position sorting apply across all catalog pages.
+
+Configuration is selected once by priority, without merging. Repo permissions and patterns are re-read before operations. Backend source checks enforce read-only access. See [notes.md](notes.md) for the full file formats and manual acceptance steps.
+
+## Legacy workspace files
 
 ```text
 ~/os/
@@ -49,7 +54,7 @@ The installer writes `~/.local/share/os/bridge.mjs` and `~/.local/bin/os-`. It v
                 <uuid>.md
 ```
 
-Startup creates `.os/config.json` and `.os/.gitignore` exclusively. The ignore file contains `*`. Existing tracked files and custom ignore rules remain the user's responsibility. Note directories are created lazily.
+For legacy `--root` workspaces, startup retains `.os/config.json` and `.os/.gitignore`. The ignore file contains `*`. Existing tracked files and custom ignore rules remain the user's responsibility. This legacy ignore is never installed into configured repo sources. Note directories are created lazily.
 
 ```json
 {
@@ -59,7 +64,7 @@ Startup creates `.os/config.json` and `.os/.gitignore` exclusively. The ignore f
 }
 ```
 
-`locale` accepts `system`, `en` or `zh-CN`. Unknown fields remain untouched. A mismatched origin or malformed configuration fails closed. Changing websites requires deliberate configuration review, a matching `--origin`, and a compatible device credential. Previous XDG files are not read or modified.
+`locale` accepts `system`, `en` or `zh-CN` in the selected user config. This legacy file remains untouched and is not read as a second config. Pass it explicitly with `--config` if it should be the selected file. An origin mismatch in the saved device credential still fails closed. Changing websites requires deliberate configuration review, a matching `--origin`, and a compatible device credential.
 
 `device.json` stores the device's numeric GitHub identity, UUID, origin, display name and random credential. It is written with mode `0600`. Do not publish it. Back up `.os/` securely. There is no automatic backup or replication between devices. Web access from Air still writes Mini's files.
 
@@ -97,7 +102,7 @@ Normal note operations use authenticated `/api/device/notes` requests. They rout
 
 The native `DeviceRelay` Durable Object holds binding metadata, a SHA-256 credential hash and a revision marker. Note bodies and pending operations are not written to its durable storage or to business KV. TLS protects browser-to-cloud and device-to-cloud traffic. The cloud processes plaintext note content transiently. This is not end-to-end encryption.
 
-The credential authenticates only the device connection, not browser APIs. Browser mutations require the exact same Origin as their authenticated session. The CLI never receives a GitHub token. Its outbound socket uses a validated credential subprotocol, not query-string credentials.
+The credential authenticates only the device connection, not browser APIs. Browser mutations require the exact same Origin as their authenticated session. The CLI never receives the Web session's GitHub token. Its outbound socket uses a validated credential subprotocol, not query-string credentials. Optional notification polling independently reads local gh authentication and verifies that its GitHub account matches the bound device.
 
 ## Offline behavior, conflicts and drafts
 
@@ -116,6 +121,7 @@ A transient disconnect disables mutation controls but keeps the open editor and 
 Browser endpoints:
 
 - `GET /api/device/status`: account's bound device, online state and revision.
+- `GET /api/device/catalog?after=...`: bounded pages of all source-aware notes and source warnings.
 - `GET /api/device/notes?unit=...`: notes and file versions from the device.
 - `POST /api/device/notes`: versioned save, including `version: null` for creation.
 - `DELETE /api/device/notes`: versioned delete.

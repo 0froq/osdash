@@ -15,6 +15,7 @@ export { default as CodeBlock } from './components/code/CodeBlock.vue'
 export { default as GridTable } from './components/display/GridTable.vue'
 export { default as Separator } from './components/display/Separator.vue'
 export { default as Table } from './components/display/Table.vue'
+export { default as Tags } from './components/display/Tags.vue'
 export { default as Alert } from './components/feedback/Alert.vue'
 export { default as Banner } from './components/feedback/Banner.vue'
 export { default as EmptyState } from './components/feedback/EmptyState.vue'
@@ -70,4 +71,5 @@ export type {
   SidebarItem,
   SidebarLinkProps,
   TableColumn,
+  TagItem,
 } from './vue'

@@ -9,5 +9,6 @@ export default defineEventHandler(async event => {
     unit: body.unit,
     noteId: body.noteId,
     version: body.version,
+    source: body.source,
   })
 })

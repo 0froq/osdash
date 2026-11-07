@@ -2,17 +2,19 @@
   "version": 2,
   "items": {},
   "executions": [],
-  "repo": "0froq/osdash",
-  "lastSyncedAt": "2026-10-28T06:06:55.824Z",
-  "lastRepoUpdatedAt": "2026-10-23T10:37:11Z",
   "ghfsVersion": "0.2.6",
+  "repo": "0froq/osdash",
+  "lastSyncedAt": "2026-11-04T19:41:09.497Z",
+  "lastSince": "2026-10-28T06:06:55.824Z",
+  "lastRepoUpdatedAt": "2026-10-28T20:00:56Z",
   "lastSyncRun": {
-    "runId": "sync_20261028060655820_0e130f",
+    "runId": "sync_20261104194425574_64ffe0",
     "repo": "0froq/osdash",
-    "startedAt": "2026-10-28T06:06:55.820Z",
-    "finishedAt": "2026-10-28T06:07:03.730Z",
-    "durationMs": 7910,
-    "requestCount": 7,
+    "startedAt": "2026-11-04T19:44:25.574Z",
+    "finishedAt": "2026-11-04T19:44:27.336Z",
+    "durationMs": 1762,
+    "requestCount": 2,
+    "since": "2026-11-04T19:41:09.497Z",
     "counters": {
       "scanned": 0,
       "selected": 0,
@@ -24,12 +26,12 @@
       "patchesDeleted": 0
     },
     "stages": {
-      "metadata": 2900,
-      "pagination": 381,
+      "metadata": 1756,
+      "pagination": 0,
       "fetch": 0,
       "materialize": 0,
-      "prune": 1,
-      "save": 4624
+      "prune": 0,
+      "save": 6
     }
   }
 }

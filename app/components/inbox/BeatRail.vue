@@ -2,6 +2,8 @@
 import type { UnitBeat } from '#shared/unit'
 import { relativeAge } from '~/utils/time'
 
+const { t } = useI18n()
+
 /**
  * A slice of the preview rail, drawn at card scale. It borrows the preview's
  * node vocabulary (`dot`, `open`, `minor`) and its paper-backed nodes, so a
@@ -10,7 +12,7 @@ import { relativeAge } from '~/utils/time'
 const props = defineProps<{ beats: UnitBeat[] }>()
 
 function when(at: string): string {
-  return relativeAge(Date.now() - Date.parse(at))
+  return relativeAge(t, Date.now() - Date.parse(at))
 }
 
 const last = computed(() => props.beats.length - 1)

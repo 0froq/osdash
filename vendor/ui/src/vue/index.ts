@@ -15,6 +15,7 @@ export type {
   SidebarCurrent,
   SidebarLinkProps,
   TableColumn,
+  TagItem,
 } from './types'
 export { useAutoDismiss } from './useAutoDismiss'
 export type { ActionResult, ActionStatus } from './useAction'

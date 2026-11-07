@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({ lookup: vi.fn(async () => ({ id: '123', login:
 vi.mock('./auth/github-oauth', () => ({ fetchGitHubUser: mocks.lookup }))
 import statusHandler from './api/device/status.get'
 import listHandler from './api/device/notes.get'
+import catalogHandler from './api/device/catalog.get'
 import saveHandler from './api/device/notes.post'
 import deleteHandler from './api/device/notes.delete'
 import unlinkHandler from './api/device/index.delete'
@@ -58,6 +59,7 @@ it('routes browser note operations only by the authenticated numeric ID and prot
     }),
   )
   app.use('/api/device/status', statusHandler)
+  app.use('/api/device/catalog', catalogHandler)
   app.use(
     '/api/device/notes',
     defineEventHandler(event =>
@@ -89,6 +91,7 @@ it('routes browser note operations only by the authenticated numeric ID and prot
   }
   try {
     assert.equal((await call('/api/device/status')).status, 401)
+    assert.equal((await call('/api/device/catalog')).status, 401)
     assert.equal(routed.length, 0)
     assert.equal(
       (
@@ -118,6 +121,25 @@ it('routes browser note operations only by the authenticated numeric ID and prot
       401,
     )
     const headers = { 'x-test-account': '123' }
+    const cursor = 'pr:owner/repo#42:global:' + note.id
+    assert.equal(
+      (
+        await call(
+          '/api/device/catalog?account=456&after=' + encodeURIComponent(cursor),
+          'GET',
+          undefined,
+          headers,
+        )
+      ).status,
+      200,
+    )
+    assert.equal(routed.at(-1), 'production:123')
+    assert.deepEqual(requests.at(-1), { action: 'catalog', after: cursor })
+    assert.equal(
+      (await call('/api/device/catalog?after=' + 'x'.repeat(513), 'GET', undefined, headers))
+        .status,
+      400,
+    )
     assert.equal(
       (await call('/api/device/status?account=456', 'GET', undefined, headers)).status,
       200,
@@ -150,12 +172,19 @@ it('routes browser note operations only by the authenticated numeric ID and prot
         await call(
           '/api/device/notes',
           'DELETE',
-          { unit, noteId: note.id, version: 'a'.repeat(64) },
+          { unit, noteId: note.id, version: 'a'.repeat(64), source: 'repo:' + 'b'.repeat(16) },
           headers,
         )
       ).status,
       200,
     )
+    assert.deepEqual(requests.at(-1), {
+      action: 'delete',
+      unit,
+      noteId: note.id,
+      version: 'a'.repeat(64),
+      source: 'repo:' + 'b'.repeat(16),
+    })
     assert.equal((await call('/api/device/notes', 'POST', { unit, note }, headers)).status, 400)
     assert.equal(
       (

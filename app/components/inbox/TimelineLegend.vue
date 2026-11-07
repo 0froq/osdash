@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { copy } from '~/copy/en'
+const { t } = useI18n()
 import { relationOf, type Story } from '~/utils/story'
 
 const props = defineProps<{ story: Story; viewer: string; skip?: string[] }>()
@@ -37,9 +37,9 @@ const entries = computed(() =>
         <span
           class="st-legend-state"
           :class="`s-${entry.item.state}`"
-          >{{ copy.story.state[entry.item.state] }}</span
+          >{{ t(`story.state.${entry.item.state}`) }}</span
         >
-        <span class="st-legend-rel">{{ relationOf(entry.item, story, viewer) }}</span>
+        <span class="st-legend-rel">{{ relationOf(t, entry.item, story, viewer) }}</span>
       </a>
     </li>
   </ul>
@@ -66,7 +66,7 @@ const entries = computed(() =>
   display: flex;
   flex-wrap: wrap;
   gap: 0 8px;
-  align-items: baseline;
+  align-items: center;
   min-width: 0;
   color: var(--muted);
   font-size: 12.5px;

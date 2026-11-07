@@ -363,6 +363,21 @@ export function lastOtherActivityAt(items: readonly Item[], nowMs: number): stri
   return new Date(latest).toISOString()
 }
 
+/** The viewer's own latest action across the card's members. Creation counts. */
+export function lastOwnActivityAt(items: readonly Item[]): string | null {
+  const combined = combinedItem(items)
+  if (!combined) return null
+  const viewer = viewerLoginOf(combined)
+  let latest = Number.NEGATIVE_INFINITY
+  for (const activity of combined.activities) {
+    if (!isSelf(activity.actor, viewer) || isDroppedBot(activity)) continue
+    const at = Date.parse(activity.at)
+    if (at > latest) latest = at
+  }
+  if (!Number.isFinite(latest)) return null
+  return new Date(latest).toISOString()
+}
+
 /** How many beats a card shows. The preview carries the rest. */
 export const BEAT_LIMIT = 2
 
@@ -460,6 +475,7 @@ export function toUnit(draft: UnitDraft, verdict: Verdict, nowMs: number): Unit 
     tone: verdict.tone,
     lastActivityAt: verdict.waitingSince,
     lastOtherActivityAt: lastOtherActivityAt(draft.members, nowMs),
+    lastOwnActivityAt: lastOwnActivityAt(draft.members),
     ageMs: verdict.ageMs,
     firstReplyMs: firstReplyMs(combinedItem(draft.members) ?? primary),
     links: verdict.links,
@@ -476,6 +492,7 @@ export function toUnit(draft: UnitDraft, verdict: Verdict, nowMs: number): Unit 
       authorLogin: item.author.login,
       createdAt: item.createdAt,
       closedAt: item.closedAt,
+      ...(item.body?.trim() ? { body: item.body.trim() } : {}),
       closes: closesOf(item),
     })),
   }

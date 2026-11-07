@@ -69,6 +69,12 @@ Open http://localhost:3000 with no query params to use GitHub login. Unauthentic
 
 **Real GitHub locally:** set the OAuth secrets above, register callback `http://localhost:3000/api/auth/callback`, then sign in via `/login`. Do not set `OSDASH_MOCK` and do not add `?mock=1`.
 
+## Local notes
+
+Bind one storage device, such as Mini, then use **Notes** from any browser signed into the same GitHub account. New notes save globally under `~/osdash/notes`. Configured repo `.osdash/notes` directories are read-only by default. The Web supports Markdown edits, version conflicts, search and repo/source filters, including notes on old contributions.
+
+The CLI selects one config through an explicit path, XDG, `~/.osdash/config.json`, or `~/osdash/config.json`, followed by the legacy `os` paths. See [configuration and multi-source notes](docs/notes.md) and [device setup](docs/local-connection.md). Web and CLI must be released together. Local verification does not update the running service.
+
 ## Checks
 
 ```sh

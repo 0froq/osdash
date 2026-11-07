@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdtemp, mkdir, readFile, realpath, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -13,8 +13,13 @@ if (process.platform !== 'darwin')
 const home = await mkdtemp(join(tmpdir(), 'osdash-service-smoke-'))
 const root = join(home, 'work space & 中文')
 await mkdir(root)
+await mkdir(join(root, '.os'))
+await writeFile(
+  join(root, '.os/config.json'),
+  JSON.stringify({ version: 1, origin: 'https://osdash.froq.me' }),
+)
 const program = resolve('public/downloads/os-bridge.mjs')
-const env = { ...process.env, HOME: home }
+const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: join(home, '.config') }
 const label = `me.froq.osdash.${createHash('sha256').update(home).digest('hex').slice(0, 12)}`
 const target = `gui/${process.getuid()}/${label}`
 const reserve = createServer()
@@ -34,7 +39,7 @@ try {
   const output = run(serve)
   assert.ok(output.includes('Pairing code (one use'))
   assert.ok(output.includes('You can close Terminal'))
-  const state = JSON.parse(await readFile(join(home, '.local/state/os/service.json'), 'utf8'))
+  const state = JSON.parse(await readFile(join(home, '.local/state/osdash/service.json'), 'utf8'))
   assert.equal(state.root, await realpath(root))
   assert.equal(state.entry, program)
   assert.equal(state.node, process.execPath)
@@ -59,8 +64,23 @@ try {
     (await readFile(join(root, '.os/config.json'), 'utf8')).includes('https://osdash.froq.me'),
     true,
   )
+  const configPath = join(home, '.config/osdash/config.json')
+  await mkdir(join(home, '.config/osdash'), { recursive: true })
+  await writeFile(configPath, JSON.stringify({ version: 1, notifyPollSeconds: 0 }))
+  const configuredOutput = run(['serve', '--config', configPath, '--port', String(port)])
+  assert.ok(configuredOutput.includes('Config: ' + configPath))
+  assert.ok(configuredOutput.includes('New notes: ' + join(home, 'osdash/notes')))
+  const configured = JSON.parse(
+    await readFile(join(home, '.local/state/osdash/service.json'), 'utf8'),
+  )
+  assert.equal(configured.configured, true)
+  assert.equal(configured.userConfigPath, configPath)
+  assert.equal(configured.root, join(await realpath(home), 'osdash'))
+  assert.ok((await stat(join(home, 'osdash/notes'))).isDirectory())
+  assert.ok(run(['restart']).includes('Config: ' + configPath))
+  assert.ok(run(['stop']).includes('Automatic startup disabled'))
   console.log(
-    'Built CLI native service: detached parent, escaped paths, startup instructions, idempotence, status, restart, stop and preserved workspace passed',
+    'Built CLI native service: detached parent, escaped paths, startup instructions, idempotence, status, restart, stop, preserved legacy workspace and configured global storage passed',
   )
 } finally {
   try {

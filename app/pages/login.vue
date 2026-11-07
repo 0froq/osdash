@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { copy } from '~/copy/en'
+const { t } = useI18n()
 
 useHead({
   meta: [{ name: 'robots', content: 'index,follow' }],
@@ -21,17 +21,17 @@ function signIn(): void {
 
 <template>
   <main class="login-page">
-    <h1>{{ copy.brand }}</h1>
-    <p class="login-tagline">{{ copy.login.tagline }}</p>
-    <button
+    <h1>{{ t('brand') }}</h1>
+    <p class="login-tagline">{{ t('login.tagline') }}</p>
+    <AppButton
+      variant="fill"
       class="login-action"
-      type="button"
       @click="signIn"
     >
-      {{ copy.login.action }}
-    </button>
-    <p class="login-note">{{ copy.login.scope }}</p>
-    <p class="login-note">{{ copy.login.readOnly }}</p>
+      {{ t('login.action') }}
+    </AppButton>
+    <p class="login-note">{{ t('login.scope') }}</p>
+    <p class="login-note">{{ t('login.readOnly') }}</p>
   </main>
 </template>
 
@@ -64,17 +64,7 @@ function signIn(): void {
   min-height: 44px;
   margin-top: 12px;
   padding: 0 22px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--fg);
-  color: var(--bg);
-  cursor: pointer;
   font-size: 15px;
-  transition: opacity var(--dur-1) var(--ease);
-}
-
-.login-action:hover {
-  opacity: 0.86;
 }
 
 .login-note {

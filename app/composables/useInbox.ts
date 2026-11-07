@@ -1,6 +1,5 @@
 import { RECENT_MS } from '#shared/turn'
 import { compareWaitingUnits, type UnitCategory, type UnitView } from '#shared/unit'
-import { copy } from '~/copy/en'
 
 export type InboxViewer = {
   login: string
@@ -53,14 +52,14 @@ function statusOf(caught: unknown): number | undefined {
   return typeof code === 'number' ? code : undefined
 }
 
-function messageFor(status: number | undefined): string {
-  if (status === 502) return copy.githubDown
-  if (status === 403 || status === 429) return copy.rateLimited
-  return copy.loadFailed
-}
-
 export function useInbox() {
+  const { t } = useI18n()
   const { mock: mockMode } = useMockMode()
+  function messageFor(status: number | undefined): string {
+    if (status === 502) return t('githubDown')
+    if (status === 403 || status === 429) return t('rateLimited')
+    return t('loadFailed')
+  }
   const units = ref<UnitView[]>([])
   const counts = ref<InboxCounts | null>(null)
   const stats = ref<InboxStats | null>(null)
@@ -121,11 +120,8 @@ export function useInbox() {
     if (mockMode.value) params.set('mock', '1')
     if (refresh) params.set('refresh', '1')
     const query = params.size > 0 ? `?${params.toString()}` : ''
-    const byok = typeof localStorage === 'undefined' ? null : localStorage.getItem('osdash.byok')
     try {
-      const body = await $fetch<InboxPayload>(`/api/inbox${query}`, {
-        headers: byok ? { 'X-Osdash-Byok': byok } : undefined,
-      })
+      const body = await $fetch<InboxPayload>(`/api/inbox${query}`)
       apply(body)
       scheduleRevalidatePoll()
     } catch (caught) {

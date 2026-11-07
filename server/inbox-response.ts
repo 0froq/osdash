@@ -1,6 +1,5 @@
 import type { H3Event } from 'h3'
-import { getHeader } from 'h3'
-import { parseByokHeader, parseClefLogins } from './byok'
+import { parseClefLogins } from './byok'
 import { bindingString, workerEnv } from './bindings'
 import { readCache, writeCache, type CacheStore } from './cache'
 import { loadUnits } from './github'
@@ -57,7 +56,6 @@ export async function loadInboxUnits(
   now: Date,
   fresh: boolean,
 ): Promise<InboxCacheBody> {
-  const byok = parseByokHeader(getHeader(event, 'x-osdash-byok'))
   const loaded = await loadUnits(
     user.token,
     user.login,
@@ -65,7 +63,6 @@ export async function loadInboxUnits(
     {
       AI: workerEnv(event).AI,
       viewerLogin: user.login,
-      byok,
       clefLogins: parseClefLogins(bindingString(event, 'OSDASH_CLEF_LOGINS')),
     },
     { fresh },

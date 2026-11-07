@@ -32,6 +32,7 @@
     "@fontsource-variable/geist-mono": "catalog:prod",
     "@fontsource/instrument-serif": "catalog:prod",
     "@froq/ui": "file:vendor/ui",
+    "@nuxtjs/i18n": "catalog:prod",
     "h3": "catalog:prod",
     "hast-util-to-text": "catalog:prod",
     "jose": "catalog:prod",
@@ -44,6 +45,7 @@
     "remark-rehype": "catalog:prod",
     "unified": "catalog:prod",
     "vue": "catalog:prod",
+    "vue-i18n": "catalog:prod",
     "yaml": "catalog:prod"
   },
   "devDependencies": {

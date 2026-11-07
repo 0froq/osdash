@@ -20,6 +20,7 @@ function write(value: Record<string, number>): void {
 
 export function useLater(updateUnit: UpdateUnit) {
   const due = ref(new Set<string>())
+  const snoozed = ref(new Map<string, number>())
   let timer: ReturnType<typeof setTimeout> | null = null
 
   function schedule(): void {
@@ -28,12 +29,17 @@ export function useLater(updateUnit: UpdateUnit) {
     const now = Date.now()
     let next = Infinity
     const ready = new Set<string>()
+    const pending = new Map<string, number>()
     for (const [id, at] of Object.entries(saved)) {
       if (at <= now) ready.add(id)
-      else next = Math.min(next, at)
+      else {
+        pending.set(id, at)
+        next = Math.min(next, at)
+      }
     }
     const previous = due.value
     due.value = ready
+    snoozed.value = pending
     for (const id of ready) if (!previous.has(id)) updateUnit(id, { unread: true })
     if (next < Infinity) timer = setTimeout(schedule, Math.min(next - now, 60_000))
   }
@@ -51,6 +57,7 @@ export function useLater(updateUnit: UpdateUnit) {
     delete saved[id]
     write(saved)
     due.value = new Set([...due.value].filter(item => item !== id))
+    schedule()
     updateUnit(id, { unread: true })
   }
 
@@ -59,7 +66,7 @@ export function useLater(updateUnit: UpdateUnit) {
     if (timer) clearTimeout(timer)
   })
 
-  return { due, snooze, clear }
+  return { due, snoozed, snooze, clear }
 }
 
 export function laterAt(

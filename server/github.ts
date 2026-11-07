@@ -1,6 +1,5 @@
 import { enrichIssueClassificationsForEnv, type ClaimClassifierEnv } from './claim-classifier'
 import { enrichItemsFromRest } from './github-rest'
-import { maybeClassifyTurn } from './turn-classifier'
 import { isSelf } from '../shared/identity'
 import { combineItems } from '../shared/timeline'
 import { buildUnitDrafts, toUnit, type UnitDraft } from '../shared/units'
@@ -967,13 +966,7 @@ export async function loadUnits(
   const units: Unit[] = []
   for (const draft of buildUnitDrafts(raw)) {
     const judged = itemForJudge(draft)
-    const verdict = await maybeClassifyTurn(
-      judged,
-      judge(judged, now.getTime()),
-      env,
-      now.getTime(),
-      options.fresh === true,
-    )
+    const verdict = judge(judged, now.getTime())
     units.push(toUnit(draft, verdict, now.getTime()))
   }
 

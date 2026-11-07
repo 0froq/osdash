@@ -19,7 +19,7 @@ import {
 
 export class NoteConflict extends Error {}
 const digest = (text: string) => createHash('sha256').update(text).digest('hex')
-function checkVersion(source: string | null, expected: string | null | undefined) {
+export function checkVersion(source: string | null, expected: string | null | undefined) {
   if (expected !== undefined && (source === null ? null : digest(source)) !== expected) {
     throw new NoteConflict(
       'The note changed on the storage device. Reload before saving or deleting.',
@@ -33,7 +33,7 @@ function missing(error: unknown) {
   return (error as NodeJS.ErrnoException).code === 'ENOENT'
 }
 
-async function directory(path: string, create: boolean): Promise<boolean> {
+export async function directory(path: string, create: boolean): Promise<boolean> {
   try {
     const stat = await lstat(path)
     if (!stat.isDirectory() || stat.isSymbolicLink())
@@ -51,7 +51,7 @@ async function directory(path: string, create: boolean): Promise<boolean> {
   }
 }
 
-async function readBounded(path: string): Promise<string | null> {
+export async function readBounded(path: string): Promise<string | null> {
   let file
   try {
     file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
@@ -75,7 +75,7 @@ async function readBounded(path: string): Promise<string | null> {
   }
 }
 
-function validateNote(value: unknown): UnitNote {
+export function validateNote(value: unknown): UnitNote {
   if (!value || typeof value !== 'object') throw new Error('Invalid note')
   const note = value as UnitNote
   if (
@@ -98,7 +98,7 @@ function validateNote(value: unknown): UnitNote {
   }
 }
 
-function decode(source: string, unit: string, id: string): UnitNote {
+function decode(source: string, unit: string, id: string, includeUpdated = false): UnitNote {
   const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/.exec(source)
   if (!match) throw new Error('Invalid note front matter')
   const meta = parse(match[1]!, { maxAliasCount: 0, uniqueKeys: true }) as Record<string, unknown>
@@ -111,10 +111,15 @@ function decode(source: string, unit: string, id: string): UnitNote {
     meta.number !== address.number
   )
     throw new Error('Note metadata does not match its location')
-  return validateNote({ id, text: match[2], anchor: meta.anchor, at: meta.createdAt })
+  const note = validateNote({ id, text: match[2], anchor: meta.anchor, at: meta.createdAt })
+  return includeUpdated &&
+    typeof meta.updatedAt === 'string' &&
+    Number.isFinite(Date.parse(meta.updatedAt))
+    ? { ...note, updatedAt: meta.updatedAt }
+    : note
 }
 
-async function atomicWrite(path: string, content: string) {
+export async function atomicWrite(path: string, content: string) {
   const temporary = `${path}.${randomUUID()}.tmp`
   try {
     const file = await open(temporary, 'wx', 0o600)
@@ -132,23 +137,35 @@ async function atomicWrite(path: string, content: string) {
   }
 }
 
-export async function openWorkspace(root: string, origin: string) {
+export async function openWorkspace(
+  root: string,
+  origin: string,
+  options?: {
+    notesRoot: string
+    legacy?: boolean
+    readConfig: () => Promise<{ locale: 'system' | 'en' | 'zh-CN'; notesConfigured: boolean }>
+  },
+) {
   const workspaceRoot = await realpath(resolve(root))
-  const home = join(workspaceRoot, '.os')
+  const notesRoot = options && !options.legacy ? options.notesRoot : null
+  const home = notesRoot ? workspaceRoot : join(workspaceRoot, '.os')
   await directory(home, true)
   const configPath = join(home, 'config.json')
   try {
-    const file = await open(configPath, 'wx', 0o600)
+    const file = options ? null : await open(configPath, 'wx', 0o600)
     try {
-      await file.writeFile(`${JSON.stringify({ version: 1, origin, locale: 'system' }, null, 2)}\n`)
+      await file?.writeFile(
+        `${JSON.stringify({ version: 1, origin, locale: 'system' }, null, 2)}\n`,
+      )
     } finally {
-      await file.close()
+      await file?.close()
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
   }
 
   async function readConfig() {
+    if (options) return options.readConfig()
     await directory(home, false)
     const source = await readBounded(configPath)
     if (source === null) throw new Error('Workspace configuration is missing')
@@ -168,11 +185,11 @@ export async function openWorkspace(root: string, origin: string) {
   }
   await readConfig()
   try {
-    const ignore = await open(join(home, '.gitignore'), 'wx', 0o600)
+    const ignore = options ? null : await open(join(home, '.gitignore'), 'wx', 0o600)
     try {
-      await ignore.writeFile('*\n')
+      await ignore?.writeFile('*\n')
     } finally {
-      await ignore.close()
+      await ignore?.close()
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
@@ -181,12 +198,10 @@ export async function openWorkspace(root: string, origin: string) {
   async function noteDirectory(account: LocalAccount, unit: string, create: boolean) {
     if (!isLocalAccount(account)) throw new Error('Verified GitHub identity required')
     const address = localUnitAddress(unit)
-    let path = workspaceRoot
+    let path = notesRoot ?? home
+    if (!(await directory(path, create))) return null
     for (const segment of [
-      '.os',
-      'users',
-      account.id,
-      'notes',
+      ...(notesRoot ? [account.id] : ['users', account.id, 'notes']),
       address.owner,
       address.repo,
       `${address.kind}-${address.number}`,
@@ -210,6 +225,49 @@ export async function openWorkspace(root: string, origin: string) {
   return {
     root: workspaceRoot,
     readConfig,
+    async allNotes(account: LocalAccount) {
+      if (!isLocalAccount(account)) throw new Error('Verified GitHub identity required')
+      let path = notesRoot ?? home
+      if (!(await directory(path, false))) return []
+      for (const part of notesRoot ? [account.id] : ['users', account.id, 'notes']) {
+        path = join(path, part)
+        if (!(await directory(path, false))) return []
+      }
+      const rows: Array<{ unit: string; note: UnitNote; version: string }> = []
+      for (const owner of await readdir(path)) {
+        const ownerPath = join(path, owner)
+        if (!(await lstat(ownerPath)).isDirectory()) continue
+        await directory(ownerPath, false)
+        for (const repo of await readdir(ownerPath)) {
+          const repoPath = join(ownerPath, repo)
+          if (!(await lstat(repoPath)).isDirectory()) continue
+          await directory(repoPath, false)
+          for (const item of await readdir(repoPath)) {
+            const match = /^(pr|issue)-([1-9]\d{0,9})$/.exec(item)
+            if (!match) continue
+            const unit = `${match[1]}:${owner}/${repo}#${match[2]}`
+            const snapshot = await this.snapshot(account, unit)
+            for (const note of snapshot.notes)
+              rows.push({ unit, note, version: snapshot.versions[note.id]! })
+            if (rows.length > 10000) throw new Error('Too many notes to index')
+          }
+        }
+      }
+      return rows
+    },
+    async catalog(account: LocalAccount, after = '') {
+      const key = (row: { unit: string; note: UnitNote }) => `${row.unit}:${row.note.id}`
+      const remaining = (await this.allNotes(account))
+        .filter(row => key(row) > after)
+        .sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0))
+      const entries = remaining.slice(0, 4)
+      return {
+        entries,
+        sources: [],
+        warnings: [],
+        next: remaining.length > entries.length ? key(entries.at(-1)!) : null,
+      } as import('../shared/device-relay.ts').NoteCatalog
+    },
     async list(account: LocalAccount, unit: string): Promise<UnitNote[]> {
       return (await this.snapshot(account, unit)).notes
     },
@@ -226,7 +284,7 @@ export async function openWorkspace(root: string, origin: string) {
         for (const file of files) {
           const source = await readBounded(join(path, file))
           if (source !== null) {
-            const note = decode(source, unit, file.slice(0, -3))
+            const note = decode(source, unit, file.slice(0, -3), Boolean(options))
             notes.push(note)
             versions[note.id] = digest(source)
           }
@@ -266,7 +324,10 @@ export async function openWorkspace(root: string, origin: string) {
         }
         const source = `---\n${stringify(meta)}---\n${note.text}`
         await atomicWrite(file, source)
-        return { note, version: digest(source) }
+        return {
+          note: options ? { ...note, updatedAt: meta.updatedAt } : note,
+          version: digest(source),
+        }
       })
     },
     remove(
@@ -274,7 +335,9 @@ export async function openWorkspace(root: string, origin: string) {
       unit: string,
       id: string,
       expected?: string | null,
+      sourceId?: string,
     ): Promise<void> {
+      if (sourceId && sourceId !== 'global') throw new Error('Unknown note source')
       return serialize(async () => {
         if (!isLocalNoteId(id)) throw new Error('Invalid note id')
         const path = await noteDirectory(account, unit, false)

@@ -2,18 +2,21 @@
 import type { MenuItem } from '@froq/ui/vue'
 import type { UnitView } from '#shared/unit'
 import { Menu } from '@froq/ui'
-import { copy } from '~/copy/en'
-import { laterAt } from '~/composables/useLater'
+const { t } = useI18n()
+import { laterAt as laterPresetAt } from '~/composables/useLater'
 
-defineProps<{
+const props = defineProps<{
   unit: UnitView
   x: number
   y: number
+  /** Timestamp this unit is snoozed until; present shows a Clear row. */
+  laterAt?: number
 }>()
 
 const emit = defineEmits<{
   read: []
   later: [at: number]
+  clearLater: []
   close: []
 }>()
 
@@ -25,11 +28,14 @@ const open = ref(true)
  * implementation. Group labels ride along as disabled items.
  */
 const items = computed<MenuItem[]>(() => [
-  { value: 'read', label: copy.menu.markRead },
-  { value: 'later:hour', label: copy.menu.laterHour },
-  { value: 'later:tonight', label: copy.menu.laterTonight },
-  { value: 'later:tomorrow', label: copy.menu.laterTomorrow },
-  { value: 'later:week', label: copy.menu.laterWeek },
+  { value: 'read', label: t('menu.markRead') },
+  { value: 'later:hour', label: t('menu.laterHour') },
+  { value: 'later:tonight', label: t('menu.laterTonight') },
+  { value: 'later:tomorrow', label: t('menu.laterTomorrow') },
+  { value: 'later:week', label: t('menu.laterWeek') },
+  ...(props.laterAt
+    ? [{ value: 'later:clear', label: t('menu.laterClear'), separatorBefore: true }]
+    : []),
 ])
 
 /**
@@ -47,9 +53,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape, true))
 function select(item: MenuItem): void {
   open.value = false
   if (item.value === 'read') emit('read')
+  if (item.value === 'later:clear') {
+    emit('clearLater')
+    return
+  }
   if (item.value.startsWith('later:')) {
     const preset = item.value.slice('later:'.length) as 'hour' | 'tonight' | 'tomorrow' | 'week'
-    emit('later', laterAt(preset))
+    emit('later', laterPresetAt(preset))
   }
 }
 
@@ -62,7 +72,7 @@ watch(open, value => {
   <Menu
     v-model="open"
     class="osdash-menu"
-    :label="copy.menu.open"
+    :label="t('menu.open')"
     :modal="false"
     :items="items"
     side="bottom"

@@ -1,20 +1,23 @@
-import { copy } from '~/copy/en'
+import type { TFunc } from '#shared/i18n'
 import { replyDuration } from '~/utils/time'
 
-export function greetingTitle(name: string, now = new Date()): string {
+export function greetingTitle(t: TFunc, name: string, now = new Date()): string {
   const hour = now.getHours()
-  const period = hour < 12 ? copy.morning : hour < 18 ? copy.afternoon : copy.evening
-  return copy.greet(period, name)
+  const period = t(hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening')
+  return t('greet', { period, name })
 }
 
-export function greetingCount(mine: number): string {
-  return copy.yourTurn(mine)
-}
-
-export function statsLine(
+export function greetingFacts(
+  t: TFunc,
+  mine: number,
   merged: number,
   open: number,
   averageFirstReplyMs: number | null,
-): string {
-  return copy.stats(merged, open, replyDuration(averageFirstReplyMs))
+): Array<{ figure: string; label: string }> {
+  return [
+    { figure: String(mine), label: t('greetOnYou') },
+    { figure: String(merged), label: t('greetMerged') },
+    { figure: String(open), label: t('greetOpen') },
+    { figure: replyDuration(t, averageFirstReplyMs), label: t('greetReply') },
+  ]
 }

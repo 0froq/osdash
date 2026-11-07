@@ -6,10 +6,11 @@ import { demoContributions } from '~/demo/contrib'
 
 if (!import.meta.dev) throw createError({ statusCode: 404 })
 
+const { t } = useI18n()
 useHead({ title: 'osdash · timeline review v3' })
 
 const nowMs = Date.now()
-const items = demoContributions(nowMs)
+const items = demoContributions(t, nowMs)
 const active = ref(items[0]!.id)
 const c = computed(() => items.find(item => item.id === active.value)!)
 

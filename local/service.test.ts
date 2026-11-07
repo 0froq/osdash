@@ -31,11 +31,82 @@ it('renders portable native service definitions with literal arguments and foreg
   assert.ok(linux.includes('$$HOME %%n'))
   assert.ok(linux.includes('WorkingDirectory="/tmp/work space & <notes> $HOME %%n"'))
   assert.ok(linux.includes('Restart=always'))
+  const configured = {
+    ...config,
+    configured: true,
+    userConfigPath: '/tmp/config & space.json',
+    environmentPath: '/tools/bin:/usr/bin',
+  }
+  const configuredMac = serviceDefinition(configured, servicePaths('/tmp/isolated-home', 'darwin'))
+  assert.ok(!configuredMac.includes('<string>--root</string>'))
+  assert.ok(
+    configuredMac.includes(
+      '<string>--config</string><string>/tmp/config &amp; space.json</string>',
+    ),
+  )
+  assert.ok(configuredMac.includes('<key>HOME</key><string>/tmp/isolated-home</string>'))
+  assert.ok(configuredMac.includes('<key>PATH</key><string>/tools/bin:/usr/bin</string>'))
   assert.notEqual(
     servicePaths('/tmp/one', 'darwin').label,
     servicePaths('/tmp/two', 'darwin').label,
   )
   assert.throws(() => servicePaths('/tmp/home', 'win32'), /foreground/)
+})
+
+it('defaults service state to osdash while retaining an existing legacy service descriptor', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'osdash-service-paths-'))
+  try {
+    assert.equal(servicePaths(home, 'darwin').directory, join(home, '.local/state/osdash'))
+    const oldDirectory = join(home, '.local/state/os')
+    await mkdir(oldDirectory, { recursive: true })
+    await writeFile(join(oldDirectory, 'service.json'), JSON.stringify(config), { mode: 0o600 })
+    const manager = createServiceManager({
+      home,
+      platform: 'darwin',
+      run: async () => '\tpid = 4242\n',
+    })
+    assert.equal(manager.paths.directory, oldDirectory)
+    assert.deepEqual(await manager.saved(), config)
+    assert.deepEqual(await manager.state(), { running: true, pid: 4242 })
+    const newDirectory = join(home, '.local/state/osdash')
+    await mkdir(newDirectory)
+    await writeFile(join(newDirectory, 'service.json'), JSON.stringify(config), { mode: 0o600 })
+    assert.equal(servicePaths(home, 'darwin').directory, newDirectory)
+  } finally {
+    await rm(home, { recursive: true, force: true })
+  }
+})
+
+it('retries a transient launchd teardown error during restart without changing the saved workspace', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'osdash-service-restart-'))
+  let running = false
+  let bootstraps = 0
+  const manager = createServiceManager({
+    home,
+    platform: 'darwin',
+    run: async (_command, args) => {
+      if (args.includes('print')) return running ? '\tpid = 4242\n' : ''
+      if (args.includes('disable') || args.includes('bootout')) running = false
+      if (args.includes('bootstrap')) {
+        bootstraps++
+        if (bootstraps === 2)
+          throw Object.assign(new Error('launchd teardown pending'), {
+            stderr: 'Bootstrap failed: 5: Input/output error',
+          })
+        running = true
+      }
+      return ''
+    },
+  })
+  try {
+    await manager.start(config)
+    await manager.start(config, true)
+    assert.equal(bootstraps, 3)
+    assert.equal((await manager.state()).running, true)
+    assert.deepEqual(await manager.saved(), config)
+  } finally {
+    await rm(home, { recursive: true, force: true })
+  }
 })
 
 for (const platform of ['darwin', 'linux'] as const) {

@@ -13,6 +13,7 @@ declare module 'h3' {
       env?: {
         DEVICE_RELAY?: import('../shared/device-relay').RelayNamespace
         DEVICE_RELAY_SCOPE?: string
+        DEVICE_RELAY_LOCAL_ORIGIN?: string
         AI?: AiBinding
         GITHUB_CLIENT_ID?: string
         GITHUB_CLIENT_SECRET?: string

@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { voidPlugin } from 'void'
 import { themePreferenceScript } from './app/theme'
 
@@ -6,12 +7,20 @@ export default defineNuxtConfig({
 
   build: { transpile: ['@froq/ui'] },
 
+  modules: ['@nuxtjs/i18n'],
+
+  i18n: {
+    locales: [{ code: 'en', language: 'en-US', file: 'en.ts' }],
+    defaultLocale: 'en',
+    strategy: 'no_prefix',
+  },
+
   devtools: { enabled: true },
 
   components: [{ path: '~/components', pathPrefix: false }],
 
   css: [
-    '@froq/ui/style.css',
+    '@froq/ui/tokens.css',
     '@fontsource-variable/geist/index.css',
     '@fontsource-variable/geist-mono/index.css',
     '@fontsource/instrument-serif/400.css',
@@ -26,6 +35,7 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    externals: { external: ['miniflare', 'rolldown'] },
     preset: 'cloudflare-module',
     cloudflare: {
       nodeCompat: true,
@@ -61,8 +71,22 @@ export default defineNuxtConfig({
 
   typescript: { strict: true },
 
+  hooks: {
+    'nitro:config'(config) {
+      if (config.dev) {
+        config.plugins ??= []
+        config.plugins.push(fileURLToPath(new URL('./server/dev/relay-plugin.ts', import.meta.url)))
+      }
+    },
+  },
+
+  $development: {
+    runtimeConfig: { public: { osdashLocalBridgeUrl: 'http://127.0.0.1:47832' } },
+  },
+
   runtimeConfig: {
     public: {
+      osdashLocalBridgeUrl: 'http://127.0.0.1:47831',
       osdashMock: process.env.OSDASH_MOCK || '',
     },
   },

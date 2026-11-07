@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 export type WorkerBindings = {
   DEVICE_RELAY?: import('../shared/device-relay').RelayNamespace
   DEVICE_RELAY_SCOPE?: string
+  DEVICE_RELAY_LOCAL_ORIGIN?: string
   AI?: import('./claim-classifier-clef').AiBinding
   GITHUB_CLIENT_ID?: string
   GITHUB_CLIENT_SECRET?: string

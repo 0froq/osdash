@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { copy } from '~/copy/en'
-
 defineProps<{
   repo: string
   number: number

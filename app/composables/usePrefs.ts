@@ -1,3 +1,4 @@
+import { noteKey } from '#shared/device-relay'
 import { withMockQuery } from '#shared/mock-mode'
 import type { UnitNote, UnitView } from '#shared/unit'
 
@@ -38,7 +39,7 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
     if (mock.value) return unit.notes ?? []
     return (local.value[unit.id] ?? []).map(note => ({
       ...note,
-      unsaved: dirty.has(note.id) || drafts.has(note.id),
+      unsaved: dirty.has(noteKey(note)) || drafts.has(noteKey(note)),
     }))
   }
   function canEditNotesFor(unit: UnitView): boolean {
@@ -46,8 +47,8 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
   }
   function editableNoteIds(unit: UnitView): string[] {
     return mock.value
-      ? (unit.notes ?? []).map(note => note.id)
-      : (local.value[unit.id] ?? []).map(note => note.id)
+      ? (unit.notes ?? []).map(noteKey)
+      : (local.value[unit.id] ?? []).filter(note => note.writable !== false).map(noteKey)
   }
   async function loadNotes(unit: UnitView): Promise<void> {
     if (mock.value || !bridge.canWriteNotes.value) return
@@ -59,10 +60,15 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
         const notes = await bridge.listNotes(unit.id)
         if (session !== bridge.session.value) return
         const pendingNotes = (local.value[unit.id] ?? []).filter(
-          note => dirty.has(note.id) || drafts.has(note.id),
+          note => dirty.has(noteKey(note)) || drafts.has(noteKey(note)),
         )
+        const pendingIds = new Set(pendingNotes.map(note => note.id))
         setLocal(unit.id, [
-          ...notes.filter(note => !pendingNotes.some(entry => entry.id === note.id)),
+          ...notes.filter(
+            note =>
+              !pendingIds.has(note.id) &&
+              !pendingNotes.some(entry => noteKey(entry) === noteKey(note)),
+          ),
           ...pendingNotes,
         ])
         ready.value.add(unit.id)
@@ -85,25 +91,29 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
     if (!canEditNotesFor(unit)) return
     const note = {
       id: crypto.randomUUID(),
+      ...(mock.value ? {} : { source: 'global', writable: true }),
       text: '',
       at: new Date().toISOString(),
       anchor: new Date().toISOString(),
     }
     if (mock.value) updateUnit(unit.id, { notes: [...(unit.notes ?? []), note] })
     else {
-      drafts.add(note.id)
+      drafts.add(noteKey(note))
       setLocal(unit.id, [...(local.value[unit.id] ?? []), note])
     }
   }
   function cancelNote(unit: UnitView, id: string) {
     if (mock.value) {
       if (unit.notes?.some(note => note.id === id && !note.text))
-        updateUnit(unit.id, { notes: unit.notes.filter(note => note.id !== id) })
-    } else if (drafts.has(id) && local.value[unit.id]?.some(note => note.id === id && !note.text)) {
+        updateUnit(unit.id, { notes: unit.notes.filter(note => noteKey(note) !== id) })
+    } else if (
+      drafts.has(id) &&
+      local.value[unit.id]?.some(note => noteKey(note) === id && !note.text)
+    ) {
       drafts.delete(id)
       setLocal(
         unit.id,
-        local.value[unit.id]!.filter(note => note.id !== id),
+        local.value[unit.id]!.filter(note => noteKey(note) !== id),
       )
     }
   }
@@ -134,41 +144,63 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
       }
       return
     }
-    if (!local.value[unit.id]?.some(entry => entry.id === note.id)) return
-    const session = bridge.session.value
-    const revision = (revisions.get(note.id) ?? 0) + 1
-    revisions.set(note.id, revision)
-    dirty.add(note.id)
-    setLocal(
-      unit.id,
-      local.value[unit.id]!.map(entry => (entry.id === note.id ? note : entry)),
+    if (
+      note.writable === false ||
+      !local.value[unit.id]?.some(entry => noteKey(entry) === noteKey(note))
     )
+      return
+    const key = noteKey(note)
+    const session = bridge.session.value
+    const revision = (revisions.get(key) ?? 0) + 1
+    revisions.set(key, revision)
+    dirty.add(key)
+    const replace = (notes: UnitNote[], next: UnitNote) => {
+      let kept = false
+      const updated: UnitNote[] = []
+      for (const entry of notes) {
+        if (entry.id !== note.id && noteKey(entry) !== key) {
+          updated.push(entry)
+          continue
+        }
+        if (kept) continue
+        kept = true
+        updated.push(next)
+      }
+      return kept ? updated : [...updated, next]
+    }
+    setLocal(unit.id, replace(local.value[unit.id]!, note))
     try {
       await enqueue(unit.id, session, async () => {
         const saved = await bridge.saveNote(unit.id, note)
-        if (session !== bridge.session.value || revisions.get(note.id) !== revision) return
+        if (session !== bridge.session.value || revisions.get(key) !== revision) return
         setLocal(
           unit.id,
-          (local.value[unit.id] ?? []).map(entry => (entry.id === note.id ? saved : entry)),
+          replace(local.value[unit.id] ?? [], {
+            ...saved,
+            source: saved.source ?? note.source,
+            writable: saved.writable ?? note.writable,
+          }),
         )
-        dirty.delete(note.id)
-        drafts.delete(note.id)
+        dirty.delete(key)
+        drafts.delete(key)
         if (dirty.size === 0) noteError.value = ''
       })
     } catch (cause) {
-      if (session !== bridge.session.value || revisions.get(note.id) !== revision) return
+      if (session !== bridge.session.value || revisions.get(key) !== revision) return
       if ((cause as { statusCode?: number }).statusCode === 409) {
         const copy = {
           ...note,
           id: crypto.randomUUID(),
+          source: 'global',
+          writable: true,
           version: null,
           at: new Date().toISOString(),
         }
-        dirty.delete(note.id)
-        drafts.delete(note.id)
-        drafts.add(copy.id)
+        dirty.delete(key)
+        drafts.delete(key)
+        drafts.add(noteKey(copy))
         setLocal(unit.id, [
-          ...(local.value[unit.id] ?? []).filter(entry => entry.id !== note.id),
+          ...(local.value[unit.id] ?? []).filter(entry => noteKey(entry) !== key),
           copy,
         ])
         await loadNotes(unit)
@@ -182,12 +214,12 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
   async function moveNote(unit: UnitView, id: string, anchor: string): Promise<void> {
     if (!canEditNotesFor(unit)) return
     if (!mock.value) {
-      const note = local.value[unit.id]?.find(entry => entry.id === id)
+      const note = local.value[unit.id]?.find(entry => noteKey(entry) === id)
       if (note && drafts.has(id) && !note.text) {
         setLocal(
           unit.id,
           (local.value[unit.id] ?? []).map(entry =>
-            entry.id === id ? { ...entry, anchor } : entry,
+            noteKey(entry) === id ? { ...entry, anchor } : entry,
           ),
         )
       } else if (note) await saveNote(unit, { ...note, anchor })
@@ -195,7 +227,7 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
     }
     const previous = unit.notes ?? []
     updateUnit(unit.id, {
-      notes: previous.map(entry => (entry.id === id ? { ...entry, anchor } : entry)),
+      notes: previous.map(entry => (noteKey(entry) === id ? { ...entry, anchor } : entry)),
     })
     try {
       await $fetch(endpoint('/api/prefs'), {
@@ -210,7 +242,7 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
     if (!canEditNotesFor(unit)) return
     if (mock.value) {
       const previous = unit.notes ?? []
-      updateUnit(unit.id, { notes: previous.filter(entry => entry.id !== id) })
+      updateUnit(unit.id, { notes: previous.filter(entry => noteKey(entry) !== id) })
       try {
         await $fetch(endpoint('/api/prefs'), {
           method: 'PUT',
@@ -221,12 +253,13 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
       }
       return
     }
-    if (!local.value[unit.id]?.some(note => note.id === id)) return
+    const target = local.value[unit.id]?.find(note => noteKey(note) === id)
+    if (!target || target.writable === false) return
     if (drafts.has(id) && !dirty.has(id)) {
       drafts.delete(id)
       setLocal(
         unit.id,
-        (local.value[unit.id] ?? []).filter(note => note.id !== id),
+        (local.value[unit.id] ?? []).filter(note => noteKey(note) !== id),
       )
       return
     }
@@ -235,15 +268,11 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
     revisions.set(id, revision)
     try {
       await enqueue(unit.id, session, async () => {
-        await bridge.deleteNote(
-          unit.id,
-          id,
-          local.value[unit.id]?.find(note => note.id === id)?.version ?? null,
-        )
+        await bridge.deleteNote(unit.id, target.id, target.version ?? null, target.source)
         if (session !== bridge.session.value || revisions.get(id) !== revision) return
         setLocal(
           unit.id,
-          (local.value[unit.id] ?? []).filter(note => note.id !== id),
+          (local.value[unit.id] ?? []).filter(note => noteKey(note) !== id),
         )
         drafts.delete(id)
         dirty.delete(id)
@@ -255,11 +284,15 @@ export function usePrefs(updateUnit: (id: string, patch: Partial<UnitView>) => v
           'Could not confirm deletion. Check the bridge and reload local notes before retrying.'
     }
   }
+  function notesPending(id: string): boolean {
+    return loads.has(id)
+  }
   return {
     notesOf,
     canEditNotes,
     canEditNotesFor,
     editableNoteIds,
+    notesPending,
     noteError,
     loadNotes,
     addNote,

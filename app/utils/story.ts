@@ -1,10 +1,11 @@
 import type { CiGroup, TimelineEntry, UnitEvent } from '#shared/events'
+import { excerptOf } from '#shared/events'
 import { isMaintainerAssociation } from '#shared/claim-types'
 import { isBot, isSelf } from '#shared/identity'
 import type { ReasonCode } from '#shared/reason'
 import type { StoryItem, StoryKey } from '#shared/story'
 import type { UnitCategory, UnitKind } from '#shared/unit'
-import { copy } from '~/copy/en'
+import type { TFunc } from '#shared/i18n'
 
 /*
  * A card's timeline as a contribution story. Every string comes from event
@@ -147,56 +148,92 @@ function checksOf(group: CiGroup | UnitEvent): { failed: string[]; passed: numbe
   }
 }
 
-function eventVerb(event: UnitEvent, viewer: string): Pick<StoryLine, 'verb' | 'tone' | 'detail'> {
-  const s = copy.story
+function eventVerb(
+  t: TFunc,
+  event: UnitEvent,
+  viewer: string,
+): Pick<StoryLine, 'verb' | 'tone' | 'detail'> {
   const login = (value: string | undefined) =>
-    value && value.toLowerCase() === viewer.toLowerCase() ? 'you' : (value ?? copy.someone)
+    value && value.toLowerCase() === viewer.toLowerCase()
+      ? t('preview.you')
+      : (value ?? t('someone'))
   switch (event.kind) {
     case 'opened':
-      return { verb: s.opened(event.source.kind, event.source.number), tone: 'plain', detail: null }
+      return {
+        verb: t(event.source.kind === 'pr' ? 'story.openedPr' : 'story.openedIssue', {
+          number: event.source.number,
+        }),
+        tone: 'plain',
+        detail: null,
+      }
     case 'comment':
-      return { verb: s.commented, tone: 'plain', detail: null }
+      return { verb: t('story.commented'), tone: 'plain', detail: null }
     case 'review-comment':
-      return { verb: s.commentedOnCode, tone: 'plain', detail: null }
+      return { verb: t('story.commentedOnCode'), tone: 'plain', detail: null }
     case 'review':
-      if (event.reviewState === 'APPROVED') return { verb: s.approved, tone: 'good', detail: null }
+      if (event.reviewState === 'APPROVED')
+        return { verb: t('story.approved'), tone: 'good', detail: null }
       if (event.reviewState === 'CHANGES_REQUESTED')
-        return { verb: s.changes, tone: 'bad', detail: null }
+        return { verb: t('story.changes'), tone: 'bad', detail: null }
       if (event.reviewState === 'DISMISSED')
-        return { verb: s.dismissed, tone: 'plain', detail: null }
-      return { verb: s.reviewed, tone: 'plain', detail: null }
+        return { verb: t('story.dismissed'), tone: 'plain', detail: null }
+      return { verb: t('story.reviewed'), tone: 'plain', detail: null }
     case 'commit':
       return {
-        verb: s.committed,
+        verb: t('story.committed'),
         tone: 'plain',
         detail: event.commit?.message.split('\n')[0] || null,
       }
     case 'force-push':
-      return { verb: s.forcePushed, tone: 'plain', detail: null }
+      return { verb: t('story.forcePushed'), tone: 'plain', detail: null }
     case 'ci':
       return { verb: event.ci?.name ?? '', tone: 'plain', detail: null }
     case 'labeled':
-      return { verb: s.addedLabel, tone: 'plain', detail: null }
+      return { verb: t('story.addedLabel'), tone: 'plain', detail: null }
     case 'unlabeled':
-      return { verb: s.removedLabel, tone: 'plain', detail: null }
+      return { verb: t('story.removedLabel'), tone: 'plain', detail: null }
     case 'assigned':
-      return { verb: s.assigned(login(event.targetLogin)), tone: 'plain', detail: null }
+      return {
+        verb: t('story.assigned', { login: login(event.targetLogin) }),
+        tone: 'plain',
+        detail: null,
+      }
     case 'unassigned':
-      return { verb: s.unassigned(login(event.targetLogin)), tone: 'plain', detail: null }
+      return {
+        verb: t('story.unassigned', { login: login(event.targetLogin) }),
+        tone: 'plain',
+        detail: null,
+      }
     case 'review-requested':
-      return { verb: s.reviewRequested(login(event.targetLogin)), tone: 'plain', detail: null }
+      return {
+        verb: t('story.reviewRequested', { login: login(event.targetLogin) }),
+        tone: 'plain',
+        detail: null,
+      }
     case 'cross-ref':
-      return { verb: s.crossRef(), tone: 'plain', detail: null }
+      return { verb: t('story.crossRef'), tone: 'plain', detail: null }
     case 'connected':
-      return { verb: s.connected(), tone: 'plain', detail: null }
+      return { verb: t('story.connected'), tone: 'plain', detail: null }
     case 'renamed':
-      return { verb: s.renamed, tone: 'plain', detail: event.rename?.to ?? null }
+      return { verb: t('story.renamed'), tone: 'plain', detail: event.rename?.to ?? null }
     case 'merged':
-      return { verb: s.merged(event.source.number), tone: 'good', detail: null }
+      return {
+        verb: t('story.merged', { number: event.source.number }),
+        tone: 'good',
+        detail: null,
+      }
     case 'closed':
-      return { verb: s.closed(event.source.number), tone: 'plain', detail: null }
+      return {
+        verb: t('story.closed', { number: event.source.number }),
+        tone: 'plain',
+        detail: null,
+      }
     case 'reopened':
-      return { verb: s.reopened(event.source.number), tone: 'plain', detail: null }
+      return {
+        verb: t('story.reopened', { number: event.source.number }),
+        tone: 'plain',
+        detail: null,
+      }
     default: {
       const exhaustive: never = event.kind
       return exhaustive
@@ -241,8 +278,11 @@ function foldKind(line: StoryLine, sources: ReadonlyMap<string, Source>): string
   return 'rest'
 }
 
-function summaryOf(lines: readonly StoryLine[], sources: ReadonlyMap<string, Source>): string {
-  const s = copy.story.summary
+function summaryOf(
+  t: TFunc,
+  lines: readonly StoryLine[],
+  sources: ReadonlyMap<string, Source>,
+): string {
   let comments = 0
   let commits = 0
   let reviews = 0
@@ -292,15 +332,23 @@ function summaryOf(lines: readonly StoryLine[], sources: ReadonlyMap<string, Sou
     }
   }
   const parts = [
-    comments ? s.comments(comments) : '',
-    reviews ? s.reviews(reviews) : '',
-    commits ? s.commits(commits) : '',
-    checks === 'failed' ? s.checksFailed : checks === 'passed' ? s.checksPassed : '',
-    requested ? s.reviewRequested : '',
-    labels ? s.labels(labels) : '',
-    mentions.length ? s.mentions([...new Set(mentions)]) : '',
-    bots ? s.bots(bots) : '',
-    other ? s.other(other) : '',
+    comments ? t('story.summary.comments', { count: comments }, comments) : '',
+    reviews ? t('story.summary.reviews', { count: reviews }, reviews) : '',
+    commits ? t('story.summary.commits', { count: commits }, commits) : '',
+    checks === 'failed'
+      ? t('story.summary.checksFailed')
+      : checks === 'passed'
+        ? t('story.summary.checksPassed')
+        : '',
+    requested ? t('story.summary.reviewRequested') : '',
+    labels ? t('story.summary.labels', { count: labels }, labels) : '',
+    mentions.length
+      ? t('story.summary.mentions', {
+          numbers: [...new Set(mentions)].map(number => `#${number}`).join(', '),
+        })
+      : '',
+    bots ? t('story.summary.bots', { count: bots }, bots) : '',
+    other ? t('story.summary.other', { count: other }) : '',
   ].filter(Boolean)
   return parts.join(' · ')
 }
@@ -358,6 +406,7 @@ function reasonLine(
 }
 
 export function buildStory(
+  t: TFunc,
   entries: readonly TimelineEntry[],
   items: readonly StoryItem[],
   card: StoryCard,
@@ -383,7 +432,6 @@ export function buildStory(
   const related = items.filter(item => !railKeys.has(item.key))
   const mentions = related.filter(item => item.link === 'mention')
   const issueOnly = card.kind === 'issue-only'
-  const s = copy.story
 
   const sources = sourcesOf(entries, rails)
   const bySource = new Map<string, Source>()
@@ -443,18 +491,27 @@ export function buildStory(
       line.login = item.authorLogin || null
       line.self =
         Boolean(item.authorLogin) && item.authorLogin.toLowerCase() === viewer.toLowerCase()
-      line.verb = s.opened(item.kind, item.number)
+      line.verb = t(item.kind === 'pr' ? 'story.openedPr' : 'story.openedIssue', {
+        number: item.number,
+      })
       line.url = item.url
       line.key = true
       line.start = true
+      const opening = item.body?.trim()
+      if (opening) {
+        line.body = opening
+        line.quote = excerptOf(opening) ?? null
+      }
       if (item.kind === 'pr') {
         line.fork = item.closes.filter(key => railKeys.has(key))
         const closes = item.closes.flatMap(key => {
           const issue = byKey.get(key)
-          return issue ? [s.closes(issue.number)] : []
+          return issue ? [t('story.closes', { number: issue.number })] : []
         })
         const mentioned =
-          item.role === 'primary' ? mentions.map(issue => s.mentions(issue.number)) : []
+          item.role === 'primary'
+            ? mentions.map(issue => t('story.mentions', { number: issue.number }))
+            : []
         line.chips = [...closes, ...mentioned]
       }
       bySource.set(line.id, source)
@@ -470,13 +527,13 @@ export function buildStory(
       line.url =
         (source.group.kind === 'ci-group' ? source.group.events[0]?.url : source.group.url) ?? null
       if (result.failed.length) {
-        line.verb = s.checksFailed(result.failed)
+        line.verb = t('story.checksFailed', { names: result.failed.join(', ') })
         line.tone = 'bad'
         line.key = id === lastChecks && !card.ended
       } else if (result.passed === result.total) {
-        line.verb = s.checksPassed(result.passed)
+        line.verb = t('story.checksPassed', { count: result.passed }, result.passed)
       } else {
-        line.verb = s.checksOther(result.total)
+        line.verb = t('story.checksOther', { count: result.total }, result.total)
       }
       bySource.set(line.id, source)
       lines.push(line)
@@ -507,7 +564,7 @@ export function buildStory(
     if (event.ref?.url)
       line.ref = { repo: event.ref.repo, number: event.ref.number, url: event.ref.url }
     if (event.label) line.label = event.label
-    Object.assign(line, eventVerb(event, viewer))
+    Object.assign(line, eventVerb(t, event, viewer))
     if (event.kind === 'comment' || event.kind === 'review' || event.kind === 'review-comment') {
       line.quote = event.excerpt ?? null
       line.body = event.body ?? null
@@ -518,7 +575,7 @@ export function buildStory(
       case 'closed':
         if (finalClose.get(itemKey) === event.id) line.end = event.kind
         line.joins = joinsOf.get(event.id) ?? []
-        line.chips = line.joins.map(key => s.closes(byKey.get(key)!.number))
+        line.chips = line.joins.map(key => t('story.closes', { number: byKey.get(key)!.number }))
         line.key = true
         break
       case 'reopened':
@@ -579,7 +636,7 @@ export function buildStory(
           fold: {
             id: `fold:${group[0]!.id}`,
             lines: group,
-            summary: summaryOf(group, bySource),
+            summary: summaryOf(t, group, bySource),
             lane: group[0]!.item,
           },
         })
@@ -661,20 +718,24 @@ function lanesOf(rails: readonly StoryItem[], lines: readonly StoryLine[]): Stor
   return lanes
 }
 
-export function relationOf(item: StoryItem, story: Story, viewer: string): string {
-  const r = copy.story.relation
+export function relationOf(t: TFunc, item: StoryItem, story: Story, viewer: string): string {
   const self = item.authorLogin.toLowerCase() === viewer.toLowerCase()
   if (item.role === 'primary') {
-    if (item.kind === 'pr') return r.yourPr
-    return self ? r.yourIssue : r.theirIssue
+    if (item.kind === 'pr') return t('story.relation.yourPr')
+    return self ? t('story.relation.yourIssue') : t('story.relation.theirIssue')
   }
-  if (item.role === 'history') return r.history
-  if (item.role === 'fixed-by') return r.fixedBy(item.authorLogin)
-  if (item.link === 'mention') return r.mention
+  if (item.role === 'history') return t('story.relation.history')
+  if (item.role === 'fixed-by')
+    return item.authorLogin
+      ? t('story.relation.fixedBy', { login: item.authorLogin })
+      : t('story.relation.fixedByAnon')
+  if (item.link === 'mention') return t('story.relation.mention')
   const closer = story.rails.find(
     rail => rail.kind === 'pr' && rail.role === 'primary' && rail.closes.includes(item.key),
   )
-  return closer ? r.closes(closer.number) : r.mention
+  return closer
+    ? t('story.relation.closes', { number: closer.number })
+    : t('story.relation.mention')
 }
 
 /* Rows and gutter cells. */

@@ -33,15 +33,6 @@
   font-size: 12.5px;
 }
 
-/* Rows stay plain: hover and keyboard focus get an underline, not a fill. */
-.osdash-menu .ui-menu-item[data-highlighted] {
-  background: none;
-  box-shadow: none;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
-}
-
 .osdash-menu .ui-menu-separator {
   margin: 4px 0;
   background: var(--line);
@@ -78,12 +69,4 @@
 
 .osdash-menu .ui-menu-item {
   position: relative;
-}
-
-/* An unbordered trigger keeps the caller's own look instead of the library's underline. */
-.ui-overlay-scope:not(.is-bordered) > .ui-overlay-trigger {
-  padding: 0;
-  border: 0;
-  color: inherit;
-  font: inherit;
 }

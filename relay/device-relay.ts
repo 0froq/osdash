@@ -181,7 +181,7 @@ export class DeviceRelay extends DurableObject {
       socket.close(1003, 'Invalid result')
       return
     }
-    if (result.status === 200 && pending.action !== 'list') {
+    if (result.status === 200 && (pending.action === 'save' || pending.action === 'delete')) {
       const binding = { ...this.binding, revision: crypto.randomUUID() }
       await this.ctx.storage.put('binding', binding)
       this.binding = binding
